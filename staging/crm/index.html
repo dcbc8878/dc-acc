@@ -697,6 +697,7 @@
     <button class="tab-btn"        data-tab="creds"   onclick="switchTab('creds')"   id="tab-btn-creds">รหัสผ่าน</button>
     <button class="tab-btn"        data-tab="docs"    onclick="switchTab('docs')"    id="tab-btn-docs">เอกสาร</button>
     <button class="tab-btn"        data-tab="history" onclick="switchTab('history')" id="tab-btn-history">ประวัติงาน</button>
+    <button class="tab-btn"        data-tab="billing" onclick="switchTab('billing')" id="tab-btn-billing">ใบแจ้งหนี้</button>
   </div>
 
   <div class="flex-1 overflow-y-auto px-6 py-5">
@@ -704,6 +705,7 @@
     <div class="tab-pane hidden" data-pane="creds"></div>
     <div class="tab-pane hidden" data-pane="docs"></div>
     <div class="tab-pane hidden" data-pane="history"></div>
+    <div class="tab-pane hidden" data-pane="billing"></div>
   </div>
 
   <div id="panel-save-bar" class="hidden border-t border-gray-200 px-6 py-3 flex justify-end gap-2 flex-shrink-0">
@@ -745,6 +747,7 @@ const SB_URL  = 'https://dqegkyobclqqichhnxfm.supabase.co';
 const SB_ANON = 'sb_publishable_4U_v9BIrQjKppfchaevA6Q_zWj3zkxE';
 const sb = supabase.createClient(SB_URL, SB_ANON);
 const ADMIN_STAFF_FN = 'swift-handler'; // Edge Function slug for admin-staff/index.ts (Supabase keeps the original slug even after renaming "Name" in the dashboard)
+const FLOWACCOUNT_SYNC_FN = 'flowaccount-sync'; // Edge Function slug for flowaccount-sync/index.ts
 
 const THAI_MONTHS = ['','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม',
   'มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
@@ -2242,6 +2245,7 @@ async function openPanel(clientId) {
   document.getElementById('tab-btn-history').classList.toggle('hidden', isLimited);
   document.getElementById('tab-btn-creds').classList.toggle('hidden', !canCred());
   document.getElementById('tab-btn-docs').classList.toggle('hidden', isLimited);
+  document.getElementById('tab-btn-billing').classList.toggle('hidden', isLimited);
   document.getElementById('panel-deactivate-btn').classList.toggle('hidden', !isOwner() || isLimited);
 
   switchTab('info');
@@ -2368,6 +2372,7 @@ function switchTab(tab) {
   if (tab === 'creds')   renderPanelCreds();
   if (tab === 'docs')    renderPanelDocs();
   if (tab === 'history') renderPanelHistory();
+  if (tab === 'billing') renderPanelBilling();
 }
 
 // ── Info Tab ──
@@ -2822,6 +2827,7 @@ async function renderPanelBilling() {
           </div>
         </div>
         ${inv.payment_received_at ? `<div class="text-xs text-green-700 mb-2">รับเงิน ${fmtDate(inv.payment_received_at)} — ${fmtMoney(inv.payment_amount)}</div>` : ''}
+        ${faSyncLine(c.id, inv)}
         ${actions.length ? `<div class="flex gap-2 flex-wrap">${actions.join('')}</div>` : ''}
       </div>`;
   }
@@ -2864,17 +2870,23 @@ async function loadBillingHistory(clientId) {
   if (!data?.length) { el.innerHTML = '<div class="text-xs text-gray-400 mt-1">ยังไม่มีประวัติ</div>'; return; }
 
   el.innerHTML = `<h4 class="text-sm font-bold text-gray-700 mb-2">ประวัติใบแจ้งหนี้</h4>` +
-    data.map(inv => `
+    data.map(inv => {
+      const faBits = [];
+      if (inv.fa_invoice_no) faBits.push('ใบกำกับ ' + inv.fa_invoice_no);
+      if (inv.fa_receipt_no) faBits.push('ใบเสร็จ ' + inv.fa_receipt_no);
+      return `
     <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
       <div>
         <span class="text-xs font-semibold text-gray-700">${THAI_MONTHS[inv.month]} ${inv.year + 543}</span>
         <span class="ml-2 text-xs text-gray-400">${fmtMoney(inv.expected_payment)}</span>
+        ${faBits.length ? `<div class="text-[10px] text-gray-400">${e(faBits.join(' · '))}</div>` : ''}
       </div>
       <div class="flex items-center gap-2">
         ${invBadge(inv.status)}
         ${isOwner() ? `<button onclick="deleteInvoice(${inv.id})" class="text-gray-300 hover:text-red-500 transition-colors text-xs" title="ลบ">✕</button>` : ''}
       </div>
-    </div>`).join('');
+    </div>`;
+    }).join('');
 }
 
 async function loadBillingContracts(clientId) {
@@ -2903,6 +2915,84 @@ async function loadBillingContracts(clientId) {
     </div>`).join('');
 }
 
+// ── FlowAccount sync (tax invoice / receipt) ──
+// Local crm_invoices writes are always the source of truth: these helpers are
+// called AFTER a local draft/paid write already succeeded, never before, and
+// their failure never undoes or blocks that local write — they only report a
+// separate toast so staff know a FlowAccount retry is needed later. Mirrors
+// the sb.functions.invoke(...) → {data,error} → invokeErrorMessage() pattern
+// already used for ADMIN_STAFF_FN calls elsewhere in this file.
+async function flowAccountInvoke_(action, invoiceId) {
+  const { data, error } = await sb.functions.invoke(FLOWACCOUNT_SYNC_FN, {
+    body: { action, invoice_id: invoiceId },
+  });
+  if (error || data?.error) {
+    return { ok: false, message: data?.error || await invokeErrorMessage(error) || 'เชื่อมต่อ FlowAccount ไม่สำเร็จ' };
+  }
+  return { ok: true, data };
+}
+async function syncInvoiceToFlowAccount(clientId, invoiceId) {
+  const res = await flowAccountInvoke_('create_invoice', invoiceId);
+  if (!res.ok) {
+    showToast(`บันทึกใบแจ้งหนี้ในระบบแล้ว แต่ส่งไป FlowAccount ไม่สำเร็จ: ${res.message} (ลองใหม่ได้ภายหลัง)`, 'error');
+    return false;
+  }
+  if (invoiceMap[clientId]?.id === invoiceId) invoiceMap[clientId] = res.data.invoice || invoiceMap[clientId];
+  showToast(`ส่งใบกำกับภาษีไป FlowAccount สำเร็จ (เลขที่ ${res.data.fa_invoice_no || res.data.fa_invoice_id})`);
+  return true;
+}
+async function syncReceiptToFlowAccount(clientId, invoiceId) {
+  const res = await flowAccountInvoke_('create_receipt_and_email', invoiceId);
+  if (!res.ok) {
+    showToast(`บันทึกรับเงินในระบบแล้ว แต่ออกใบเสร็จ/ส่งอีเมล FlowAccount ไม่สำเร็จ: ${res.message} (ลองใหม่ได้ภายหลัง)`, 'error');
+    return false;
+  }
+  if (invoiceMap[clientId]?.id === invoiceId) invoiceMap[clientId] = res.data.invoice || invoiceMap[clientId];
+  showToast(`ออกใบเสร็จและส่งอีเมลลูกค้าสำเร็จ (เลขที่ ${res.data.fa_receipt_no || res.data.fa_receipt_id})`);
+  return true;
+}
+async function retryFlowAccountInvoice(clientId) {
+  const inv = invoiceMap[clientId];
+  if (!inv) return;
+  const btn = document.getElementById('fa-inv-retry-' + clientId);
+  if (btn) { btn.disabled = true; btn.textContent = 'กำลังส่ง…'; }
+  await syncInvoiceToFlowAccount(clientId, inv.id);
+  renderPanelBilling();
+}
+async function retryFlowAccountReceipt(clientId) {
+  const inv = invoiceMap[clientId];
+  if (!inv) return;
+  const btn = document.getElementById('fa-rcpt-retry-' + clientId);
+  if (btn) { btn.disabled = true; btn.textContent = 'กำลังส่ง…'; }
+  await syncReceiptToFlowAccount(clientId, inv.id);
+  renderPanelBilling();
+}
+// Small status line shown inside the current invoice box: FA doc number once
+// synced, or an inline retry button while it's missing (expected/common until
+// FlowAccount secrets are configured — see flowaccount-sync's README).
+function faSyncLine(clientId, inv) {
+  const rows = [];
+  if (inv.fa_invoice_no || inv.fa_invoice_id) {
+    rows.push(`<div class="text-xs text-gray-500">ใบกำกับภาษี FlowAccount: <span class="font-semibold text-gray-700">${e(inv.fa_invoice_no || inv.fa_invoice_id)}</span></div>`);
+  } else {
+    rows.push(`<div class="flex items-center gap-2 text-xs text-amber-600">
+      <span>ยังไม่ได้ส่งใบกำกับภาษีไป FlowAccount</span>
+      ${canEdit() ? `<button onclick="retryFlowAccountInvoice(${clientId})" id="fa-inv-retry-${clientId}" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 font-semibold px-2.5 py-1 rounded-lg transition-colors">↻ ลองใหม่</button>` : ''}
+    </div>`);
+  }
+  if (inv.status === 'paid') {
+    if (inv.fa_receipt_no || inv.fa_receipt_id) {
+      rows.push(`<div class="text-xs text-gray-500">ใบเสร็จ FlowAccount: <span class="font-semibold text-gray-700">${e(inv.fa_receipt_no || inv.fa_receipt_id)}</span>${inv.receipt_sent_at ? ` · ส่งอีเมลแล้ว ${fmtDate(inv.receipt_sent_at)}` : ''}</div>`);
+    } else {
+      rows.push(`<div class="flex items-center gap-2 text-xs text-amber-600">
+        <span>ยังไม่ได้ออกใบเสร็จ/ส่งอีเมล FlowAccount</span>
+        ${canEdit() ? `<button onclick="retryFlowAccountReceipt(${clientId})" id="fa-rcpt-retry-${clientId}" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 font-semibold px-2.5 py-1 rounded-lg transition-colors">↻ ลองใหม่</button>` : ''}
+      </div>`);
+    }
+  }
+  return `<div class="space-y-1 mb-2">${rows.join('')}</div>`;
+}
+
 async function createSingleInvoice(clientId) {
   const c = clients.find(x => x.id === clientId);
   if (!c) return;
@@ -2921,6 +3011,10 @@ async function createSingleInvoice(clientId) {
   showToast('สร้างใบแจ้งหนี้สำเร็จ');
   renderPanelBilling();
   renderTrackingSummary();
+  // Local draft is already committed above — FlowAccount sync is best-effort
+  // and its failure must not roll back or block anything already done.
+  await syncInvoiceToFlowAccount(clientId, data.id);
+  renderPanelBilling();
 }
 
 async function updateInvStatus(clientId, newStatus) {
@@ -2989,6 +3083,11 @@ async function confirmMarkPaid(clientId) {
   renderPanelBilling();
   renderTrackingSummary();
   if (curPage === 'tracking') renderTracking();
+
+  // "Paid" is already recorded above — receipt/email is a fact-independent
+  // best-effort follow-up; its failure must never undo the paid status.
+  await syncReceiptToFlowAccount(clientId, data.id);
+  renderPanelBilling();
 }
 
 // ── Creds Tab ──
@@ -3625,7 +3724,7 @@ function openBatchInvoice() {
   const thMonthYear = `${THAI_MONTHS[curMonth]} ${curYear + 543}`;
   const biMonthFirstStr = `${curYear}-${String(curMonth).padStart(2,'0')}-01`;
   const biMonthLastStr = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(new Date(curYear, curMonth, 0).getDate()).padStart(2,'0')}`;
-  const rows = clients.filter(c => (c.is_active || c.end_date))
+  const rows = clients.filter(c => (c.is_active || c.end_date) && !c.is_own_company)
     .filter(c => (!c.start_date || c.start_date <= biMonthLastStr) && (!c.end_date || c.end_date >= biMonthFirstStr))
     .map(c => {
     const fee = c.monthly_fee || 0;
@@ -3696,6 +3795,28 @@ async function createBatchInvoices() {
   showToast(`สร้างใบแจ้งหนี้ ${data?.length || 0} ใบสำเร็จ`);
   renderTrackingSummary();
   if (curPage === 'clients') renderClientList();
+
+  // Local drafts are already committed above. Sync each to FlowAccount as a
+  // best-effort follow-up — one aggregate toast instead of one per invoice
+  // (this toast element isn't a queue; N rapid calls would just flicker).
+  const newInvoices = data || [];
+  if (newInvoices.length) {
+    const results = await Promise.all(newInvoices.map(async inv => {
+      const res = await flowAccountInvoke_('create_invoice', inv.id);
+      if (res.ok) invoiceMap[inv.client_id] = res.data.invoice || invoiceMap[inv.client_id];
+      return res.ok;
+    }));
+    const okCount = results.filter(Boolean).length;
+    if (okCount === newInvoices.length) {
+      showToast(`ส่งใบแจ้งหนี้ไป FlowAccount สำเร็จครบทั้ง ${okCount} ใบ`);
+    } else if (okCount === 0) {
+      showToast(`สร้างใบแจ้งหนี้ในระบบแล้ว แต่ส่งไป FlowAccount ไม่สำเร็จทั้งหมด (${newInvoices.length} ใบ) — ลองใหม่ได้จากหน้ารายละเอียดลูกค้าแต่ละราย`, 'error');
+    } else {
+      showToast(`ส่งไป FlowAccount สำเร็จ ${okCount}/${newInvoices.length} ใบ ที่เหลือลองใหม่ได้จากหน้ารายละเอียดลูกค้า`, 'error');
+    }
+    if (curPage === 'clients') renderClientList();
+    if (panelClientId != null && invoiceMap[panelClientId]) renderPanelBilling();
+  }
 }
 
 // ─────────────────────────────────────────────────────────────
