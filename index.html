@@ -413,8 +413,13 @@
   }
   checkSession();
 
+  // Only an explicit SIGNED_OUT should ever hide the app again -- reacting to
+  // "session is falsy" on every event was closing the app on a late/stale
+  // INITIAL_SESSION callback that can fire (with no session, since it reflects
+  // page-load time) even after a real sign-in already succeeded.
   sb.auth.onAuthStateChange((event, session) => {
-    if (session) showApp(); else showLogin();
+    if (event === 'SIGNED_OUT') { showLogin(); return; }
+    if (session) showApp();
   });
 
   loginForm.addEventListener('submit', async (e) => {
@@ -425,13 +430,17 @@
     const password = document.getElementById('loginPass').value;
     loginBtn.disabled = true;
     loginBtn.textContent = 'กำลังเข้าสู่ระบบ...';
-    const { error } = await sb.auth.signInWithPassword({ email, password });
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
     loginBtn.disabled = false;
     loginBtn.textContent = 'เข้าสู่ระบบ';
     if (error) {
       loginError.textContent = 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง';
       loginError.classList.add('show');
+      return;
     }
+    // Don't rely purely on the async onAuthStateChange event to transition --
+    // show the app immediately once signInWithPassword itself confirms a session.
+    if (data && data.session) showApp();
   });
 
   logoutBtn.addEventListener('click', () => sb.auth.signOut());
