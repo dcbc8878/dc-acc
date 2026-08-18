@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
   /* palette matches the CRM reference (เด็กชายบัญชี ตอนนี้): slate neutrals + blue accent */
   :root {
@@ -250,14 +251,78 @@
   @media (prefers-reduced-motion: reduce) {
     .nav-item, .ai-fab, .ai-panel, .ai-panel-backdrop, .nav-tooltip, .ai-fab-label { transition: none; }
   }
+
+  /* ── login gate ── */
+  body { display: block; }
+  #app { display: grid; grid-template-columns: 72px 1fr; grid-template-rows: 60px 1fr; grid-template-areas: "top top" "nav main"; height: 100vh; overflow: hidden; }
+  .login-screen {
+    height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: var(--bg); padding: 20px;
+  }
+  .login-card {
+    width: 100%; max-width: 340px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 16px;
+    box-shadow: var(--shadow-lg); padding: 32px 28px;
+  }
+  .login-card .mark {
+    width: 40px; height: 40px; border-radius: 11px; margin: 0 auto 16px;
+    background: linear-gradient(155deg, var(--accent-soft), var(--accent));
+    display: flex; align-items: center; justify-content: center;
+    color: var(--accent-contrast); font-weight: 700; font-size: 0.95rem;
+  }
+  .login-card h1 { font-size: 1.05rem; font-weight: 700; text-align: center; margin: 0 0 4px; }
+  .login-card p.sub { font-size: 0.8rem; color: var(--ink-muted); text-align: center; margin: 0 0 22px; }
+  .login-card label { display: block; font-size: 0.8rem; font-weight: 500; color: var(--ink-muted); margin: 0 0 6px; }
+  .login-card input {
+    width: 100%; box-sizing: border-box; padding: 10px 12px; margin-bottom: 14px;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--bg);
+    color: var(--ink); font-family: inherit; font-size: 0.9rem;
+  }
+  .login-card input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring); }
+  .login-card button {
+    width: 100%; padding: 11px; border: none; border-radius: 10px; cursor: pointer;
+    background: linear-gradient(155deg, var(--accent-soft), var(--accent)); color: var(--accent-contrast);
+    font-family: inherit; font-size: 0.9rem; font-weight: 600; margin-top: 4px;
+  }
+  .login-card button:disabled { opacity: 0.6; cursor: default; }
+  .login-error {
+    font-size: 0.8rem; color: #DC2626; background: #FEF2F2; border-radius: 8px;
+    padding: 8px 10px; margin-bottom: 14px; display: none;
+  }
+  .login-error.show { display: block; }
+  .logout-btn {
+    margin-left: 12px; width: 30px; height: 30px; border-radius: 8px; border: none;
+    background: transparent; color: var(--ink-muted); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .logout-btn:hover { background: var(--surface-2); color: var(--ink); }
+  .logout-btn svg { width: 16px; height: 16px; }
 </style>
 </head>
 <body>
 
+<div class="login-screen" id="loginScreen">
+  <form class="login-card" id="loginForm">
+    <div class="mark">DC</div>
+    <h1>ระบบภายใน เด็กชายบัญชี</h1>
+    <p class="sub">เข้าสู่ระบบก่อนใช้งาน</p>
+    <div class="login-error" id="loginError"></div>
+    <label for="loginUser">ชื่อผู้ใช้</label>
+    <input id="loginUser" type="text" autocomplete="username" required />
+    <label for="loginPass">รหัสผ่าน</label>
+    <input id="loginPass" type="password" autocomplete="current-password" required />
+    <button type="submit" id="loginBtn">เข้าสู่ระบบ</button>
+  </form>
+</div>
+
+<div id="app" style="display:none">
   <header class="topbar">
     <div class="mark">DC</div>
     <span class="name">เด็กชายบัญชี</span>
     <span class="page-title" id="pageTitle">CRM ลูกค้า</span>
+    <button class="logout-btn" id="logoutBtn" aria-label="ออกจากระบบ" title="ออกจากระบบ">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+    </button>
   </header>
 
   <nav class="sidenav">
@@ -313,8 +378,52 @@
       <span class="status">เร็วๆ นี้</span>
     </div>
   </div>
+</div>
 
 <script>
+  const SB_URL  = 'https://dqegkyobclqqichhnxfm.supabase.co';
+  const SB_ANON = 'sb_publishable_4U_v9BIrQjKppfchaevA6Q_zWj3zkxE';
+  const sb = supabase.createClient(SB_URL, SB_ANON);
+
+  const loginScreen = document.getElementById('loginScreen');
+  const appEl = document.getElementById('app');
+  const loginForm = document.getElementById('loginForm');
+  const loginError = document.getElementById('loginError');
+  const loginBtn = document.getElementById('loginBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
+
+  function showApp() { loginScreen.style.display = 'none'; appEl.style.display = 'grid'; }
+  function showLogin() { appEl.style.display = 'none'; loginScreen.style.display = 'flex'; }
+
+  async function checkSession() {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) showApp(); else showLogin();
+  }
+  checkSession();
+
+  sb.auth.onAuthStateChange((event, session) => {
+    if (session) showApp(); else showLogin();
+  });
+
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    loginError.classList.remove('show');
+    const raw = document.getElementById('loginUser').value.trim();
+    const email = raw.includes('@') ? raw : `${raw.toLowerCase()}@staff.dcbc.co.th`;
+    const password = document.getElementById('loginPass').value;
+    loginBtn.disabled = true;
+    loginBtn.textContent = 'กำลังเข้าสู่ระบบ...';
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    loginBtn.disabled = false;
+    loginBtn.textContent = 'เข้าสู่ระบบ';
+    if (error) {
+      loginError.textContent = 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง';
+      loginError.classList.add('show');
+    }
+  });
+
+  logoutBtn.addEventListener('click', () => sb.auth.signOut());
+
   const navItems = document.querySelectorAll('.nav-item');
   const pages = document.querySelectorAll('.page');
   const pageTitle = document.getElementById('pageTitle');
