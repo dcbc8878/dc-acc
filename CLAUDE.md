@@ -1,3 +1,5 @@
+> **หมายเหตุ 2026-08-18:** ไฟล์นี้ย้ายมาจาก repo `dcbc8878/CRM` เพราะห้องนี้เชื่อมต่อ repo นั้นไม่ได้ชั่วคราว (สิทธิ์ GitHub integration หลุด ระหว่างรอผู้ใช้แก้ที่ github.com/settings/installations) — ตอนนี้ `dcbc8878/dc-acc` คือที่เก็บไฟล์นี้ตัวที่เป็นปัจจุบันที่สุด
+
 # CRM Integration Project — ห้องกลาง (Central Hub)
 
 > **กฎข้อแรก: ก่อนเริ่มงานทุกครั้งในโปรเปรกต์นี้ ต้องอ่านไฟล์นี้ทั้งหมดก่อน** โดยเฉพาะหัวข้อ
@@ -94,6 +96,13 @@ _อัปเดตล่าสุด: 2026-08-18_
 ⚠️ **แก้ไขความเข้าใจผิด (เดิมเขียนว่า production ยังไม่มี crm_staff — ผิด):** เช็ค repo `dcbc8878/web` จริงแล้วพบว่า production **มี `crm_staff` พร้อมข้อมูลพนักงานจริงอยู่แล้ว** (มี migration 5-level role, staff_code, birthdate, onboarding ครบ) ที่ยังไม่มีคือ nickname/teams/staff_requests/staff_private เท่านั้น — เพราะงั้นการ rename `crm_staff` → `org_staff` ใน production **จะกระทบข้อมูลพนักงานจริง** (แม้ `ALTER TABLE...RENAME` จะปลอดภัยและไม่ทำข้อมูล/FK/RLS หายก็ตาม) ต้องระวังเป็นพิเศษตอน apply จริง
 
 ออกแบบ migration ไว้แล้วที่ไฟล์ `supabase-org-staff-shared-migration.sql` ในห้องนี้ — ใช้วิธี `RENAME` ล้วน (table + function) ซึ่ง Postgres รักษา FK/RLS/index เดิมให้อัตโนมัติ (ผูกกันด้วย OID ไม่ใช่ชื่อ) ทำให้ RLS ของ CRM เดิมอีกหลายสิบ policy ที่เรียก `crm_get_role()` ยังทำงานถูกต้องทันทีโดยไม่ต้องแก้ — สิ่งที่ต้องแก้เพิ่มคือฝั่ง JS/Edge Function ที่เรียกชื่อตารางแบบ string (`.from('crm_staff')` ฯลฯ) **แต่ห้าม apply migration นี้เข้า Supabase project "Web" (ref `dqegkyobclqqichhnxfm`) จริงจนกว่าจะรู้ปลายทางเว็บใหม่และ user คอนเฟิร์ม**
+
+## หน้าตัวอย่างที่ทำไว้แล้ว (Artifacts — ข้อมูลจำลอง)
+
+- **หน้ารวม (hub):** https://claude.ai/code/artifact/912f125e-8b3d-4f0f-96f3-9d79e63bdc88
+- **CRM:** https://claude.ai/code/artifact/8ffe58fd-7432-4ac8-b4a2-350787bc2f82 (มาจาก `crmcomplete.zip` ที่ผู้ใช้อัปโหลด, mock Supabase 16 ตาราง)
+- **ปฏิทินงาน:** https://claude.ai/code/artifact/e11785be-84fc-417a-bf58-8a7e51d363bd (มาจาก branch `claude/read-rules-0kac0l` ของ applicationtest)
+- ทั้งสองใช้ mock Supabase client แทนของจริง (Artifact เชื่อม network จริงไม่ได้) — ต้องคอมไพล์ Tailwind แล้ว inline เป็น `<style>` ก่อน publish ด้วย (CDN script โดน Artifact CSP บล็อก) — ถ้าจะ republish ต้องทำขั้นตอนนี้ซ้ำทุกครั้งที่แก้ไฟล์ crm/index.html
 
 ## ที่อยู่เว็บใหม่: repo `dcbc8878/dc-acc` → GitHub Pages
 
