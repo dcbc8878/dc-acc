@@ -344,13 +344,13 @@
 
   <main class="main">
     <div class="page active" id="page-crm">
-      <iframe src="./staging/crm/index.html" title="CRM ลูกค้า" loading="eager"></iframe>
+      <iframe data-src="./staging/crm/index.html" title="CRM ลูกค้า"></iframe>
     </div>
     <div class="page" id="page-calendar">
-      <iframe src="./staging/calendar/index.html" title="ปฏิทินงาน" loading="lazy"></iframe>
+      <iframe data-src="./staging/calendar/index.html" title="ปฏิทินงาน"></iframe>
     </div>
     <div class="page" id="page-staff">
-      <iframe src="./staging/staff/index.html" title="พนักงาน/ทีม" loading="lazy"></iframe>
+      <iframe data-src="./staging/staff/index.html" title="พนักงาน/ทีม"></iframe>
     </div>
   </main>
 
@@ -392,7 +392,19 @@
   const loginBtn = document.getElementById('loginBtn');
   const logoutBtn = document.getElementById('logoutBtn');
 
-  function showApp() { loginScreen.style.display = 'none'; appEl.style.display = 'grid'; }
+  let iframesLoaded = false;
+  function loadIframes() {
+    if (iframesLoaded) return;
+    iframesLoaded = true;
+    // Wait until a real session exists (and is written to localStorage) before
+    // the sub-apps' own JS ever runs its own getSession() check on load --
+    // otherwise each iframe loads too early, sees no session yet, and gets
+    // stuck showing its own login screen even after the shell logs in.
+    document.querySelectorAll('#app iframe[data-src]').forEach(f => {
+      f.src = f.dataset.src;
+    });
+  }
+  function showApp() { loginScreen.style.display = 'none'; appEl.style.display = 'grid'; loadIframes(); }
   function showLogin() { appEl.style.display = 'none'; loginScreen.style.display = 'flex'; }
 
   async function checkSession() {
