@@ -25,7 +25,7 @@
       color: #475569; font-size: 13px; font-weight: 500;
       transition: background .15s, color .15s; white-space: nowrap;
     }
-    .nav-item:hover  { background: #f1f5f9; color: #1e293b; }
+    .nav-item:hover  { background: #f1f5f9; color: #0f172a; }
     .nav-item.active { background: #eff6ff; color: #2563eb; font-weight: 600; }
     .nav-item svg    { flex-shrink: 0; }
 
@@ -34,7 +34,7 @@
       width: 22px; height: 22px; border-radius: 5px; flex-shrink: 0;
     }
     .dot.done { background: #16a34a; color: #fff; font-size: 13px; font-weight: 900; }
-    .dot.todo { background: transparent; border: 2px solid #e2e8f0; }
+    .dot.todo { background: transparent; border: 2px solid #e5e7eb; }
     .dot.na   { color: #d1d5db; font-size: 13px; }
 
     .tog-chip {
@@ -44,16 +44,16 @@
       min-width: 46px; line-height: 1.3;
     }
     .tog-empty { background: transparent; color: #d1d5db; border-color: #e5e7eb; border-style: dashed; }
-    td.cursor-pointer:hover .tog-empty { border-color: #94a3b8; color: #94a3b8; }
+    td.cursor-pointer:hover .tog-empty { border-color: #9ca3af; color: #9ca3af; }
 
     .status-td.clickable { cursor: pointer; }
     .status-td.clickable:hover .dot.done { background: #15803d; }
     .status-td.clickable:hover .dot.todo { border-color: #93c5fd; background: #eff6ff; }
-    .status-td.clickable:hover .dot.na   { color: #94a3b8; }
+    .status-td.clickable:hover .dot.na   { color: #9ca3af; }
     .status-td.saving { opacity: .45; pointer-events: none; }
 
     .prog-wrap { display: flex; align-items: center; gap: 8px; }
-    .prog-bar  { flex: 1; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; min-width: 55px; }
+    .prog-bar  { flex: 1; height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden; min-width: 55px; }
     .prog-fill { height: 100%; border-radius: 3px; transition: width .3s; }
     .prog-pct  { font-size: 11px; font-weight: 700; color: #64748b; min-width: 30px; text-align: right; }
 
@@ -63,9 +63,10 @@
     .tab-btn {
       padding: 8px 14px; font-size: 13px; font-weight: 600;
       border-bottom: 2px solid transparent;
-      color: #64748b; cursor: pointer; transition: color .15s, border-color .15s;
+      color: #9ca3af; cursor: pointer; transition: color .15s, border-color .15s;
       white-space: nowrap; flex-shrink: 0;
     }
+    .tab-btn:hover { color: #374151; }
     .tab-btn.active { color: #2563eb; border-color: #2563eb; }
     .tab-btn.hidden { display: none; }
 
@@ -101,19 +102,19 @@
       transition: border-color .15s;
     }
     .editable-field:hover  { border-color: #cbd5e1; background: #f8fafc; }
-    .editable-field:focus  { outline: none; border-color: #3b82f6; background: white; }
+    .editable-field:focus  { outline: none; border-color: #3b82f6; background: white; box-shadow: 0 0 0 2px #dbeafe; }
     .editable-field[readonly] { cursor: default; }
     .editable-field[readonly]:hover { border-color: transparent; background: transparent; }
     .editable-field:disabled { color: #9ca3af; background: #f3f4f6; }
     .editable-field:disabled:hover { border-color: transparent; background: #f3f4f6; }
 
     .modal-backdrop {
-      position: fixed; inset: 0; background: rgba(0,0,0,.35);
+      position: fixed; inset: 0; background: rgba(15,23,42,.4);
       display: flex; align-items: center; justify-content: center; z-index: 50;
     }
     .modal-box {
-      background: white; border-radius: 16px; padding: 20px;
-      width: calc(100vw - 32px); max-width: 580px; box-shadow: 0 20px 60px rgba(0,0,0,.2);
+      background: white; border-radius: 14px; padding: 22px 24px;
+      width: calc(100vw - 32px); max-width: 580px;
       max-height: 90vh; overflow-y: auto; box-sizing: border-box;
     }
 
@@ -121,7 +122,7 @@
       display: inline-block; font-size: 11px; font-weight: 700;
       padding: 2px 8px; border-radius: 9999px;
     }
-    .inv-badge.draft    { background:#f1f5f9; color:#64748b; }
+    .inv-badge.draft    { background:#f3f4f6; color:#6b7280; }
     .inv-badge.sent     { background:#dbeafe; color:#1d4ed8; }
     .inv-badge.paid     { background:#dcfce7; color:#15803d; }
     .inv-badge.cancelled{ background:#fee2e2; color:#dc2626; }
@@ -132,7 +133,7 @@
       font-size: 14px; font-family: inherit;
     }
     .select-field:hover { border-color: #cbd5e1; background: #f8fafc; }
-    .select-field:focus { outline: none; border-color: #3b82f6; background: white; }
+    .select-field:focus { outline: none; border-color: #3b82f6; background: white; box-shadow: 0 0 0 2px #dbeafe; }
     .select-field:disabled { cursor: default; }
     .select-field:disabled:hover { border-color: transparent; background: transparent; }
   </style>
@@ -149,7 +150,7 @@
 
 <!-- LOGIN SCREEN -->
 <div id="login-screen" class="hidden fixed inset-0 bg-slate-50 flex items-center justify-center z-50">
-  <div class="bg-white rounded-2xl shadow-xl border border-gray-200 p-8 w-full max-w-sm mx-4">
+  <div class="bg-white rounded-xl shadow-[0_20px_50px_-12px_rgba(15,23,42,0.25)] border border-gray-200 p-8 w-full max-w-sm mx-4">
     <div class="flex items-center gap-3 mb-8">
       <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
         <span class="text-white text-sm font-bold">ดช</span>
@@ -185,7 +186,7 @@
 
 <!-- FIRST LOGIN SCREEN (forced password change for new staff) -->
 <div id="first-login-screen" class="hidden fixed inset-0 bg-slate-50 flex items-center justify-center z-50">
-  <div class="bg-white rounded-2xl shadow-xl border border-gray-200 p-8 w-full max-w-sm mx-4">
+  <div class="bg-white rounded-xl shadow-[0_20px_50px_-12px_rgba(15,23,42,0.25)] border border-gray-200 p-8 w-full max-w-sm mx-4">
     <div class="flex items-center gap-3 mb-6">
       <div class="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center flex-shrink-0">
         <span class="text-white text-sm font-bold">!</span>
@@ -268,7 +269,7 @@
           ตั้งค่า
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
-        <div id="settings-menu" class="hidden absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 z-40">
+        <div id="settings-menu" class="hidden absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-[0_8px_24px_rgba(15,23,42,0.12)] border border-gray-200 py-1.5 z-40">
           <div id="settings-menu-company-group">
             <div class="px-3 pt-1.5 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">ตั้งค่าบริษัท</div>
             <div class="settings-menu-item" onclick="navigate('owncompany')">บริษัทภายใน</div>
@@ -327,7 +328,7 @@
         </div>
         <div class="bg-white rounded-xl border border-gray-200 p-4">
           <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">ใบแจ้งหนี้</div>
-          <div id="sv-inv" class="text-3xl font-black text-emerald-600 mt-1">—</div>
+          <div id="sv-inv" class="text-3xl font-black text-green-600 mt-1">—</div>
           <div class="text-xs text-gray-400 mt-1">ชำระแล้ว / ทั้งหมด</div>
         </div>
         <div class="bg-white rounded-xl border border-gray-200 p-4">
@@ -677,7 +678,7 @@
 
 <!-- CLIENT PANEL -->
 <div id="panel-overlay" class="hidden fixed inset-0 bg-black/30 z-20" onclick="closePanel()"></div>
-<div id="client-panel" class="fixed right-0 top-0 h-full bg-white shadow-2xl z-30 flex flex-col" style="width:500px">
+<div id="client-panel" class="fixed right-0 top-0 h-full bg-white shadow-[-8px_0_30px_rgba(0,0,0,0.15)] z-30 flex flex-col" style="width:500px">
 
   <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
     <div>
@@ -1423,7 +1424,7 @@ function renderTracking() {
     const trkIsFav = favoriteClientIds.has(c.id);
     rows += `<tr class="border-b border-gray-100">
       <td class="py-0.5 text-center col-fav">
-        <button onclick="event.stopPropagation();toggleFavorite(${c.id})" title="${trkIsFav ? 'เอาออกจากรายการโปรด' : 'เพิ่มในรายการโปรด'}" class="w-6 h-6 flex items-center justify-center mx-auto ${trkIsFav ? 'text-amber-400' : 'text-gray-300 hover:text-amber-400'}">
+        <button onclick="event.stopPropagation();toggleFavorite(${c.id})" title="${trkIsFav ? 'เอาออกจากรายการโปรด' : 'เพิ่มในรายการโปรด'}" class="w-6 h-6 flex items-center justify-center mx-auto ${trkIsFav ? 'text-amber-500' : 'text-gray-300 hover:text-amber-500'}">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="${trkIsFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
         </button>
       </td>
@@ -1713,7 +1714,7 @@ async function openDocModal(clientId) {
       <div class="mb-4">
         ${dateFieldHtml({
           label: 'วันที่รับเอกสาร', textId: 'doc-date-input-disp', hiddenId: 'doc-date-input', isoVal: isoDate,
-          cls: 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300',
+          cls: 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500',
         })}
       </div>
       <div class="grid grid-cols-2 gap-4">
@@ -2110,7 +2111,7 @@ function clientRowHtml(c, editable) {
   const isFav = favoriteClientIds.has(c.id);
   return `<div onclick="openPanel(${c.id})"
       class="flex items-center gap-3 px-4 py-2.5 border-b border-gray-100 last:border-b-0 cursor-pointer hover:bg-blue-50/40 transition-colors">
-      <button onclick="event.stopPropagation();toggleFavorite(${c.id})" title="${isFav ? 'เอาออกจากรายการโปรด' : 'เพิ่มในรายการโปรด'}" class="w-6 flex-shrink-0 flex items-center justify-center ${isFav ? 'text-amber-400' : 'text-gray-300 hover:text-amber-400'}">
+      <button onclick="event.stopPropagation();toggleFavorite(${c.id})" title="${isFav ? 'เอาออกจากรายการโปรด' : 'เพิ่มในรายการโปรด'}" class="w-6 flex-shrink-0 flex items-center justify-center ${isFav ? 'text-amber-500' : 'text-gray-300 hover:text-amber-500'}">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
       </button>
       <span class="w-12 flex-shrink-0 text-xs text-gray-400">${e(computeClientNo(c.billing_type, c.seq_num))}</span>
@@ -2595,7 +2596,7 @@ async function renderPanelChanges() {
         </div>
         ${dateFieldHtml({
           label: 'วันที่มีผล', textId: 'change-date-inp-disp', hiddenId: 'change-date-inp', isoVal: '',
-          cls: 'w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300',
+          cls: 'w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500',
         })}
         <div id="change-val-wrap" class="hidden">
           <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">ค่าใหม่</div>
@@ -2604,11 +2605,11 @@ async function renderPanelChanges() {
         <div>
           <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">หมายเหตุ (ไม่บังคับ)</div>
           <input id="change-note-inp" type="text" placeholder="เช่น ประชุมผู้ถือหุ้นอนุมัติ"
-            class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
+            class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
         </div>
         <div class="flex justify-end">
           <button onclick="applyClientChange()"
-            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg transition-colors">
+            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors">
             บันทึกการเปลี่ยนแปลง
           </button>
         </div>
@@ -2708,7 +2709,7 @@ function renderChangeValInput() {
   if (!wrap || !container) return;
   if (!typeDef?.need) { wrap.classList.add('hidden'); container.innerHTML = ''; return; }
   wrap.classList.remove('hidden');
-  const cls = 'w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300';
+  const cls = 'w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
   if (typeDef.need === 'number') {
     container.innerHTML = `<input id="change-val-inp" type="number" min="0" step="100" placeholder="${e(typeDef.ph)}" class="${cls}">`;
   } else if (typeDef.need === 'textarea') {
@@ -2792,7 +2793,7 @@ async function renderPanelBilling() {
       <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 text-center">
         <p class="text-sm text-gray-400 mb-3">ยังไม่มีใบแจ้งหนี้เดือนนี้</p>
         ${canEdit() ? `<button onclick="createSingleInvoice(${c.id})"
-          class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+          class="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
           สร้างใบแจ้งหนี้
         </button>` : ''}
       </div>`;
@@ -2819,11 +2820,11 @@ async function renderPanelBilling() {
           </div>
           <div class="bg-gray-50 rounded-lg p-2">
             <div class="text-xs text-gray-400 mb-0.5">หัก ณ ที่จ่าย</div>
-            <div class="text-sm font-bold text-orange-600">${fmtMoney(inv.wht_amount)}</div>
+            <div class="text-sm font-bold text-amber-600">${fmtMoney(inv.wht_amount)}</div>
           </div>
           <div class="bg-gray-50 rounded-lg p-2">
             <div class="text-xs text-gray-400 mb-0.5">ที่รับจริง</div>
-            <div class="text-sm font-bold text-emerald-700">${fmtMoney(inv.expected_payment)}</div>
+            <div class="text-sm font-bold text-green-700">${fmtMoney(inv.expected_payment)}</div>
           </div>
         </div>
         ${inv.payment_received_at ? `<div class="text-xs text-green-700 mb-2">รับเงิน ${fmtDate(inv.payment_received_at)} — ${fmtMoney(inv.payment_amount)}</div>` : ''}
@@ -2836,8 +2837,8 @@ async function renderPanelBilling() {
     <div class="bg-blue-50 border border-blue-100 rounded-xl p-3 text-xs text-blue-800">
       <div class="font-semibold mb-1">ค่าบริการปัจจุบัน</div>
       <div class="flex justify-between"><span>ค่าบริการ:</span><span class="font-bold">${fmtMoney(fee)}</span></div>
-      ${wht > 0 ? `<div class="flex justify-between"><span>หัก ณ ที่จ่าย 3%:</span><span class="font-bold text-orange-600">-${fmtMoney(wht)}</span></div>` : ''}
-      <div class="flex justify-between border-t border-blue-200 pt-1 mt-1"><span>ที่คาดว่าจะรับ:</span><span class="font-bold text-emerald-700">${fmtMoney(expected)}</span></div>
+      ${wht > 0 ? `<div class="flex justify-between"><span>หัก ณ ที่จ่าย 3%:</span><span class="font-bold text-amber-600">-${fmtMoney(wht)}</span></div>` : ''}
+      <div class="flex justify-between border-t border-blue-200 pt-1 mt-1"><span>ที่คาดว่าจะรับ:</span><span class="font-bold text-green-700">${fmtMoney(expected)}</span></div>
     </div>` : `<div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700">ยังไม่ได้กำหนดค่าบริการ — ไปที่แท็บ "ข้อมูลบริษัท" เพื่อกรอก</div>`;
 
   el.innerHTML = `
@@ -2907,7 +2908,7 @@ async function loadBillingContracts(clientId) {
     data.map(ct => `
     <div class="flex items-start justify-between py-2 border-b border-gray-100 last:border-0">
       <div class="flex-1 min-w-0">
-        <div class="text-xs font-semibold text-gray-700">${fmtMoney(ct.fee_amount)} <span class="text-gray-400 font-normal">· ${BILLING_LABEL[ct.billing_type] || ct.billing_type}</span>${ct.has_wht ? ' · <span class="text-orange-500">หัก ณ ที่จ่าย</span>' : ''}</div>
+        <div class="text-xs font-semibold text-gray-700">${fmtMoney(ct.fee_amount)} <span class="text-gray-400 font-normal">· ${BILLING_LABEL[ct.billing_type] || ct.billing_type}</span>${ct.has_wht ? ' · <span class="text-amber-500">หัก ณ ที่จ่าย</span>' : ''}</div>
         <div class="text-[10px] text-gray-400 mt-0.5">มีผล ${ct.effective_from ? thaiDate(ct.effective_from) : '—'}${ct.effective_to ? ` ถึง ${thaiDate(ct.effective_to)}` : ''}</div>
         ${ct.notes ? `<div class="text-[10px] text-gray-400 truncate">${e(ct.notes)}</div>` : ''}
       </div>
@@ -3673,11 +3674,11 @@ function renderDatePickerCalendar() {
     cells += `<div onclick="dpSelectDay(${d})" class="w-7 h-7 flex items-center justify-center text-xs rounded cursor-pointer hover:bg-blue-50 ${isSel ? 'bg-blue-600 text-white hover:bg-blue-600' : 'text-gray-700'}">${d}</div>`;
   }
   document.getElementById('dp-popup').innerHTML = `
-    <div class="bg-white border border-gray-200 rounded-xl shadow-lg p-3" style="width:240px" onclick="event.stopPropagation()">
+    <div class="bg-white border border-gray-200 rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.15)] p-3" style="width:240px" onclick="event.stopPropagation()">
       <div class="flex items-center justify-between mb-2">
-        <button type="button" onclick="dpChangeMonth(-1)" class="p-1 text-gray-400 hover:text-gray-700">‹</button>
+        <button type="button" onclick="dpChangeMonth(-1)" class="p-1 text-gray-400 hover:text-blue-600">‹</button>
         <span class="text-xs font-semibold text-gray-700">${THAI_MONTHS[dpViewMonth]} ${thYear}</span>
-        <button type="button" onclick="dpChangeMonth(1)" class="p-1 text-gray-400 hover:text-gray-700">›</button>
+        <button type="button" onclick="dpChangeMonth(1)" class="p-1 text-gray-400 hover:text-blue-600">›</button>
       </div>
       <div class="grid grid-cols-7 gap-0.5 text-center text-[10px] text-gray-400 mb-1">
         <div>อา</div><div>จ</div><div>อ</div><div>พ</div><div>พฤ</div><div>ศ</div><div>ส</div>
@@ -3741,8 +3742,8 @@ function openBatchInvoice() {
         <div class="text-xs text-gray-600 truncate max-w-[140px]">${e(c.thai_name)}</div>
       </td>
       <td class="py-2 pr-3 text-right text-xs font-mono">${fmtMoney(fee)}</td>
-      <td class="py-2 pr-3 text-right text-xs font-mono text-orange-600">${wht > 0 ? '-' + fmtMoney(wht) : '—'}</td>
-      <td class="py-2 text-right text-xs font-bold font-mono text-emerald-700">${fmtMoney(expected)}</td>
+      <td class="py-2 pr-3 text-right text-xs font-mono text-amber-600">${wht > 0 ? '-' + fmtMoney(wht) : '—'}</td>
+      <td class="py-2 text-right text-xs font-bold font-mono text-green-700">${fmtMoney(expected)}</td>
     </tr>`;
   }).join('');
 
@@ -3766,7 +3767,7 @@ function openBatchInvoice() {
     <div id="batch-err" class="hidden text-sm text-red-600 mb-3"></div>
     <div class="flex justify-end gap-2">
       <button onclick="closeModal()" class="px-4 py-2 text-sm text-gray-600 font-medium hover:text-gray-900">ยกเลิก</button>
-      <button onclick="createBatchInvoices()" class="px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700">สร้างใบแจ้งหนี้</button>
+      <button onclick="createBatchInvoices()" class="px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700">สร้างใบแจ้งหนี้</button>
     </div>`);
 }
 
@@ -4001,7 +4002,7 @@ function renderOwnCompanies() {
   el.innerHTML = own.map(c => `
     <div class="flex items-center justify-between px-3 py-2.5 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50/30 transition-colors">
       <div onclick="openPanel(${c.id})" class="min-w-0 flex-1 cursor-pointer">
-        <span class="inline-block bg-indigo-50 text-indigo-700 text-xs font-bold px-1.5 py-0.5 rounded mr-1.5">${e(c.code)}</span>
+        <span class="inline-block bg-blue-50 text-blue-700 text-xs font-bold px-1.5 py-0.5 rounded mr-1.5">${e(c.code)}</span>
         <span class="text-sm text-gray-800">${e(c.thai_name)}</span>
         ${!c.is_active ? '<span class="text-xs text-red-500 ml-2">ปิดใช้งาน</span>' : ''}
       </div>
@@ -4060,7 +4061,7 @@ async function showEmployeeSubTab(tab) {
 // -- ทะเบียนพนักงาน --
 function staffRowHtml(s) {
   return `<div class="flex items-center gap-3 px-4 py-2.5 border-b border-gray-100 last:border-0 text-sm">
-    <span class="w-16 flex-shrink-0 text-xs font-bold text-indigo-700">${e(s.staff_code || '—')}</span>
+    <span class="w-16 flex-shrink-0 text-xs font-bold text-blue-700">${e(s.staff_code || '—')}</span>
     <span class="flex-1 min-w-0 truncate text-gray-800">${e(s.display_name)}${s.nickname ? ` <span class="text-gray-400 text-xs">(${e(s.nickname)})</span>` : ''}</span>
     <span class="w-32 flex-shrink-0 text-xs text-gray-500">${e(ROLE_LABEL[s.role] || s.role)}</span>
     <span class="w-16 flex-shrink-0 text-center">${s.is_active ? '<span class="text-xs text-green-600 font-semibold">ทำงาน</span>' : '<span class="text-xs text-gray-400">ปิดใช้งาน</span>'}</span>
@@ -4476,7 +4477,7 @@ async function renderActivityLog() {
 
   el.innerHTML = data.map(a => `
     <div class="flex items-start gap-3 py-2.5 border-b border-gray-50 last:border-0">
-      <div class="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-1.5 flex-shrink-0"></div>
+      <div class="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1.5 flex-shrink-0"></div>
       <div class="flex-1 min-w-0">
         <div class="text-xs text-gray-700">
           <span class="font-semibold">${e(staffName(a.actor_id))}</span>
