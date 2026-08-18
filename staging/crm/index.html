@@ -779,6 +779,13 @@ const GROUP_ITEMS = {
     ],
   },
 };
+// ป้ายกำกับสำหรับข้อความสรุปที่บันทึกลง crm_activity_log ตอนติ๊กงานภาษี/งานปลายปี (ดู logActivity ในฟังก์ชัน toggleField/saveGroupItemField/toggleYearEndField)
+const TASK_STATUS_LABEL_TH = { todo: 'ยังไม่ทำ', inprogress: 'กำลังทำ', done: 'เสร็จ', na: 'ไม่มี' };
+const RD_FIELD_LABEL = { rd_download: 'RD: Download', rd_keyed: 'RD: Key' };
+const YE_FIELD_LABEL = {
+  pnd51: 'ภ.ง.ด.51', pnd1k: 'ภ.ง.ด.1ก', kt26k: 'กท.26ก', pnd50: 'ภ.ง.ด.50',
+  fin_stmt: 'งบการเงิน', audit: 'ผู้สอบบัญชี', dbd_submit: 'ส่ง DBD', boj5: 'บอจ.5',
+};
 const INV_STATUS_LABEL = { draft:'ร่าง', sent:'ส่งแล้ว', paid:'ชำระแล้ว', cancelled:'ยกเลิก' };
 const BILLING_TYPE_LABEL = { monthly:'รายเดือน', annual:'รายปี', filing:'ยื่นแบบ' };
 const ENTITY_TYPES = ['บริษัทจำกัด','ห้างหุ้นส่วน','บุคคลธรรมดา'];
@@ -1474,7 +1481,12 @@ async function toggleField(clientId, field, cell) {
     taskMap[clientId][field] = cur;
     cell.innerHTML = statusDot(cur);
     showToast('บันทึกไม่สำเร็จ: ' + error.message, 'error');
-  } else if (data) { taskMap[clientId] = data; }
+  } else if (data) {
+    taskMap[clientId] = data;
+    const c = clients.find(x => x.id === clientId);
+    await logActivity('tax_task_toggle', 'client', clientId,
+      `${c?.thai_name || ''}: ${RD_FIELD_LABEL[field] || field} → ${TASK_STATUS_LABEL_TH[next] || next} (${curMonth}/${curYear})`);
+  }
   renderTrackingSummary();
 }
 
@@ -1579,7 +1591,13 @@ async function saveGroupItemField(clientId, field, value, group) {
     taskMap[clientId][field] = prev;
     openGroupModal(clientId, group);
     showToast('บันทึกไม่สำเร็จ: ' + (error.message || error.code || JSON.stringify(error)), 'error');
-  } else if (data) { taskMap[clientId] = data; }
+  } else if (data) {
+    taskMap[clientId] = data;
+    const c = clients.find(x => x.id === clientId);
+    const itemLabel = GROUP_ITEMS[group]?.items.find(i => i.field === field)?.label || field;
+    await logActivity('tax_task_item_update', 'client', clientId,
+      `${c?.thai_name || ''}: ${itemLabel} (${GROUP_ITEMS[group]?.label || group}) → ${TASK_STATUS_LABEL_TH[value] || value} (${curMonth}/${curYear})`);
+  }
 }
 
 async function cycleGroupFromModal(clientId, group, action) {
@@ -2050,7 +2068,12 @@ async function toggleYearEndField(clientId, field, cell) {
     cell.innerHTML = statusDot(cur);
     if (lastTd) lastTd.innerHTML = progressBar(calcPct(yearEndMap[clientId], YE_FIELDS));
     showToast('บันทึกไม่สำเร็จ', 'error');
-  } else if (data) { yearEndMap[clientId] = data; }
+  } else if (data) {
+    yearEndMap[clientId] = data;
+    const c = clients.find(x => x.id === clientId);
+    await logActivity('year_end_task_toggle', 'client', clientId,
+      `${c?.thai_name || ''}: ${YE_FIELD_LABEL[field] || field} → ${TASK_STATUS_LABEL_TH[next] || next} (ปี ${yearEndYear + 543})`);
+  }
 
   let allDone = 0, inProg = 0, pending = 0;
   const yeYearFirstStr = `${yearEndYear}-01-01`;
@@ -4311,6 +4334,9 @@ const ACTIVITY_ACTION_LABEL = {
   staff_reactivate: 'ปรับพนักงานกลับมาทำงาน',
   staff_create: 'เพิ่มพนักงานใหม่',
   staff_password_reset: 'รีเซ็ทรหัสผ่านพนักงาน',
+  tax_task_toggle: 'อัปเดตงานภาษีรายเดือน',
+  tax_task_item_update: 'อัปเดตงานย่อยภาษี (TAX1/SSO/TAX2)',
+  year_end_task_toggle: 'อัปเดตงานปลายปี',
 };
 
 async function renderActivityLog() {

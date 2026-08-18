@@ -192,6 +192,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
       <button data-menu="calendar" class="active"><span class="ico">📅</span><span class="label">ปฏิทิน</span></button>
       <button data-menu="tasks"><span class="ico">✅</span><span class="label">งานที่ต้องทำ</span></button>
       <button data-menu="activity"><span class="ico">📝</span><span class="label">ประวัติการทำงาน</span></button>
+      <button data-menu="daily-activity" id="menu-daily-activity" class="hidden"><span class="ico">👥</span><span class="label">กิจกรรมประจำวัน</span></button>
       <button data-menu="settings"><span class="ico">⚙️</span><span class="label">การตั้งค่า</span></button>
     </nav>
     <div class="sidebar-footer">
@@ -258,6 +259,22 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
         </div>
       </div>
       <div id="activityLogBody"></div>
+    </section>
+
+    <!-- DAILY ACTIVITY VIEW (real cross-staff "who did what", from Supabase crm_activity_log) -->
+    <!-- Visible only to owner/manager (isOwnerOrManager()) — that's UX only; the real access control
+         is the Supabase RLS SELECT policy on crm_activity_log (supabase-activity-log-visibility-migration.sql). -->
+    <section id="view-daily-activity" class="view">
+      <div class="view-header">
+        <div class="cal-nav">
+          <button class="btn icon" id="daPrev">◀</button>
+          <button class="btn sm" id="daToday">วันนี้</button>
+          <button class="btn icon" id="daNext">▶</button>
+          <div class="period-label" id="daPeriodLabel"></div>
+        </div>
+      </div>
+      <div class="desc" style="margin:-10px 0 16px;">ใครทำอะไรเสร็จในวันนี้ (ข้อมูลจริงจากระบบ CRM) — แสดงเฉพาะกรรมการและ Manager/Admin เท่านั้น เพราะมีการจำกัดสิทธิ์ไว้ที่ฐานข้อมูลด้วย ไม่ใช่แค่ซ่อนในหน้าเว็บ</div>
+      <div id="dailyActivityBody"><div class="agenda-empty">กำลังโหลด…</div></div>
     </section>
 
     <!-- SETTINGS VIEW -->
@@ -627,6 +644,8 @@ let sb = null;             // supabase client, lazy-created on first use
 let authUser = null;       // supabase auth user once logged in (shared account with CRM)
 let cloudProfile = null;   // matching row from cal_profiles
 let cloudClients = [];     // crm_clients loaded live once logged in, for the event client picker
+let dailyActivityDate = new Date();  // selected day for the "กิจกรรมประจำวัน" view
+let staffNameMap = {};     // org_staff id -> display_name, lazy-loaded for the daily activity view
 
 if(events === null){ events = seedEvents(); lsSet('dcbc_events', events); }
 if(tasks === null){ tasks = seedTasks(); lsSet('dcbc_tasks', tasks); }
@@ -690,6 +709,7 @@ function switchMenu(name){
   if(name==='calendar') renderCalendar();
   if(name==='tasks') renderTasks();
   if(name==='activity') renderActivityLog();
+  if(name==='daily-activity') renderDailyActivity();
   if(name==='settings') renderSettings();
 }
 
@@ -701,9 +721,21 @@ function eventsOn(iso){ return getFilteredEvents().filter(e=>e.date===iso).sort(
 
 // "ทั้งหมด" (all) รวมทุกกิจกรรมส่วนตัว+ทีม — ให้เห็นได้เฉพาะบทบาทสูงสุด (กรรมการ) ตามที่เจ้าของโปรเจกต์กำหนด
 function isTopRole(){ return profile && profile.role === ROLES[0].label; }
+// เกณฑ์เดียวกับฝั่ง CRM (canSeeAuditLog(): LV1-2 กรรมการ/Manager) ที่ใช้กับ crm_activity_log อยู่แล้ว —
+// ใช้ระดับเดียวกันตรงนี้เพื่อให้แท็บ "กิจกรรมประจำวัน" กับหน้าประวัติการแก้ไขของ CRM มองเห็นข้อมูลชุดเดียวกันเสมอ
+// (ไม่ใช่ isTopRole() ด้านบน — อันนั้นคือ LV1 อย่างเดียว ใช้กับฟีเจอร์อื่นคือมุมมอง "ทั้งหมด" ของปฏิทิน)
+function isOwnerOrManager(){ return !!profile && (profile.role === ROLES[0].label || profile.role === ROLES[1].label); }
 function enforceFilterAccess(){
   if(calFilter==='all' && !isTopRole()){ calFilter = 'personal'; return true; }
   return false;
+}
+// เกณฑ์จริงที่บังคับใช้คือ RLS ฝั่ง Supabase (ดู supabase-activity-log-visibility-migration.sql) —
+// ฟังก์ชันนี้แค่ซ่อน/แสดงแท็บในหน้าเว็บให้ตรงกับสิทธิ์ ไม่ใช่การป้องกันข้อมูลจริง
+function refreshDailyActivityAccess(){
+  const btn = document.getElementById('menu-daily-activity');
+  const allowed = !!authUser && isOwnerOrManager();
+  btn.classList.toggle('hidden', !allowed);
+  if(!allowed && activeMenu==='daily-activity') switchMenu('calendar');
 }
 function applyFilterLock(selectEl){
   const allOpt = selectEl.querySelector('option[value="all"]');
@@ -1077,6 +1109,76 @@ function renderActivityLog(){
   }).join('');
 }
 
+/* ========================= DAILY ACTIVITY (real, cross-staff — Supabase crm_activity_log) =========================
+   Different from the local-only "ประวัติการทำงาน" view above: that one only ever knows about this browser's
+   own self-declared profile.name. This view reads real rows written by CRM's logActivity() (see
+   toggleField/saveGroupItemField/toggleYearEndField in crm/index.html), joined client-side against org_staff
+   for display names. UI-gated by isOwnerOrManager(); real enforcement is the RLS SELECT policy in
+   supabase-activity-log-visibility-migration.sql. */
+const ACTIVITY_ACTION_LABEL_TH = {
+  client_info_update: 'แก้ไขข้อมูลทั่วไป',
+  client_change_add: 'เพิ่มการเปลี่ยนแปลง',
+  client_change_edit: 'แก้ไขการเปลี่ยนแปลง',
+  client_change_delete: 'ลบการเปลี่ยนแปลง',
+  client_creds_update: 'แก้ไขรหัสผ่านเข้าระบบ',
+  client_deactivate: 'ปิดใช้งานลูกค้า',
+  client_delete: 'ลบลูกค้าถาวร',
+  staff_update: 'แก้ไขพนักงาน',
+  staff_role_change: 'เปลี่ยนสิทธิ์พนักงาน',
+  staff_code_change: 'เปลี่ยนรหัสพนักงาน',
+  staff_deactivate: 'เลิกจ้างพนักงาน',
+  staff_reactivate: 'ปรับพนักงานกลับมาทำงาน',
+  staff_create: 'เพิ่มพนักงานใหม่',
+  staff_password_reset: 'รีเซ็ทรหัสผ่านพนักงาน',
+  tax_task_toggle: 'อัปเดตงานภาษีรายเดือน',
+  tax_task_item_update: 'อัปเดตงานย่อยภาษี (TAX1/SSO/TAX2)',
+  year_end_task_toggle: 'อัปเดตงานปลายปี',
+};
+async function loadActivityStaffNames(client){
+  try{
+    const { data } = await client.from('org_staff').select('id, display_name');
+    (data||[]).forEach(s=>{ staffNameMap[s.id] = s.display_name; });
+  }catch(e){ /* โหลดรายชื่อไม่สำเร็จ — จะ fallback ไปแสดง "ไม่ทราบชื่อ" แทน ไม่กระทบการแสดงผลหลัก */ }
+}
+async function renderDailyActivity(){
+  const body = document.getElementById('dailyActivityBody');
+  const todayIso = toISODate(new Date());
+  const selIso = toISODate(dailyActivityDate);
+  document.getElementById('daPeriodLabel').textContent = thaiDateLong(dailyActivityDate) + (selIso===todayIso ? ' · วันนี้' : '');
+  if(!authUser || !isOwnerOrManager()){
+    body.innerHTML = '<div class="agenda-empty">ต้องเข้าสู่ระบบด้วยบัญชี CRM และมีสิทธิ์ระดับกรรมการ/Manager จึงจะดูหน้านี้ได้</div>';
+    return;
+  }
+  body.innerHTML = '<div class="agenda-empty">กำลังโหลด…</div>';
+  try{
+    const client = await getSupabaseClient();
+    if(!Object.keys(staffNameMap).length) await loadActivityStaffNames(client);
+    const dayStart = parseISODate(selIso);
+    const dayEnd = addDays(dayStart, 1);
+    const { data, error } = await client.from('crm_activity_log')
+      .select('*')
+      .gte('created_at', dayStart.toISOString())
+      .lt('created_at', dayEnd.toISOString())
+      .order('created_at', { ascending:false });
+    if(error){ body.innerHTML = '<div class="agenda-empty">โหลดไม่สำเร็จ: '+escapeHtml(error.message||'')+'</div>'; return; }
+    if(!data || !data.length){ body.innerHTML = '<div class="agenda-empty">ไม่มีกิจกรรมในวันนี้</div>'; return; }
+    body.innerHTML = data.map(a=>{
+      const t = new Date(a.created_at);
+      const nm = staffNameMap[a.actor_id] || 'ไม่ทราบชื่อ';
+      const roleLbl = mapRoleToLabel(a.actor_role);
+      const actLbl = ACTIVITY_ACTION_LABEL_TH[a.action] || a.action;
+      return `<div class="agenda-item" style="cursor:default;">
+        <span class="dot" style="background:#3b82f6"></span>
+        <span class="time">${pad(t.getHours())}:${pad(t.getMinutes())}</span>
+        <span class="title">${escapeHtml(actLbl)}${a.summary?': '+escapeHtml(a.summary):''}</span>
+        <span class="client">${escapeHtml(nm)} <span class="pill" style="background:#3b82f622;color:#3b82f6">${escapeHtml(roleLbl)}</span></span>
+      </div>`;
+    }).join('');
+  }catch(e){
+    body.innerHTML = '<div class="agenda-empty">เกิดข้อผิดพลาด ลองใหม่อีกครั้ง</div>';
+  }
+}
+
 /* ========================= SETTINGS ========================= */
 function renderSettings(){
   document.getElementById('profileName').value = profile.name || '';
@@ -1261,8 +1363,9 @@ async function loginWithCrmAccount(){
 }
 async function logoutCrmAccount(){
   try{ const client = await getSupabaseClient(); await client.auth.signOut(); }catch(e){}
-  authUser = null; cloudProfile = null; cloudClients = [];
+  authUser = null; cloudProfile = null; cloudClients = []; staffNameMap = {};
   toast('ออกจากระบบแล้ว กลับสู่โหมด Local');
+  refreshDailyActivityAccess();
   renderSettings();
 }
 async function loadCloudProfile(){
@@ -1287,6 +1390,7 @@ async function loadCloudProfile(){
     profile.role = mapRoleToLabel(prof.role);
     lsSet('dcbc_profile', profile);
     enforceFilterAccess();
+    refreshDailyActivityAccess();
   }catch(e){ toast('โหลดโปรไฟล์จาก CRM ไม่สำเร็จ'); }
 }
 async function loadCrmClients(){
@@ -1404,6 +1508,12 @@ function init(){
     renderCalendar();
   });
   document.getElementById('addEventBtn').addEventListener('click', ()=>openEventModal(null));
+
+  // Daily activity (who-did-what)
+  document.getElementById('daPrev').addEventListener('click', ()=>{ dailyActivityDate = addDays(dailyActivityDate, -1); renderDailyActivity(); });
+  document.getElementById('daNext').addEventListener('click', ()=>{ dailyActivityDate = addDays(dailyActivityDate, 1); renderDailyActivity(); });
+  document.getElementById('daToday').addEventListener('click', ()=>{ dailyActivityDate = new Date(); renderDailyActivity(); });
+
   document.getElementById('calBody').addEventListener('click', e=>{
     const pill = e.target.closest('[data-action="edit-event"]');
     if(pill){ openEventModal(pill.dataset.id); return; }
