@@ -517,7 +517,7 @@
           </div>
         </div>
         <div class="px-6 pb-8 overflow-x-auto">
-          <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" style="min-width:780px">
+          <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" style="min-width:880px">
             <table class="w-full text-center">
               <thead>
                 <tr>
@@ -525,6 +525,7 @@
                   <th class="text-center px-1 text-xs font-semibold text-gray-400 border-b-2 border-gray-200" style="width:40px">#</th>
                   <th class="text-center px-1 text-xs font-semibold text-gray-500 border-b-2 border-gray-200" style="width:76px">CODE</th>
                   <th class="text-left px-2 text-xs font-semibold text-gray-500 border-b-2 border-gray-200" style="min-width:150px">ชื่อบริษัท</th>
+                  <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200" style="min-width:150px">รอบงบการเงิน</th>
                   <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200 border-l border-gray-200">ภ.ง.ด.51</th>
                   <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">กระทบยอด</th>
                   <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">การตรวจสอบ</th>
@@ -534,7 +535,7 @@
                 </tr>
               </thead>
               <tbody id="yearend-fin-tbody">
-                <tr><td colspan="10" class="py-10 text-gray-400 text-sm">กำลังโหลด…</td></tr>
+                <tr><td colspan="11" class="py-10 text-gray-400 text-sm">กำลังโหลด…</td></tr>
               </tbody>
             </table>
           </div>
@@ -1069,11 +1070,14 @@ const FIELDS = ['rd_download','rd_keyed'];
 // crm_year_end_tasks (ดู supabase-yearend-checklist-migration.sql) step ที่มี condKey จะนับเฉพาะลูกค้าที่
 // client[condKey] เป็นจริงเท่านั้น (ตอนนี้มีแค่ recon.sso ผูกกับ has_sso — "ประกันสังคม(ถ้ามี)")
 const YE_TASK_GROUPS = [
-  { key: 'kt26k', label: 'กท.26ก', steps: [
+  // กท.26ก/กท.20ก เป็นแบบของสำนักงานประกันสังคมล้วนๆ (ต่างจาก ภ.ง.ด.1ก ที่เป็นแบบกรมสรรพากร ต้องยื่นทุก
+  // บริษัทที่มีลูกจ้างไม่ว่าจะขึ้นทะเบียนประกันสังคมหรือไม่) — ลูกค้าที่ไม่มีประกันสังคมจึงไม่ต้องมี 2 หัวข้อนี้
+  // เลย (condKey ระดับหัวข้อ ต่างจาก recon.sso ที่เป็นแค่ 1 ขั้นตอนย่อยภายในหัวข้อกระทบยอด)
+  { key: 'kt26k', label: 'กท.26ก', condKey: 'has_sso', steps: [
     { key: 'received', label: 'รับ' },
     { key: 'paid', label: 'จ่าย' },
   ] },
-  { key: 'kt20k', label: 'กท.20ก', steps: [
+  { key: 'kt20k', label: 'กท.20ก', condKey: 'has_sso', steps: [
     { key: 'draft', label: 'ร่าง' },
     { key: 'approved', label: 'อนุมัติ' },
     { key: 'notify_confirm', label: 'แจ้งลูกค้ายืนยัน' },
@@ -1089,7 +1093,9 @@ const YE_TASK_GROUPS = [
   ] },
 ];
 const YE_FIN_GROUPS = [
-  { key: 'pnd51', label: 'ภ.ง.ด.51', steps: [
+  // ภ.ง.ด.51 (ยื่นกลางรอบบัญชี) ไม่ต้องยื่นถ้ารอบบัญชีปีนั้นสั้นกว่า 12 เดือน (ปีที่เพิ่งจดทะเบียนบริษัท) —
+  // ดู yeIsFullFiscalYear()
+  { key: 'pnd51', label: 'ภ.ง.ด.51', condFn: yeIsFullFiscalYear, steps: [
     { key: 'draft', label: 'ร่างแบบ' },
     { key: 'approved', label: 'อนุมัติ' },
     { key: 'sent', label: 'ส่งลูกค้า' },
@@ -1127,7 +1133,39 @@ const YE_FIN_GROUPS = [
     { key: 'pnd50', label: 'ภ.ง.ด.50' },
   ] },
 ];
+// รอบบัญชีของลูกค้าสำหรับปี "year" ที่กำลังดูอยู่ คำนวณจาก fiscal_year_end (DD/MM ค่าเริ่มต้น 31/12) —
+// รอบเต็มยาว 12 เดือน สิ้นสุดวันที่ fiscal_year_end ของปีนั้น เริ่มวันถัดจากวันสิ้นรอบก่อนหน้า ใช้ new Date()
+// เพื่อ "ปรับ" วัน/เดือนที่เกินขอบเขต (เช่น 31+1 -> วันที่ 1 เดือนถัดไป) เท่านั้น อ่านค่ากลับด้วย
+// getFullYear/getMonth/getDate (ตามเวลาเครื่อง) ไม่ใช้ toISOString() ที่แปลงเป็น UTC แล้ววันอาจเพี้ยน
+function yePad2(n) { return String(n).padStart(2, '0'); }
+function yeYmdStr(y, m, d) {
+  const dt = new Date(y, m - 1, d);
+  return `${dt.getFullYear()}-${yePad2(dt.getMonth() + 1)}-${yePad2(dt.getDate())}`;
+}
+function yeFiscalPeriod(c, year) {
+  const [fyeDay, fyeMonth] = (c.fiscal_year_end || '31/12').split('/').map(n => parseInt(n) || 0);
+  const day = fyeDay || 31, month = fyeMonth || 12;
+  const endIso = yeYmdStr(year, month, day);
+  const startIso = yeYmdStr(year - 1, month, day + 1);
+  // ครบ 6 เดือนแรก = วันเริ่มรอบ + 6 เดือน - 1 วัน (เช่น 1 ม.ค. +6 เดือน = 1 ก.ค. -1 วัน = 30 มิ.ย.)
+  const [sy, sm, sd] = startIso.split('-').map(Number);
+  const sixMonthIso = yeYmdStr(sy, sm + 6, sd - 1);
+  return { startIso, endIso, sixMonthIso };
+}
+// รอบปีนั้นเต็ม 12 เดือนไหม — ถ้าลูกค้าเพิ่งจดทะเบียนหลังวันเริ่มรอบ (รอบแรกของกิจการสั้นกว่า 12 เดือน)
+// ภ.ง.ด.51 (ยื่นกลางปี) ไม่ต้องยื่นในปีนั้น — ไม่มีวันจดทะเบียน (ข้อมูลยังไม่กรอก) ถือว่าเต็มปีไว้ก่อน กันซ่อน
+// ฟิลด์ที่จริงๆ ต้องทำเพราะข้อมูลไม่ครบ
+function yeIsFullFiscalYear(c, year) {
+  if (!c.registration_date) return true;
+  return c.registration_date <= yeFiscalPeriod(c, year).startIso;
+}
+function yeGroupApplicable(group, c) {
+  if (group.condKey && !c[group.condKey]) return false;
+  if (group.condFn && !group.condFn(c, yearEndYear)) return false;
+  return true;
+}
 function yeGroupApplicableSteps(group, c) {
+  if (!yeGroupApplicable(group, c)) return [];
   return group.steps.filter(s => !s.condKey || c[s.condKey]);
 }
 function yeGroupField(group, step) { return `${group.key}_${step.key}`; }
@@ -2422,11 +2460,16 @@ function yeFavNumCodeName(c) {
 }
 // คอลัมน์สรุปของแต่ละ "หัวข้อ" (group) — โชว์ "เสร็จ/ทั้งหมด" ตัวเลขเดียว กดแล้วเปิด modal เช็คลิสต์
 // ทีละขั้นตอนย่อย (แทนจุดเดียวแบบเดิม เพราะแต่ละหัวข้อตอนนี้มีหลายขั้นตอน บางหัวข้อเช่นกระทบยอดมีถึง 11)
-function mkYeGroupTd(group, c, t, groupsKind, first) {
+function mkYeGroupTd(group, c, t, groupsKind, first, subtitle) {
+  const cellCls = `px-2 py-2.5 text-center ${first ? 'border-l border-gray-200' : ''}`;
+  if (!yeGroupApplicable(group, c)) {
+    return `<td class="${cellCls}"><span class="text-xs text-gray-300">—</span></td>`;
+  }
   const { done, total } = yeGroupProgress(group, c, t);
   const cls = total > 0 && done === total ? 'text-green-700' : done > 0 ? 'text-blue-700' : 'text-gray-400';
-  return `<td class="px-2 py-2.5 text-center ${first ? 'border-l border-gray-200' : ''}">
+  return `<td class="${cellCls}">
             <button onclick="openYeGroupDetail(${c.id},'${groupsKind}','${group.key}')" class="text-xs font-bold ${cls} hover:underline">${done}/${total}</button>
+            ${subtitle ? `<div class="text-[10px] text-gray-400 mt-0.5 whitespace-nowrap">${subtitle}</div>` : ''}
           </td>`;
 }
 function renderYeTaskSummary() {
@@ -2472,13 +2515,15 @@ function renderYeFinTable() {
   let rows = '';
   visibleClients.forEach(c => {
     const t = yearEndMap[c.id] || {};
+    const period = yeFiscalPeriod(c, yearEndYear);
     rows += `<tr class="border-b border-gray-100">
       ${yeFavNumCodeName(c)}
-      ${YE_FIN_GROUPS.map((g, i) => mkYeGroupTd(g, c, t, 'fin', i === 0)).join('')}
+      <td class="px-2 py-2.5 text-xs text-gray-500 whitespace-nowrap">${fmtDate(period.startIso)} – ${fmtDate(period.endIso)}</td>
+      ${YE_FIN_GROUPS.map((g, i) => mkYeGroupTd(g, c, t, 'fin', i === 0, g.key === 'pnd51' ? `ครบ 6 เดือน: ${fmtDate(period.sixMonthIso)}` : null)).join('')}
       <td class="px-3 py-2.5">${progressBar(yeGroupsPct(YE_FIN_GROUPS, c, t))}</td>
     </tr>`;
   });
-  if (!rows) rows = `<tr><td colspan="10" class="py-10 text-gray-400 text-sm text-center">ยังไม่มีลูกค้าในระบบ</td></tr>`;
+  if (!rows) rows = `<tr><td colspan="11" class="py-10 text-gray-400 text-sm text-center">ยังไม่มีลูกค้าในระบบ</td></tr>`;
   document.getElementById('yearend-fin-tbody').innerHTML = rows;
 }
 function renderYearEnd() {
