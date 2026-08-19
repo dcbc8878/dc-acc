@@ -670,6 +670,7 @@
         <div class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between gap-2" style="min-height:71px">
           <p class="text-xs text-gray-400">สถานะการเก็บเงินของลูกค้าแต่ละราย</p>
           <div class="flex items-center gap-2">
+            <button id="fin-create-invoices-btn" onclick="openBatchInvoice(finYear, finMonth)" class="hidden text-xs font-semibold bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg transition-colors flex-shrink-0">สร้างใบแจ้งหนี้</button>
             <button id="finPrevBtn" onclick="changeFinMonth(-1)" class="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors text-gray-600 disabled:opacity-30 disabled:hover:bg-white disabled:cursor-not-allowed">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
             </button>
@@ -948,7 +949,6 @@
     <button class="tab-btn"        data-tab="creds"   onclick="switchTab('creds')"   id="tab-btn-creds">รหัสผ่าน</button>
     <button class="tab-btn"        data-tab="docs"    onclick="switchTab('docs')"    id="tab-btn-docs">เอกสาร</button>
     <button class="tab-btn"        data-tab="history" onclick="switchTab('history')" id="tab-btn-history">ประวัติงาน</button>
-    <button class="tab-btn"        data-tab="billing" onclick="switchTab('billing')" id="tab-btn-billing">ใบแจ้งหนี้</button>
   </div>
 
   <div class="flex-1 overflow-y-auto px-6 py-5">
@@ -956,7 +956,6 @@
     <div class="tab-pane hidden" data-pane="creds"></div>
     <div class="tab-pane hidden" data-pane="docs"></div>
     <div class="tab-pane hidden" data-pane="history"></div>
-    <div class="tab-pane hidden" data-pane="billing"></div>
   </div>
 
   <div id="panel-save-bar" class="hidden border-t border-gray-200 px-6 py-3 flex justify-end gap-2 flex-shrink-0">
@@ -1315,6 +1314,7 @@ async function init() {
   if (!canManageOwnCompany()) document.getElementById('settings-menu-company-group').classList.add('hidden');
   if (!canManageTeams()) document.getElementById('settings-menu-teamgrid').classList.add('hidden');
   if (canManageTeams()) document.getElementById('add-team-btn').classList.remove('hidden');
+  if (canEdit()) document.getElementById('fin-create-invoices-btn').classList.remove('hidden');
   if (!canApproveRequest()) document.getElementById('empTab-requests').classList.add('hidden');
   document.getElementById('settings-btn').classList.remove('hidden');
 
@@ -2556,7 +2556,6 @@ async function openPanel(clientId) {
   document.getElementById('tab-btn-history').classList.toggle('hidden', isLimited);
   document.getElementById('tab-btn-creds').classList.toggle('hidden', !canCred());
   document.getElementById('tab-btn-docs').classList.toggle('hidden', isLimited);
-  document.getElementById('tab-btn-billing').classList.toggle('hidden', isLimited);
   document.getElementById('panel-deactivate-btn').classList.toggle('hidden', !isOwner() || isLimited);
 
   switchTab('info');
@@ -2688,7 +2687,6 @@ function switchTab(tab) {
   if (tab === 'creds')   renderPanelCreds();
   if (tab === 'docs')    renderPanelDocs();
   if (tab === 'history') renderPanelHistory();
-  if (tab === 'billing') renderPanelBilling();
 }
 
 // ── Info Tab ──
@@ -4055,17 +4053,23 @@ async function savePanelEdits() {
 // ─────────────────────────────────────────────────────────────
 // BATCH INVOICE
 // ─────────────────────────────────────────────────────────────
-function openBatchInvoice() {
-  const thMonthYear = `${THAI_MONTHS[curMonth]} ${curYear + 543}`;
-  const biMonthFirstStr = `${curYear}-${String(curMonth).padStart(2,'0')}-01`;
-  const biMonthLastStr = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(new Date(curYear, curMonth, 0).getDate()).padStart(2,'0')}`;
+// year/month มาจากผู้เรียกเสมอ (หน้ารายเดือน = curYear/curMonth, การเก็บเงิน = finYear/finMonth —
+// สองหน้านี้มีเดือนที่กำลังดูอิสระจากกัน) เขียนกลับเข้า invoiceMap/finInvoiceMap เฉพาะตัวที่ปี/เดือนตรงกับ
+// ที่หน้านั้นกำลังแสดงอยู่จริง แบบเดียวกับ markInvoicePaidCore_ ไม่มี logic สร้างใบแจ้งหนี้แยกกันสองชุด
+function openBatchInvoice(year, month) {
+  const thMonthYear = `${THAI_MONTHS[month]} ${year + 543}`;
+  const biMonthFirstStr = `${year}-${String(month).padStart(2,'0')}-01`;
+  const biMonthLastStr = `${year}-${String(month).padStart(2,'0')}-${String(new Date(year, month, 0).getDate()).padStart(2,'0')}`;
+  const monthInvMap = (year === curYear && month === curMonth) ? invoiceMap
+                     : (year === finYear && month === finMonth) ? finInvoiceMap
+                     : {};
   const rows = clients.filter(c => (c.is_active || c.end_date) && !c.is_own_company)
     .filter(c => (!c.start_date || c.start_date <= biMonthLastStr) && (!c.end_date || c.end_date >= biMonthFirstStr))
     .map(c => {
     const fee = c.monthly_fee || 0;
     const wht = c.has_wht !== false ? Math.round(fee * 0.03 * 100) / 100 : 0;
     const expected = fee - wht;
-    const inv = invoiceMap[c.id];
+    const inv = monthInvMap[c.id];
     const alreadyExists = !!inv;
     return `<tr class="border-b border-gray-100 ${alreadyExists ? 'opacity-50' : ''}">
       <td class="py-2 pr-2">
@@ -4101,11 +4105,11 @@ function openBatchInvoice() {
     <div id="batch-err" class="hidden text-sm text-red-600 mb-3"></div>
     <div class="flex justify-end gap-2">
       <button onclick="closeModal()" class="px-4 py-2 text-sm text-gray-600 font-medium hover:text-gray-900">ยกเลิก</button>
-      <button onclick="createBatchInvoices()" class="px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700">สร้างใบแจ้งหนี้</button>
+      <button onclick="createBatchInvoices(${year},${month})" class="px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700">สร้างใบแจ้งหนี้</button>
     </div>`);
 }
 
-async function createBatchInvoices() {
+async function createBatchInvoices(year, month) {
   const selected = [...document.querySelectorAll('.batch-chk:checked')].map(el => parseInt(el.dataset.cid));
   if (!selected.length) {
     document.getElementById('batch-err').textContent = 'กรุณาเลือกลูกค้าอย่างน้อย 1 ราย';
@@ -4116,7 +4120,7 @@ async function createBatchInvoices() {
     const c = clients.find(x => x.id === cid);
     const fee = c?.monthly_fee || 0;
     const wht = c?.has_wht !== false ? Math.round(fee * 0.03 * 100) / 100 : 0;
-    return { client_id: cid, year: curYear, month: curMonth, billing_type: c?.billing_type || 'monthly', fee_amount: fee, wht_amount: wht, expected_payment: fee - wht, status: 'draft' };
+    return { client_id: cid, year, month, billing_type: c?.billing_type || 'monthly', fee_amount: fee, wht_amount: wht, expected_payment: fee - wht, status: 'draft' };
   });
   const { data, error } = await sb.from('crm_invoices')
     .upsert(payloads, { onConflict: 'client_id,year,month' }).select();
@@ -4125,11 +4129,17 @@ async function createBatchInvoices() {
     document.getElementById('batch-err').classList.remove('hidden');
     return;
   }
-  (data || []).forEach(inv => { invoiceMap[inv.client_id] = inv; });
+  // เขียนกลับเข้า map ไหนก็ต่อเมื่อปี/เดือนตรงกับที่ map นั้นกำลังแสดงอยู่จริง (invoiceMap ของหน้ารายเดือน,
+  // finInvoiceMap ของการเก็บเงิน) — ทั้งสองอาจตรงกันพร้อมกันก็ได้ถ้าบังเอิญดูเดือนเดียวกันอยู่
+  (data || []).forEach(inv => {
+    if (inv.year === curYear && inv.month === curMonth) invoiceMap[inv.client_id] = inv;
+    if (inv.year === finYear && inv.month === finMonth) finInvoiceMap[inv.client_id] = inv;
+  });
   closeModal();
   showToast(`สร้างใบแจ้งหนี้ ${data?.length || 0} ใบสำเร็จ`);
-  renderTrackingSummary();
+  if (year === curYear && month === curMonth) renderTrackingSummary();
   if (curPage === 'clients') renderClientList();
+  if (curPage === 'finance' && year === finYear && month === finMonth) renderFinanceCollection();
 
   // Local drafts are already committed above. Sync each to FlowAccount as a
   // best-effort follow-up — one aggregate toast instead of one per invoice
@@ -4138,19 +4148,23 @@ async function createBatchInvoices() {
   if (newInvoices.length) {
     const results = await Promise.all(newInvoices.map(async inv => {
       const res = await flowAccountInvoke_('create_invoice', inv.id);
-      if (res.ok) invoiceMap[inv.client_id] = res.data.invoice || invoiceMap[inv.client_id];
+      if (res.ok) {
+        const updated = res.data.invoice || inv;
+        if (updated.year === curYear && updated.month === curMonth) invoiceMap[updated.client_id] = updated;
+        if (updated.year === finYear && updated.month === finMonth) finInvoiceMap[updated.client_id] = updated;
+      }
       return res.ok;
     }));
     const okCount = results.filter(Boolean).length;
     if (okCount === newInvoices.length) {
       showToast(`ส่งใบแจ้งหนี้ไป FlowAccount สำเร็จครบทั้ง ${okCount} ใบ`);
     } else if (okCount === 0) {
-      showToast(`สร้างใบแจ้งหนี้ในระบบแล้ว แต่ส่งไป FlowAccount ไม่สำเร็จทั้งหมด (${newInvoices.length} ใบ) — ลองใหม่ได้จากหน้ารายละเอียดลูกค้าแต่ละราย`, 'error');
+      showToast(`สร้างใบแจ้งหนี้ในระบบแล้ว แต่ส่งไป FlowAccount ไม่สำเร็จทั้งหมด (${newInvoices.length} ใบ) — ข้อมูลไม่หาย ลองส่งใหม่ได้ภายหลัง`, 'error');
     } else {
-      showToast(`ส่งไป FlowAccount สำเร็จ ${okCount}/${newInvoices.length} ใบ ที่เหลือลองใหม่ได้จากหน้ารายละเอียดลูกค้า`, 'error');
+      showToast(`ส่งไป FlowAccount สำเร็จ ${okCount}/${newInvoices.length} ใบ ที่เหลือลองส่งใหม่ได้ภายหลัง`, 'error');
     }
     if (curPage === 'clients') renderClientList();
-    if (panelClientId != null && invoiceMap[panelClientId]) renderPanelBilling();
+    if (curPage === 'finance' && year === finYear && month === finMonth) renderFinanceCollection();
   }
 }
 
