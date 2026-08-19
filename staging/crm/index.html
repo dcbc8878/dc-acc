@@ -323,6 +323,7 @@
             <option value="monthly">รายเดือน</option>
             <option value="filing">แบบเปล่า</option>
             <option value="annual">รายปี</option>
+            <option value="dissolved">เลิกกิจการ</option>
           </select>
           <button onclick="goToCurrentTrkMonth()" class="text-xs font-semibold text-gray-500 border border-gray-200 hover:bg-gray-50 px-3 py-1.5 rounded-lg transition-colors flex-shrink-0">เดือนปัจจุบัน</button>
           <button id="trkPrevBtn" onclick="changeMonth(-1)" class="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors text-gray-600 disabled:opacity-30 disabled:hover:bg-white disabled:cursor-not-allowed">
@@ -439,6 +440,7 @@
         <div class="flex border-b-0 mt-2">
           <button class="tab-btn active" id="yeTab-tasks" onclick="showYearEndSubTab('tasks')">งานรายปี</button>
           <button class="tab-btn" id="yeTab-fin" onclick="showYearEndSubTab('fin')">งบการเงิน</button>
+          <button class="tab-btn" id="yeTab-dissolved" onclick="showYearEndSubTab('dissolved')">เลิกกิจการ</button>
         </div>
       </div>
 
@@ -538,6 +540,53 @@
           </div>
         </div>
       </div>
+
+      <!-- SUBTAB: เลิกกิจการ (วันที่เลิกกิจการ · การปิดงบการเงิน · ยื่นแบบ · ปิดงบการเงินสำเร็จ) -->
+      <div id="ye-sub-dissolved" class="hidden">
+        <!-- Invisible spacer: see the matching one in #ye-sub-tasks above. -->
+        <div class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-end gap-2" style="visibility:hidden" aria-hidden="true">
+          <span class="px-3.5 py-2 rounded-lg border border-gray-200 text-sm w-48 inline-block">&nbsp;</span>
+        </div>
+        <div class="grid grid-cols-3 gap-4 px-6 py-4">
+          <div class="bg-white rounded-xl border border-gray-200 p-4">
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">เสร็จครบ</div>
+            <div id="dsl-done" class="text-3xl font-black text-green-600 mt-1">—</div>
+            <div class="text-xs text-gray-400 mt-1">บริษัท</div>
+          </div>
+          <div class="bg-white rounded-xl border border-gray-200 p-4">
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">กำลังดำเนินการ</div>
+            <div id="dsl-inprog" class="text-3xl font-black text-blue-600 mt-1">—</div>
+            <div class="text-xs text-gray-400 mt-1">บริษัท</div>
+          </div>
+          <div class="bg-white rounded-xl border border-gray-200 p-4">
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">ยังไม่เริ่ม</div>
+            <div id="dsl-pending" class="text-3xl font-black text-slate-400 mt-1">—</div>
+            <div class="text-xs text-gray-400 mt-1">บริษัท</div>
+          </div>
+        </div>
+        <div class="px-6 pb-8 overflow-x-auto">
+          <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" style="min-width:740px">
+            <table class="w-full text-center">
+              <thead>
+                <tr>
+                  <th class="text-center px-1 text-xs font-semibold text-gray-400 border-b-2 border-gray-200" style="width:32px"></th>
+                  <th class="text-center px-1 text-xs font-semibold text-gray-400 border-b-2 border-gray-200" style="width:40px">#</th>
+                  <th class="text-center px-1 text-xs font-semibold text-gray-500 border-b-2 border-gray-200" style="width:70px">CODE</th>
+                  <th class="text-left px-2 text-xs font-semibold text-gray-500 border-b-2 border-gray-200" style="min-width:150px">ชื่อบริษัท</th>
+                  <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200 border-l border-gray-200" style="min-width:110px">วันที่เลิกกิจการ</th>
+                  <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">การปิดงบการเงิน</th>
+                  <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">ยื่นแบบ</th>
+                  <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">ปิดงบการเงินสำเร็จ</th>
+                  <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200" style="min-width:110px">ความคืบหน้า</th>
+                </tr>
+              </thead>
+              <tbody id="yearend-dissolved-tbody">
+                <tr><td colspan="9" class="py-10 text-gray-400 text-sm">กำลังโหลด…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- PAGE: clients -->
@@ -566,6 +615,7 @@
             <option value="monthly">รายเดือน</option>
             <option value="annual">รายปี</option>
             <option value="filing">ยื่นแบบเปล่า</option>
+            <option value="dissolved">เลิกกิจการ</option>
           </select>
         </div>
         <!-- Stat-card summary row (สรุปฐานลูกค้าปัจจุบันทั้งหมด — ไม่ผูกกับตัวกรอง
@@ -1053,7 +1103,7 @@ const YE_FIELD_LABEL = {
   fin_stmt: 'งบการเงิน', audit: 'ผู้สอบบัญชี', dbd_submit: 'ส่ง DBD', boj5: 'บอจ.5',
 };
 const INV_STATUS_LABEL = { draft:'ร่าง', sent:'ส่งแล้ว', paid:'ชำระแล้ว', cancelled:'ยกเลิก' };
-const BILLING_TYPE_LABEL = { monthly:'รายเดือน', annual:'รายปี', filing:'ยื่นแบบ' };
+const BILLING_TYPE_LABEL = { monthly:'รายเดือน', annual:'รายปี', filing:'ยื่นแบบ', dissolved:'เลิกกิจการ' };
 const ENTITY_TYPES = ['บริษัทจำกัด','ห้างหุ้นส่วน','บุคคลธรรมดา'];
 const CLIENT_TYPE_MAP = { M:'รายเดือน', Y:'รายปี', T:'ยื่นแบบเปล่า' };
 const BUSINESS_CATEGORIES = [
@@ -1113,7 +1163,9 @@ let finYear      = new Date().getFullYear();
 let finMonth     = new Date().getMonth() + 1;
 let finInvoiceMap = {};            // เหมือน invoiceMap แต่คีย์ด้วย finYear/finMonth แทน
 let billingContractsByClient = {}; // ประวัติ crm_billing_contracts ทุกแถวทุกลูกค้า จัดกลุ่มตาม client_id — ใช้โดย resolveEffectiveFee()
-let financeDataLoaded = false;     // โหลด finInvoiceMap/billingContractsByClient ครั้งแรกตอนเข้าแท็บ "การเงิน" เท่านั้น
+let financeDataLoaded = false;     // โหลด finInvoiceMap ครั้งแรกตอนเข้าแท็บ "การเงิน" เท่านั้น
+let billingContractsLoaded = false; // แยกจาก financeDataLoaded โดยตั้งใจ — โหลดตอน init() เสมอ (ดู loadAllBillingContracts)
+                                     // ไม่ผูกกับการเข้าแท็บ "การเงิน" เพราะ renderTracking() ก็ต้องใช้ตั้งแต่หน้าแรกที่เปิดแอป
 
 // LV1 = owner (highest) ... LV5 = parttime (lowest)
 const ROLE_LEVEL = { owner: 1, manager: 2, senior: 3, junior: 4, parttime: 5 };
@@ -1339,6 +1391,7 @@ async function init() {
     canEdit() ? loadInvoices() : Promise.resolve(),
     canApproveRequest() ? loadStaffRequests() : Promise.resolve(),
     loadTeams().then(() => { teamsLoaded = true; }),
+    loadAllBillingContracts(),
   ]);
 
   document.getElementById('loading').classList.add('hidden');
@@ -1608,7 +1661,8 @@ function renderTracking() {
   const monthLastStr = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(new Date(curYear, curMonth, 0).getDate()).padStart(2,'0')}`;
   const myIds = myTeamIds();
   const visibleClients = clients.filter(c => (c.is_active || c.end_date))
-    .filter(c => trackingTypeFilter === 'all' || (c.billing_type || 'monthly') === trackingTypeFilter)
+    .filter(c => trackingTypeFilter === 'all' ||
+      resolveEffectiveFee(c, curYear, curMonth, billingContractsByClient[c.id]).billing_type === trackingTypeFilter)
     .filter(c => (!c.start_date || c.start_date <= monthLastStr) && (!c.end_date || c.end_date >= monthFirstStr))
     .filter(c => isClientVisibleOnTeamScopedPages(c, myIds))
     .slice()
@@ -2351,6 +2405,7 @@ function renderYearEnd() {
   if (!finRows)  finRows  = `<tr><td colspan="9" class="py-10 text-gray-400 text-sm text-center">ยังไม่มีลูกค้าในระบบ</td></tr>`;
   document.getElementById('yearend-tbody').innerHTML = taskRows;
   document.getElementById('yearend-fin-tbody').innerHTML = finRows;
+  renderDissolved();
 }
 
 async function changeYearEnd(delta) {
@@ -2365,8 +2420,135 @@ async function changeYearEnd(delta) {
 function showYearEndSubTab(tab) {
   document.getElementById('ye-sub-tasks').classList.toggle('hidden', tab !== 'tasks');
   document.getElementById('ye-sub-fin').classList.toggle('hidden', tab !== 'fin');
+  document.getElementById('ye-sub-dissolved').classList.toggle('hidden', tab !== 'dissolved');
   document.getElementById('yeTab-tasks').classList.toggle('active', tab === 'tasks');
   document.getElementById('yeTab-fin').classList.toggle('active', tab === 'fin');
+  document.getElementById('yeTab-dissolved').classList.toggle('active', tab === 'dissolved');
+}
+
+// ── แท็บย่อย "เลิกกิจการ" — ต่างจากงานรายปี/งบการเงินตรงที่ข้อมูลอยู่บน crm_clients ตรงๆ (คอลัมน์
+// dissolution_*) ไม่ใช่ yearEndMap/crm_year_end_tasks เพราะเป็นเหตุการณ์ครั้งเดียวต่อลูกค้า ไม่ใช่รายปี
+// จึงไม่ต้องโหลดข้อมูลเพิ่ม (clients array ที่โหลดไว้แล้วมีครบ) กรองจาก billing_type==='dissolved'
+// ปัจจุบันตรงๆ (ไม่ใช้ point-in-time เหมือน trackingTypeFilter เพราะเลิกกิจการเป็นสถานะย้อนกลับไม่ได้)
+const DSL_FIELDS = ['dissolution_fin_stmt_closed', 'dissolution_filed', 'dissolution_fin_stmt_success'];
+const DSL_FIELD_LABEL = { dissolution_fin_stmt_closed: 'การปิดงบการเงิน', dissolution_filed: 'ยื่นแบบ', dissolution_fin_stmt_success: 'ปิดงบการเงินสำเร็จ' };
+function yearEndDissolvedClients() {
+  const yeMyIds = myTeamIds();
+  return clients.filter(c => c.billing_type === 'dissolved')
+    .filter(c => isClientVisibleOnTeamScopedPages(c, yeMyIds));
+}
+function renderDissolvedSummary() {
+  const visibleClients = yearEndDissolvedClients();
+  let done = 0, prog = 0, pending = 0;
+  visibleClients.forEach(c => {
+    const pct = calcPct(c, DSL_FIELDS);
+    if (pct === 100) done++; else if (pct > 0) prog++; else pending++;
+  });
+  document.getElementById('dsl-done').textContent    = done;
+  document.getElementById('dsl-inprog').textContent  = prog;
+  document.getElementById('dsl-pending').textContent = pending;
+}
+function mkDslCell(c, field) {
+  return `<td class="status-td px-2 py-2.5 ${canEdit() ? 'clickable' : ''}"
+              ${canEdit() ? `onclick="toggleDissolutionField(${c.id},'${field}',this)"` : ''}>
+            ${statusDot(c[field] || 'todo')}</td>`;
+}
+function renderDissolved() {
+  const visibleClients = yearEndDissolvedClients();
+  renderDissolvedSummary();
+
+  let rows = '';
+  visibleClients.slice()
+    .sort((a, b) => favoriteClientIds.has(b.id) - favoriteClientIds.has(a.id))
+    .forEach(c => {
+      const pct = calcPct(c, DSL_FIELDS);
+      const isFav = favoriteClientIds.has(c.id);
+      rows += `<tr class="border-b border-gray-100">
+        <td class="py-3 text-center">
+          <button onclick="event.stopPropagation();toggleFavorite(${c.id})" title="${isFav ? 'เอาออกจากรายการโปรด' : 'เพิ่มในรายการโปรด'}" class="w-6 h-6 flex items-center justify-center mx-auto ${isFav ? 'text-amber-500' : 'text-gray-300 hover:text-amber-500'}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          </button>
+        </td>
+        <td class="py-3 text-center text-xs text-gray-400">${e(computeClientNo(c.billing_type, c.seq_num))}</td>
+        <td class="px-1 py-3 text-center cursor-pointer" onclick="openPanel(${c.id})">
+          <span class="inline-block bg-purple-50 text-purple-700 text-xs font-bold px-1.5 py-0.5 rounded">${e(c.code)}</span>
+        </td>
+        <td class="px-2 py-3 text-left cursor-pointer hover:bg-purple-50 transition-colors" onclick="openPanel(${c.id})">
+          <div class="text-sm text-gray-800 max-w-[190px] leading-tight">${e(c.thai_name)}</div>
+        </td>
+        <td class="px-2 py-2.5 border-l border-gray-200 text-xs text-gray-600 ${canEdit() ? 'cursor-pointer hover:text-blue-600' : ''}"
+            ${canEdit() ? `onclick="openEditDissolutionDate(${c.id})"` : ''}>
+          ${c.dissolution_date ? fmtDate(c.dissolution_date) : (canEdit() ? '<span class="text-gray-300">+ ระบุวันที่</span>' : '—')}
+        </td>
+        ${mkDslCell(c, 'dissolution_fin_stmt_closed')}
+        ${mkDslCell(c, 'dissolution_filed')}
+        ${mkDslCell(c, 'dissolution_fin_stmt_success')}
+        <td class="px-3 py-2.5">${progressBar(pct)}</td>
+      </tr>`;
+    });
+  if (!rows) rows = `<tr><td colspan="9" class="py-10 text-gray-400 text-sm text-center">ไม่มีลูกค้าที่เลิกกิจการ</td></tr>`;
+  document.getElementById('yearend-dissolved-tbody').innerHTML = rows;
+}
+async function toggleDissolutionField(clientId, field, cell) {
+  if (!canEdit()) return;
+  const c = clients.find(x => x.id === clientId);
+  if (!c) return;
+  const cur = c[field] || 'todo';
+  const next = cur === 'todo' ? 'done' : 'todo';
+  c[field] = next;
+  cell.innerHTML = statusDot(next);
+  cell.classList.add('saving');
+  const row = cell.closest('tr');
+  const lastTd = row.querySelector('td:last-child');
+  if (lastTd) lastTd.innerHTML = progressBar(calcPct(c, DSL_FIELDS));
+
+  const { error } = await sb.from('crm_clients').update({ [field]: next }).eq('id', clientId);
+  cell.classList.remove('saving');
+  if (error) {
+    c[field] = cur;
+    cell.innerHTML = statusDot(cur);
+    if (lastTd) lastTd.innerHTML = progressBar(calcPct(c, DSL_FIELDS));
+    showToast('บันทึกไม่สำเร็จ', 'error');
+    return;
+  }
+  await logActivity('client_info_update', 'client', clientId, `เลิกกิจการ: ${DSL_FIELD_LABEL[field]} → ${next === 'done' ? 'เสร็จ' : 'ยังไม่เสร็จ'}`);
+  renderDissolvedSummary();
+}
+function openEditDissolutionDate(clientId) {
+  if (!canEdit()) return;
+  const c = clients.find(x => x.id === clientId);
+  if (!c) return;
+  openModal(`
+    <h3 class="text-base font-bold text-gray-900 mb-1">วันที่เลิกกิจการ</h3>
+    <p class="text-xs text-gray-400 mb-4">${e(c.thai_name)}</p>
+    <div class="space-y-3">
+      ${dateFieldHtml({
+        label: 'วันที่เลิกกิจการ', textId: 'dd-date-disp', hiddenId: 'dd-date', isoVal: c.dissolution_date || '',
+        cls: 'w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500',
+      })}
+      <div id="dd-err" class="hidden text-sm text-red-600"></div>
+    </div>
+    <div class="flex justify-end gap-2 mt-6">
+      <button onclick="closeModal()" class="px-4 py-2 text-sm text-gray-600 font-medium hover:text-gray-900">ยกเลิก</button>
+      <button onclick="saveDissolutionDate(${clientId})" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors">บันทึก</button>
+    </div>`);
+}
+async function saveDissolutionDate(clientId) {
+  const c = clients.find(x => x.id === clientId);
+  if (!c) return;
+  const val = (document.getElementById('dd-date')?.value || '').trim() || null;
+  const { error } = await sb.from('crm_clients').update({ dissolution_date: val }).eq('id', clientId);
+  if (error) {
+    const err = document.getElementById('dd-err');
+    err.textContent = 'บันทึกไม่สำเร็จ: ' + error.message; err.classList.remove('hidden');
+    return;
+  }
+  c.dissolution_date = val;
+  await logActivity('client_info_update', 'client', clientId, `บันทึกวันที่เลิกกิจการ → ${val ? fmtDate(val) : '—'}`);
+  closeModal();
+  showToast('บันทึกสำเร็จ');
+  if (curPage === 'yearend') renderDissolved();
+  if (panelClientId === clientId) renderPanelInfo();
 }
 
 async function toggleYearEndField(clientId, field, cell) {
@@ -2529,7 +2711,7 @@ function suggestCode() {
   if (typeEl && codeEl) { codeEl.value = nextClientCode(typeEl.value); markDirty(); }
 }
 
-const BILLING_TYPE_PREFIX = { monthly: 'M', annual: 'Y', filing: 'T' };
+const BILLING_TYPE_PREFIX = { monthly: 'M', annual: 'Y', filing: 'T', dissolved: 'Z' };
 function computeClientNo(billingType, seqNum) {
   const prefix = BILLING_TYPE_PREFIX[billingType] || '';
   if (!prefix || !seqNum) return '—';
@@ -2916,6 +3098,8 @@ async function renderPanelChanges() {
 
   const CHANGE_TYPE_LABEL = {};
   CHANGE_TYPES.forEach(t => { CHANGE_TYPE_LABEL[t.key] = t.label; });
+  CHANGE_TYPE_LABEL.fee  = 'เปลี่ยนค่าบริการ';
+  CHANGE_TYPE_LABEL.type = 'เปลี่ยนประเภทลูกค้า';
 
   const changeTypeOpts = CHANGE_TYPES.map(ct =>
     `<option value="${e(ct.key)}">${e(ct.label)}</option>`).join('');
@@ -3216,6 +3400,7 @@ function openEditType(clientId) {
   if (!canEdit()) return;
   const c = clients.find(x => x.id === clientId);
   if (!c) return;
+  const todayIso = new Date().toISOString().slice(0, 10);
   openModal(`
     <h3 class="text-base font-bold text-gray-900 mb-1">เปลี่ยนประเภทลูกค้า</h3>
     <p class="text-xs text-gray-400 mb-4">${e(c.thai_name)} · ปัจจุบัน ${e(computeClientNo(c.billing_type, c.seq_num))} (${BILLING_TYPE_LABEL[c.billing_type] || '—'})</p>
@@ -3227,6 +3412,7 @@ function openEditType(clientId) {
             <option value="monthly" ${c.billing_type==='monthly'?'selected':''}>รายเดือน (M)</option>
             <option value="annual" ${c.billing_type==='annual'?'selected':''}>รายปี (Y)</option>
             <option value="filing" ${c.billing_type==='filing'?'selected':''}>ยื่นแบบเปล่า (T)</option>
+            <option value="dissolved" ${c.billing_type==='dissolved'?'selected':''}>เลิกกิจการ (Z)</option>
           </select>
         </div>
         <div>
@@ -3239,6 +3425,10 @@ function openEditType(clientId) {
         </div>
       </div>
       <div class="text-xs text-gray-500">รหัสใหม่: <span id="et-preview" class="font-bold text-blue-700"></span></div>
+      ${dateFieldHtml({
+        label: 'มีผลตั้งแต่วันที่ (เลือกเดือนที่ต้องการให้เริ่มมีผล)', textId: 'et-date-disp', hiddenId: 'et-date', isoVal: todayIso,
+        cls: 'w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500',
+      })}
       <div id="et-err" class="hidden text-sm text-red-600"></div>
     </div>
     <div class="flex justify-end gap-2 mt-6">
@@ -3261,28 +3451,70 @@ function etSuggestSeq(clientId) {
   etSyncPreview();
 }
 
+// แกนกลาง "เปลี่ยนประเภทลูกค้า" — แพทเทิร์นเดียวกับ applyFeeChangeCore_: เขียน crm_clients.billing_type/
+// seq_num (ค่าปัจจุบัน) พร้อมปิดแถว crm_billing_contracts เดิม + เปิดแถวใหม่ด้วยประเภทใหม่ (ให้
+// resolveEffectiveFee()/renderTracking() ย้อนดูประเภทตามช่วงเวลาได้ถูกต้อง — ใช้ตารางเดียวกับค่าบริการ
+// เพราะ "ประเภท" กับ "ค่าบริการ" เป็นชุดข้อมูลที่เปลี่ยนพร้อมกันเป็นสัญญาก้อนเดียวกันเสมอในธุรกิจนี้ ไม่ต้อง
+// สร้างตารางประวัติแยกใหม่) ค่าบริการ/หัก ณ ที่จ่ายของสัญญาใหม่คงค่าปัจจุบันไว้เท่าเดิม (เปลี่ยนแค่ประเภท)
+async function applyTypeChangeCore_(clientId, newType, newSeq, effectiveDate) {
+  const c = clients.find(x => x.id === clientId);
+  if (!c) return false;
+  const oldNo = computeClientNo(c.billing_type, c.seq_num);
+  const newNo = computeClientNo(newType, newSeq);
+
+  const { error: logErr } = await sb.from('crm_client_change_log').insert({
+    client_id: clientId, change_type: 'type', change_date: effectiveDate,
+    new_value: newNo, note: `${BILLING_TYPE_LABEL[c.billing_type] || c.billing_type} → ${BILLING_TYPE_LABEL[newType] || newType}`,
+    created_by: profile?.id,
+  });
+  if (logErr) { showToast('บันทึกไม่สำเร็จ: ' + logErr.message, 'error'); return false; }
+
+  const { error: updErr } = await sb.from('crm_clients').update({ billing_type: newType, seq_num: newSeq }).eq('id', clientId);
+  if (updErr) { showToast('อัปเดตข้อมูลไม่สำเร็จ: ' + updErr.message, 'error'); return false; }
+
+  await sb.from('crm_billing_contracts')
+    .update({ effective_to: effectiveDate }).eq('client_id', clientId).is('effective_to', null);
+  const { data: newContract } = await sb.from('crm_billing_contracts').insert({
+    client_id: clientId,
+    billing_type: newType,
+    fee_amount: c.monthly_fee || 0,
+    has_wht: c.has_wht !== false,
+    effective_from: effectiveDate,
+    notes: `เปลี่ยนประเภท: ${oldNo} → ${newNo} (${effectiveDate})`,
+  }).select().single();
+  if (billingContractsByClient[clientId]) {
+    billingContractsByClient[clientId].forEach(bc => { if (bc.effective_to == null) bc.effective_to = effectiveDate; });
+    if (newContract) billingContractsByClient[clientId].push(newContract);
+  }
+  c.billing_type = newType;
+  c.seq_num = newSeq;
+
+  await logActivity('client_info_update', 'client', clientId, `เปลี่ยนประเภทลูกค้า → ${newNo}`);
+  return true;
+}
+
 async function saveEditType(clientId) {
   const c = clients.find(x => x.id === clientId);
   if (!c) return;
   const newType = document.getElementById('et-type')?.value;
   const newSeq = parseInt(document.getElementById('et-seq')?.value);
+  const effDate = (document.getElementById('et-date')?.value || '').trim();
   const err = document.getElementById('et-err');
   if (!newType) { err.textContent = 'กรุณาเลือกประเภท'; err.classList.remove('hidden'); return; }
   if (!(newSeq > 0)) { err.textContent = 'กรุณากรอกลำดับที่'; err.classList.remove('hidden'); return; }
+  if (!effDate) { err.textContent = 'กรุณาระบุวันที่มีผล'; err.classList.remove('hidden'); return; }
   const collision = clients.find(x => x.id !== clientId && x.billing_type === newType && x.seq_num === newSeq);
   if (collision) { err.textContent = `เลขนี้ถูกใช้แล้วโดย ${collision.code} — กรุณาเลือกเลขอื่น`; err.classList.remove('hidden'); return; }
   err.classList.add('hidden');
 
-  const { error } = await sb.from('crm_clients').update({ billing_type: newType, seq_num: newSeq }).eq('id', clientId);
-  if (error) { showToast('บันทึกไม่สำเร็จ: ' + error.message, 'error'); return; }
-
-  c.billing_type = newType;
-  c.seq_num = newSeq;
-  await logActivity('client_info_update', 'client', clientId, `เปลี่ยนประเภทลูกค้า → ${computeClientNo(newType, newSeq)}`);
+  const ok = await applyTypeChangeCore_(clientId, newType, newSeq, effDate);
+  if (!ok) return;
 
   closeModal();
   showToast('เปลี่ยนประเภทสำเร็จ');
   if (curPage === 'finance') renderFinanceFees();
+  if (curPage === 'tracking') renderTracking();
+  if (curPage === 'yearend') renderYearEnd();
   if (panelClientId === clientId) renderPanelInfo();
 }
 
@@ -4427,6 +4659,7 @@ async function loadAllBillingContracts() {
   const { data } = await sb.from('crm_billing_contracts').select('*');
   billingContractsByClient = {};
   (data || []).forEach(ct => { (billingContractsByClient[ct.client_id] ||= []).push(ct); });
+  billingContractsLoaded = true;
 }
 async function loadFinInvoices() {
   const { data } = await sb.from('crm_invoices').select('*').eq('year', finYear).eq('month', finMonth);
@@ -4437,7 +4670,7 @@ async function loadFinInvoices() {
 // ตรงๆ ผ่าน changeFinMonth() ไม่ต้องผ่านตัวนี้ซ้ำ (billingContractsByClient ไม่ขึ้นกับเดือน โหลดครั้งเดียวพอ)
 async function ensureFinanceDataLoaded() {
   if (financeDataLoaded) return;
-  await Promise.all([loadFinInvoices(), loadAllBillingContracts()]);
+  await Promise.all([loadFinInvoices(), billingContractsLoaded ? Promise.resolve() : loadAllBillingContracts()]);
   financeDataLoaded = true;
 }
 
