@@ -59,13 +59,14 @@
 
     /* Tightened from the original 5px/8px padding + 4px gap (see #yearend-fin-tbody td
        below for the companion change) — together the two get this control's tallest use
-       (ภ.ง.ด.51: chip + "X/Y" + a "ครบ 6 เดือน" subtitle underneath) down to the new 64px
-       shared row height. Applies to all 3 รายปี tables since the class is shared; only the
-       งบการเงิน table strictly needed it, but tightening everywhere keeps it consistent. */
+       (ภ.ง.ด.51: chip + "X/Y" + a date suffix) down to the shared row height below. Applies
+       to all 3 รายปี tables since the class is shared; only the งบการเงิน table strictly
+       needed it, but tightening everywhere keeps it consistent. */
     .ye-bar-chip  { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; background: none; border: none; cursor: pointer; padding: 3px 6px; border-radius: 8px; }
     .ye-bar-chip:hover { background: #f1f5f9; }
     .ye-bar-track { width: 48px; height: 5px; background: #e5e7eb; border-radius: 3px; overflow: hidden; }
     .ye-bar-fill  { display: block; height: 100%; border-radius: 3px; transition: width .3s; }
+    .ye-bar-num-row { display: flex; align-items: baseline; gap: 4px; white-space: nowrap; }
 
     #client-panel { transform: translateX(100%); transition: transform .25s cubic-bezier(.4,0,.2,1); }
     #client-panel.open { transform: translateX(0); }
@@ -122,43 +123,46 @@
        page/sub-tab areas (รายเดือน · รายปี×3 · ลูกค้า×2 · การเงิน×2) gets one explicit
        height, so a row is the same height no matter which page it's on — the same "raise
        the shorter ones to an explicit value instead of shrinking the tallest" strategy as
-       the thead-th rule above. Was 80px; lowered to 64px on user request so the fixed-
-       height scroll boxes below (see e.g. #tracking-tbody's wrapper) can guarantee 12 rows
-       visible before scrolling, in the same footprint that used to fit ~10. 64px only
-       became reachable by also tightening the previously-tallest cell in the file — the
-       งบการเงิน table's ภ.ง.ด.51 column (progress bar + "X/Y" + a "ครบ 6 เดือน: <date>"
-       subtitle line) — via the .ye-bar-chip and #yearend-fin-tbody rules elsewhere in this
-       file; without that companion change this one cell alone needs ~78px natural height
-       and would force every row in the file back up past 64px regardless of this rule.
-       Verified in a real browser against this file's frozen-CSS preview build: 64px reads
-       as clean and comfortably legible for that cell, not a bare-minimum squeeze — a more
-       aggressively tightened variant reached ~54px but looked visibly cramped and was
-       rejected in favor of this one. Forcing an explicit height also still fixes each
-       table's own internal inconsistency where a row with less content (e.g. ภ.ง.ด.51 not
-       applicable → plain "—", no subtitle) would otherwise render shorter than the rest —
-       every row in every one of the 8 areas is 64px regardless of its own content. */
+       the thead-th rule above. Was 80px, then 64px; user asked to go lower still (aimed for
+       32px specifically) — measured that 32px is not reachable for the ภ.ง.ด.51 cell even
+       with its date suffix removed entirely (floor was 49px with maximum tightening and
+       zero extra content). The real unlock was moving that date from its own line
+       (mkYeGroupTd's old separate <div> below the button) onto the SAME line as the "X/Y"
+       counter instead (see .ye-bar-num-row + mkYeGroupTd below) and switching it to the
+       compact dd/mm/yyyy format (fmtDDMMYYYY, matches the "รอบงบการเงิน" column's format
+       now too, and dropped its "ครบ 6 เดือน:" label entirely per later request — just
+       "X/Y : dd/mm/yyyy") — that alone dropped this cell's natural height from 64px to
+       49px with nothing removed, since the date now shares a line instead of needing one of
+       its own. 49px is the new shared row height. Forcing an explicit height also still
+       fixes each table's own internal inconsistency where a row with less content (e.g.
+       ภ.ง.ด.51 not applicable → plain "—") would otherwise render shorter than the rest —
+       every row in every one of the 8 areas is 49px regardless of content. */
     #tracking-tbody tr,
     #yearend-tbody tr,
     #yearend-fin-tbody tr,
-    #yearend-dissolved-tbody tr { height: 64px; }
+    #yearend-dissolved-tbody tr { height: 49px; }
     #client-list > div[onclick^="openPanel("],
     #old-client-list > div[onclick^="openPanel("],
     #fin-collection-list > div[onclick^="openPanel("],
-    #fin-fee-list > div[onclick^="openPanel("] { min-height: 64px; }
-    /* Companion to the 64px row height above (and to .ye-bar-chip's tightened padding/gap):
-       overrides just this one table's own per-cell Tailwind spacing (py-2.5/py-3 utility
-       classes, 10px/12px top+bottom) down to 6px, so its ภ.ง.ด.51 cell's chip+subtitle
-       naturally fits under 64px instead of needing ~78px. A plain "td" element selector
-       looks weak but an ID-scoped selector beats any single Tailwind class on specificity
-       regardless of cascade/load order — so this wins whether Tailwind loads from the live
-       CDN (production) or ships pre-generated/frozen (preview). Scoped to this one tbody
-       only: the other two รายปี tables (งานรายปี/เลิกกิจการ) never had a subtitle line and
-       were already comfortably under 64px without touching their padding. The child-div
-       rule cancels the subtitle's own mt-0.5 — its only nonzero-margin direct-child div in
-       this tbody, so a no-op for the name cell's and progress-bar's divs, which never had
-       any margin here to begin with. */
-    #yearend-fin-tbody td { padding-top: 6px; padding-bottom: 6px; }
-    #yearend-fin-tbody td > div { margin-top: 0; }
+    #fin-fee-list > div[onclick^="openPanel("] { min-height: 49px; }
+    /* Companion to the shared row height above (and to .ye-bar-chip's tightened
+       padding/gap): overrides these 3 tables' own per-cell Tailwind spacing (py-2.5/py-3
+       utility classes, 10px/12px top+bottom) down to 6px. Originally scoped to just
+       #yearend-fin-tbody (its ภ.ง.ด.51 cell was the only one taller than the other two
+       รายปี tables' own natural height) — but that was only true back when the shared
+       target was 64px, a number the other two tables' UNtightened 10px/10px td padding
+       comfortably cleared on its own (~57-59px). Once the target dropped to 49px (see the
+       row-height rule above), that stopped being true: 57-59px is itself taller than 49px,
+       so งานรายปี/เลิกกิจการ needed this same padding cut too, or their rows would sit
+       above the shared height regardless of what CSS said (height on <tr> is a floor, not a
+       ceiling — content taller than it always wins). Caught by measuring all 8 areas after
+       the 49px change, not assumed. A plain "td" element selector looks weak but an
+       ID-scoped selector beats any single Tailwind class on specificity regardless of
+       cascade/load order — so this wins whether Tailwind loads from the live CDN
+       (production) or ships pre-generated/frozen (preview). */
+    #yearend-tbody td,
+    #yearend-fin-tbody td,
+    #yearend-dissolved-tbody td { padding-top: 6px; padding-bottom: 6px; }
 
     /* Shared empty footer bar — a single fixed strip pinned to the viewport bottom on every
        page/sub-tab (markup: one <div id="app-footer"> as the last child of #app, right
@@ -437,13 +441,13 @@
       <div class="px-6 pb-8 overflow-x-auto">
         <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
           <!-- height (fixed, not max-height) = header row (60px) + 12 rows at the shared
-               64px row height (see "#tracking-tbody tr" in the <style> block) + ~8px
-               buffer = 836px. A genuinely fixed height — not max-height — so the box never
+               49px row height (see "#tracking-tbody tr" in the <style> block) + ~8px
+               buffer = 656px. A genuinely fixed height — not max-height — so the box never
                shrinks for fewer/shorter rows either: its bottom edge stays put and empty
                space shows below the last row instead, per user request ("ท้ายตาราง...ไม่ให้
                ขยับ"). More than 12 rows scrolls inside it; the header stays pinned via the
                global sticky thead-th rule. -->
-          <div style="height:836px;overflow-y:auto">
+          <div style="height:656px;overflow-y:auto">
           <table class="text-center" style="table-layout:fixed;width:100%;min-width:1210px">
             <colgroup>
               <col style="width:32px"> <!-- ดาว -->
@@ -540,13 +544,13 @@
         </div>
         <div class="px-6 pb-8 overflow-x-auto">
           <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" style="min-width:620px">
-            <!-- height (fixed) = header row (60px) + 12 rows at the shared 64px row height
-                 (see "#yearend-tbody tr" in the <style> block) + ~8px buffer = 836px. Same
+            <!-- height (fixed) = header row (60px) + 12 rows at the shared 49px row height
+                 (see "#yearend-tbody tr" in the <style> block) + ~8px buffer = 656px. Same
                  fixed-not-elastic + sticky-header pattern as #tracking-tbody's wrapper
                  earlier in this file — see that comment for the full rationale. This table
                  (and the other two รายปี sub-tabs below) had no scroll box at all before
                  this change — the whole page scrolled instead; this wrapper is new. -->
-            <div style="height:836px;overflow-y:auto">
+            <div style="height:656px;overflow-y:auto">
             <table class="w-full text-center">
               <thead>
                 <tr>
@@ -595,8 +599,8 @@
         <div class="px-6 pb-8 overflow-x-auto">
           <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" style="min-width:880px">
             <!-- matches #yearend-tbody above: fixed height = header (60px) + 12 rows at
-                 64px + ~8px buffer = 836px -->
-            <div style="height:836px;overflow-y:auto">
+                 49px + ~8px buffer = 656px -->
+            <div style="height:656px;overflow-y:auto">
             <table class="w-full text-center">
               <thead>
                 <tr>
@@ -648,8 +652,8 @@
         <div class="px-6 pb-8 overflow-x-auto">
           <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" style="min-width:740px">
             <!-- matches #yearend-tbody above: fixed height = header (60px) + 12 rows at
-                 64px + ~8px buffer = 836px -->
-            <div style="height:836px;overflow-y:auto">
+                 49px + ~8px buffer = 656px -->
+            <div style="height:656px;overflow-y:auto">
             <table class="w-full text-center">
               <thead>
                 <tr>
@@ -734,14 +738,14 @@
               <span class="w-20 flex-shrink-0 text-center">TYPE</span>
               <span class="w-14 flex-shrink-0 text-center">EDIT</span>
             </div>
-            <!-- height (fixed, not max-height) = 12 rows at the shared 64px row height (see
-                 "#client-list > div" in the <style> block): 12 × 64px = 768px. No header-row
+            <!-- height (fixed, not max-height) = 12 rows at the shared 49px row height (see
+                 "#client-list > div" in the <style> block): 12 × 49px = 588px. No header-row
                  addition needed — this list's header (the CODE/NAME/... span row right
                  above) sits outside this scroll box already. Fixed, not max-height, so the
                  box's bottom edge stays put even with fewer results (e.g. after a search) —
                  empty space shows below the last row instead of the box shrinking, per user
                  request ("ท้ายตาราง...ไม่ให้ขยับ"). -->
-            <div id="client-list" style="height:768px;overflow-y:auto"></div>
+            <div id="client-list" style="height:588px;overflow-y:auto"></div>
           </div>
         </div>
       </div>
@@ -782,9 +786,9 @@
               <span class="w-20 flex-shrink-0 text-center">TYPE</span>
               <span class="w-14 flex-shrink-0 text-center">EDIT</span>
             </div>
-            <!-- matches #client-list above: fixed height, 12 rows at the shared 64px row
-                 height = 768px -->
-            <div id="old-client-list" style="height:768px;overflow-y:auto"></div>
+            <!-- matches #client-list above: fixed height, 12 rows at the shared 49px row
+                 height = 588px -->
+            <div id="old-client-list" style="height:588px;overflow-y:auto"></div>
           </div>
         </div>
       </div>
@@ -853,9 +857,9 @@
               <span class="w-36 flex-shrink-0 text-center">สถานะ</span>
               <span class="w-28 flex-shrink-0 text-center">FlowAccount</span>
             </div>
-            <!-- height (fixed, not max-height) = 12 rows at the shared 64px row height:
-                 12 × 64px = 768px. Same fixed-not-elastic rationale as #client-list above. -->
-            <div id="fin-collection-list" style="height:768px;overflow-y:auto"></div>
+            <!-- height (fixed, not max-height) = 12 rows at the shared 49px row height:
+                 12 × 49px = 588px. Same fixed-not-elastic rationale as #client-list above. -->
+            <div id="fin-collection-list" style="height:588px;overflow-y:auto"></div>
           </div>
         </div>
       </div>
@@ -907,8 +911,8 @@
               <span class="w-24 flex-shrink-0 text-right">สุทธิ</span>
             </div>
             <!-- matches #fin-collection-list above: fixed height, 12 rows at the shared
-                 64px row height = 768px -->
-            <div id="fin-fee-list" style="height:768px;overflow-y:auto"></div>
+                 49px row height = 588px -->
+            <div id="fin-fee-list" style="height:588px;overflow-y:auto"></div>
           </div>
         </div>
       </div>
@@ -2575,9 +2579,11 @@ function mkYeGroupTd(group, c, t, groupsKind, first, subtitle) {
   return `<td class="${cellCls}">
             <button onclick="openYeGroupDetail(${c.id},'${groupsKind}','${group.key}')" class="ye-bar-chip">
               <span class="ye-bar-track"><span class="ye-bar-fill" style="width:${pct}%;background:${fillColor}"></span></span>
-              <span class="text-[11px] font-bold ${numCls}">${done}/${total}</span>
+              <span class="ye-bar-num-row">
+                <span class="text-[11px] font-bold ${numCls}">${done}/${total}</span>
+                ${subtitle ? `<span class="text-[9px] text-gray-400 whitespace-nowrap">${subtitle}</span>` : ''}
+              </span>
             </button>
-            ${subtitle ? `<div class="text-[10px] text-gray-400 mt-0.5 whitespace-nowrap">${subtitle}</div>` : ''}
           </td>`;
 }
 function renderYeTaskSummary() {
@@ -2626,8 +2632,8 @@ function renderYeFinTable() {
     const period = yeFiscalPeriod(c, yearEndYear);
     rows += `<tr class="border-b border-gray-100">
       ${yeFavNumCodeName(c)}
-      <td class="px-2 py-2.5 text-xs text-gray-500 whitespace-nowrap">${fmtDate(period.startIso)} – ${fmtDate(period.endIso)}</td>
-      ${YE_FIN_GROUPS.map((g, i) => mkYeGroupTd(g, c, t, 'fin', i === 0, g.key === 'pnd51' ? `ครบ 6 เดือน: ${fmtDate(period.sixMonthIso)}` : null)).join('')}
+      <td class="px-2 py-2.5 text-xs text-gray-500 whitespace-nowrap">${fmtDDMMYYYY(period.startIso)} – ${fmtDDMMYYYY(period.endIso)}</td>
+      ${YE_FIN_GROUPS.map((g, i) => mkYeGroupTd(g, c, t, 'fin', i === 0, g.key === 'pnd51' ? `: ${fmtDDMMYYYY(period.sixMonthIso)}` : null)).join('')}
       <td class="px-3 py-2.5">${progressBar(yeGroupsPct(YE_FIN_GROUPS, c, t))}</td>
     </tr>`;
   });
