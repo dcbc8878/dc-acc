@@ -696,6 +696,7 @@
         <div class="p-6 pt-0">
           <div class="bg-white border border-gray-200 rounded-xl overflow-hidden list-card-cap">
             <div class="flex items-center gap-3 px-4 py-2.5 border-b border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+              <span class="w-6 flex-shrink-0"></span>
               <span class="w-12 flex-shrink-0">#</span>
               <span class="w-16 flex-shrink-0">CODE</span>
               <span class="flex-1">NAME</span>
@@ -745,6 +746,7 @@
         <div class="p-6 pt-0">
           <div class="bg-white border border-gray-200 rounded-xl overflow-hidden list-card-cap">
             <div class="flex items-center gap-3 px-4 py-2.5 border-b border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+              <span class="w-6 flex-shrink-0"></span>
               <span class="w-12 flex-shrink-0">#</span>
               <span class="w-16 flex-shrink-0">CODE</span>
               <span class="flex-1">NAME</span>
@@ -1363,6 +1365,7 @@ async function toggleFavorite(clientId) {
   renderClientList();
   if (oldClientsLoaded) renderOldClients();
   if (curPage === 'tracking') renderTracking();
+  if (curPage === 'finance') { renderFinanceCollection(); renderFinanceFees(); }
 }
 async function loadTasks() {
   const prevMonths = [];
@@ -3049,6 +3052,17 @@ async function applyClientChange() {
   }
   const note = (document.getElementById('change-note-inp')?.value || '').trim();
 
+  // ค่าบริการมี logic พิเศษ (ต้องปิด/เปิดแถวประวัติสัญญาด้วย ไม่ใช่แค่ UPDATE ตรงๆ) แยกออกไปเป็นแกนกลาง
+  // ร่วมกับปุ่มแก้ไขค่าบริการแบบเร็วในหน้าค่าบริการ (openEditFee/saveEditFee) — ดู applyFeeChangeCore_
+  // ไม่มี logic เขียนประวัติค่าบริการแยกกันสองชุด
+  if (ct === 'fee') {
+    const ok = await applyFeeChangeCore_(panelClientId, parseFloat(newValue) || 0, cd, note);
+    if (!ok) return;
+    showToast('บันทึกการเปลี่ยนแปลงสำเร็จ');
+    openClientChanges(panelClientId);
+    return;
+  }
+
   const { error: logErr } = await sb.from('crm_client_change_log').insert({
     client_id: panelClientId, change_type: ct, change_date: cd, new_value: newValue, note,
     created_by: profile?.id,
@@ -3056,7 +3070,6 @@ async function applyClientChange() {
   if (logErr) { showToast('บันทึกไม่สำเร็จ: ' + logErr.message, 'error'); return; }
 
   const updates = {};
-  if (ct === 'fee')    { updates.monthly_fee = parseFloat(newValue) || 0; }
   if (ct === 'name')   { updates.thai_name = newValue; }
   if (ct === 'address') { updates.address = newValue; }
   if (ct === 'vat_on')  { updates.has_vat = true; updates.vat_date = cd; }
@@ -3067,25 +3080,6 @@ async function applyClientChange() {
   if (Object.keys(updates).length) {
     const { error: updErr } = await sb.from('crm_clients').update(updates).eq('id', panelClientId);
     if (updErr) { showToast('อัปเดตข้อมูลไม่สำเร็จ: ' + updErr.message, 'error'); return; }
-    if (ct === 'fee') {
-      const c = clients.find(x => x.id === panelClientId);
-      await sb.from('crm_billing_contracts')
-        .update({ effective_to: cd }).eq('client_id', panelClientId).is('effective_to', null);
-      const { data: newContract } = await sb.from('crm_billing_contracts').insert({
-        client_id: panelClientId,
-        billing_type: c?.billing_type || 'monthly',
-        fee_amount: updates.monthly_fee,
-        has_wht: c?.has_wht !== false,
-        effective_from: cd,
-        notes: `เปลี่ยนค่าบริการ: ${newValue} บาท (${cd})`
-      }).select().single();
-      // sync cache ประวัติสัญญาที่โหลดไว้แล้ว (ถ้าเคยเปิดแท็บ "การเงิน" มาก่อน) ให้ตรงกับ DB ทันที ไม่ต้องรอ
-      // โหลดใหม่ทั้งหน้า — กัน resolveEffectiveFee() ในแท็บการเงินเห็นประวัติเก่าค้างในหน้าเดียวกันนี้
-      if (billingContractsByClient[panelClientId]) {
-        billingContractsByClient[panelClientId].forEach(bc => { if (bc.effective_to == null) bc.effective_to = cd; });
-        if (newContract) billingContractsByClient[panelClientId].push(newContract);
-      }
-    }
     const idx = clients.findIndex(x => x.id === panelClientId);
     if (idx !== -1) Object.assign(clients[idx], updates);
   }
@@ -3094,6 +3088,98 @@ async function applyClientChange() {
 
   showToast('บันทึกการเปลี่ยนแปลงสำเร็จ');
   openClientChanges(panelClientId);
+}
+
+// แกนกลาง "เปลี่ยนค่าบริการ" — เขียน DB 3 จุดเดียวกันทุกครั้ง ไม่ว่าจะเรียกจากที่ไหน: crm_client_change_log
+// (ประวัติ), crm_clients.monthly_fee (ค่าปัจจุบัน), ปิดแถว crm_billing_contracts เดิม + เปิดแถวใหม่ (ให้
+// resolveEffectiveFee() ย้อนดูราคาตามช่วงเวลาได้ถูกต้อง) คืนค่า true/false ว่าสำเร็จหรือไม่ ผู้เรียกตัดสินใจเอง
+// ว่าจะรีเฟรช/ปิด modal ไหนต่อ (เหมือน markInvoicePaidCore_)
+async function applyFeeChangeCore_(clientId, newFee, effectiveDate, note) {
+  const c = clients.find(x => x.id === clientId);
+  if (!c) return false;
+
+  const { error: logErr } = await sb.from('crm_client_change_log').insert({
+    client_id: clientId, change_type: 'fee', change_date: effectiveDate,
+    new_value: String(newFee), note: note || '', created_by: profile?.id,
+  });
+  if (logErr) { showToast('บันทึกไม่สำเร็จ: ' + logErr.message, 'error'); return false; }
+
+  const { error: updErr } = await sb.from('crm_clients').update({ monthly_fee: newFee }).eq('id', clientId);
+  if (updErr) { showToast('อัปเดตข้อมูลไม่สำเร็จ: ' + updErr.message, 'error'); return false; }
+
+  await sb.from('crm_billing_contracts')
+    .update({ effective_to: effectiveDate }).eq('client_id', clientId).is('effective_to', null);
+  const { data: newContract } = await sb.from('crm_billing_contracts').insert({
+    client_id: clientId,
+    billing_type: c.billing_type || 'monthly',
+    fee_amount: newFee,
+    has_wht: c.has_wht !== false,
+    effective_from: effectiveDate,
+    notes: `เปลี่ยนค่าบริการ: ${newFee} บาท (${effectiveDate})`,
+  }).select().single();
+  // sync cache ประวัติสัญญาที่โหลดไว้แล้ว (ถ้าเคยเปิดแท็บ "การเงิน" มาก่อน) ให้ตรงกับ DB ทันที ไม่ต้องรอโหลด
+  // ใหม่ทั้งหน้า — กัน resolveEffectiveFee() ในแท็บการเงินเห็นประวัติเก่าค้างในหน้าเดียวกันนี้
+  if (billingContractsByClient[clientId]) {
+    billingContractsByClient[clientId].forEach(bc => { if (bc.effective_to == null) bc.effective_to = effectiveDate; });
+    if (newContract) billingContractsByClient[clientId].push(newContract);
+  }
+  c.monthly_fee = newFee;
+
+  await logActivity('client_change_add', 'client', clientId, `บันทึกการเปลี่ยนแปลง: เปลี่ยนค่าบริการ → ${newFee}`);
+  return true;
+}
+
+// ปุ่มแก้ไขค่าบริการแบบเร็วในหน้าค่าบริการ (financeFeeRowHtml) — โมดัลสั้นๆ ถามแค่ยอดใหม่/วันที่มีผล
+// ไม่ต้องเปิดแผงลูกค้า → บันทึกการเปลี่ยนแปลง → เลือกประเภท "ค่าบริการ" แบบเดิม
+function openEditFee(clientId) {
+  if (!canEdit()) return;
+  const c = clients.find(x => x.id === clientId);
+  if (!c) return;
+  const today = new Date();
+  const resolved = resolveEffectiveFee(c, today.getFullYear(), today.getMonth() + 1, billingContractsByClient[c.id]);
+  const todayIso = today.toISOString().slice(0, 10);
+  openModal(`
+    <h3 class="text-base font-bold text-gray-900 mb-1">เปลี่ยนค่าบริการ</h3>
+    <p class="text-xs text-gray-400 mb-4">${e(c.thai_name)} · ปัจจุบัน ${fmtMoney(resolved.fee_amount)}/เดือน</p>
+    <div class="space-y-3">
+      <div>
+        <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">ค่าบริการใหม่ (บาท/เดือน) *</div>
+        <input id="ef-amount" type="number" min="0" step="100" value="${resolved.fee_amount}"
+          class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+      ${dateFieldHtml({
+        label: 'วันที่มีผล', textId: 'ef-date-disp', hiddenId: 'ef-date', isoVal: todayIso,
+        cls: 'w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500',
+      })}
+      <div>
+        <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">หมายเหตุ (ไม่บังคับ)</div>
+        <input id="ef-note" type="text" placeholder="เช่น ปรับราคาประจำปี"
+          class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+      <div id="ef-err" class="hidden text-sm text-red-600"></div>
+    </div>
+    <div class="flex justify-end gap-2 mt-6">
+      <button onclick="closeModal()" class="px-4 py-2 text-sm text-gray-600 font-medium hover:text-gray-900">ยกเลิก</button>
+      <button onclick="saveEditFee(${clientId})" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors">บันทึก</button>
+    </div>`);
+}
+
+async function saveEditFee(clientId) {
+  const amount = parseFloat(document.getElementById('ef-amount')?.value);
+  const effDate = (document.getElementById('ef-date')?.value || '').trim();
+  const note = (document.getElementById('ef-note')?.value || '').trim();
+  const err = document.getElementById('ef-err');
+  if (!(amount >= 0)) { err.textContent = 'กรุณากรอกค่าบริการใหม่'; err.classList.remove('hidden'); return; }
+  if (!effDate) { err.textContent = 'กรุณาระบุวันที่มีผล'; err.classList.remove('hidden'); return; }
+  err.classList.add('hidden');
+
+  const ok = await applyFeeChangeCore_(clientId, amount, effDate, note);
+  if (!ok) return;
+
+  closeModal();
+  showToast('เปลี่ยนค่าบริการสำเร็จ');
+  if (curPage === 'finance') renderFinanceFees();
+  if (panelClientId === clientId) renderPanelInfo();
 }
 
 // ── Billing Tab ──
@@ -4304,8 +4390,12 @@ function financeCollectionRowHtml(c, idx) {
   // ใบจริง) ยังไม่มี → resolve ย้อนหลังจากประวัติสัญญา (ยอดเดียวกับที่ toggleFinCollected จะใช้ถ้ากด "เก็บเงิน")
   const resolved = resolveEffectiveFee(c, finYear, finMonth, billingContractsByClient[c.id]);
   const amount = inv ? inv.fee_amount : resolved.fee_amount;
+  const isFav = favoriteClientIds.has(c.id);
   return `<div onclick="openPanel(${c.id})"
       class="flex items-center gap-3 px-4 py-2.5 border-b border-gray-100 last:border-b-0 cursor-pointer hover:bg-blue-50/40 transition-colors">
+      <button onclick="event.stopPropagation();toggleFavorite(${c.id})" title="${isFav ? 'เอาออกจากรายการโปรด' : 'เพิ่มในรายการโปรด'}" class="w-6 flex-shrink-0 flex items-center justify-center ${isFav ? 'text-amber-500' : 'text-gray-300 hover:text-amber-500'}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      </button>
       <span class="w-12 flex-shrink-0 text-xs text-gray-400">${idx + 1}</span>
       <span class="w-16 flex-shrink-0 inline-block bg-blue-50 text-blue-700 text-xs font-bold px-1.5 py-0.5 rounded text-center overflow-hidden text-ellipsis whitespace-nowrap">${e(c.code)}</span>
       <span class="flex-1 min-w-0 text-sm font-semibold text-gray-800 overflow-hidden text-ellipsis whitespace-nowrap">${e(c.thai_name)}</span>
@@ -4444,13 +4534,17 @@ function financeFeeRowHtml(c, idx) {
   const fee = resolved.fee_amount;
   const wht = resolved.has_wht ? Math.round(fee * 0.03 * 100) / 100 : 0;
   const expected = fee - wht;
+  const isFav = favoriteClientIds.has(c.id);
   return `<div onclick="openPanel(${c.id})"
       class="flex items-center gap-3 px-4 py-2.5 border-b border-gray-100 last:border-b-0 cursor-pointer hover:bg-blue-50/40 transition-colors">
+      <button onclick="event.stopPropagation();toggleFavorite(${c.id})" title="${isFav ? 'เอาออกจากรายการโปรด' : 'เพิ่มในรายการโปรด'}" class="w-6 flex-shrink-0 flex items-center justify-center ${isFav ? 'text-amber-500' : 'text-gray-300 hover:text-amber-500'}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      </button>
       <span class="w-12 flex-shrink-0 text-xs text-gray-400">${idx + 1}</span>
       <span class="w-16 flex-shrink-0 inline-block bg-blue-50 text-blue-700 text-xs font-bold px-1.5 py-0.5 rounded text-center overflow-hidden text-ellipsis whitespace-nowrap">${e(c.code)}</span>
       <span class="flex-1 min-w-0 text-sm font-semibold text-gray-800 overflow-hidden text-ellipsis whitespace-nowrap">${e(c.thai_name)}</span>
       <span class="w-20 flex-shrink-0 text-center text-[11px] text-gray-500">${BILLING_TYPE_LABEL[c.billing_type] || '—'}</span>
-      <span class="w-24 flex-shrink-0 text-right text-xs font-mono">${fmtMoney(fee)}</span>
+      <span class="w-24 flex-shrink-0 text-right text-xs font-mono ${canEdit() ? 'cursor-pointer hover:text-blue-600' : ''}"${canEdit() ? ` onclick="event.stopPropagation();openEditFee(${c.id})" title="แก้ไขค่าบริการ"` : ''}>${fmtMoney(fee)}${canEdit() ? ' <span class="text-gray-300">✎</span>' : ''}</span>
       <span class="w-24 flex-shrink-0 text-right text-xs font-mono text-amber-600">${wht > 0 ? '-' + fmtMoney(wht) : '—'}</span>
       <span class="w-24 flex-shrink-0 text-right text-xs font-bold font-mono text-green-700">${fmtMoney(expected)}</span>
     </div>`;
