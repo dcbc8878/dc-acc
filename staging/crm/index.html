@@ -242,15 +242,15 @@
       </div>
       <div class="nav-item" data-page="yearend" onclick="navigate('yearend')">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-        ปลายปี
+        รายปี
       </div>
       <div class="nav-item" data-page="clients" onclick="navigate('clients')">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 7v1a3 3 0 006 0V7m0 1a3 3 0 006 0V7m0 1a3 3 0 006 0V7H3l2-4h14l2 4"/></svg>
         ลูกค้า
       </div>
-      <div class="nav-item" data-page="old-clients" onclick="navigate('old-clients')">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 7v1a3 3 0 006 0V7m0 1a3 3 0 006 0V7m0 1a3 3 0 006 0V7H3l2-4h14l2 4"/></svg>
-        ลูกค้าเก่า
+      <div class="nav-item" data-page="finance" onclick="navigate('finance')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 6v0M18 18v0"/></svg>
+        การเงิน
       </div>
     </nav>
     <!-- User -->
@@ -387,68 +387,124 @@
 
     <!-- PAGE: yearend -->
     <div id="page-yearend" class="hidden">
-      <div class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
-        <div>
-          <h2 class="text-base font-bold text-gray-900">งานปลายปี</h2>
-          <p class="text-xs text-gray-400 mt-0.5">ภ.ง.ด.50/51 · งบการเงิน · ส่ง DBD</p>
+      <div class="bg-white border-b border-gray-200 px-6 sticky top-0 z-10">
+        <div class="flex items-center justify-between pt-4">
+          <div>
+            <h2 class="text-base font-bold text-gray-900">รายปี</h2>
+            <p class="text-xs text-gray-400 mt-0.5">ภ.ง.ด.50/51 · งบการเงิน · ส่ง DBD</p>
+          </div>
+          <div class="flex items-center gap-2 pb-4">
+            <button onclick="changeYearEnd(-1)" class="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors text-gray-600">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <div id="yearend-display" class="px-4 py-1.5 bg-purple-50 text-purple-700 font-bold text-sm rounded-full border border-purple-100 min-w-[90px] text-center"></div>
+            <button onclick="changeYearEnd(1)" class="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors text-gray-600">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
         </div>
-        <div class="flex items-center gap-2">
-          <button onclick="changeYearEnd(-1)" class="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors text-gray-600">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-          </button>
-          <div id="yearend-display" class="px-4 py-1.5 bg-purple-50 text-purple-700 font-bold text-sm rounded-full border border-purple-100 min-w-[90px] text-center"></div>
-          <button onclick="changeYearEnd(1)" class="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors text-gray-600">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-          </button>
-        </div>
-      </div>
-      <div class="grid grid-cols-3 gap-4 px-6 py-4">
-        <div class="bg-white rounded-xl border border-gray-200 p-4">
-          <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">เสร็จครบ</div>
-          <div id="ye-done" class="text-3xl font-black text-green-600 mt-1">—</div>
-          <div class="text-xs text-gray-400 mt-1">บริษัท</div>
-        </div>
-        <div class="bg-white rounded-xl border border-gray-200 p-4">
-          <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">กำลังดำเนินการ</div>
-          <div id="ye-inprog" class="text-3xl font-black text-blue-600 mt-1">—</div>
-          <div class="text-xs text-gray-400 mt-1">บริษัท</div>
-        </div>
-        <div class="bg-white rounded-xl border border-gray-200 p-4">
-          <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">ยังไม่เริ่ม</div>
-          <div id="ye-pending" class="text-3xl font-black text-slate-400 mt-1">—</div>
-          <div class="text-xs text-gray-400 mt-1">บริษัท</div>
+        <div class="flex border-b-0 mt-2">
+          <button class="tab-btn active" id="yeTab-tasks" onclick="showYearEndSubTab('tasks')">งานรายปี</button>
+          <button class="tab-btn" id="yeTab-fin" onclick="showYearEndSubTab('fin')">งบการเงิน</button>
         </div>
       </div>
-      <div class="px-6 pb-8 overflow-x-auto">
-        <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" style="min-width:700px">
-          <table class="w-full text-center">
-            <thead>
-              <tr>
-                <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200" style="min-width:210px">ลูกค้า</th>
-                <th class="px-3 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200 border-l border-gray-200">ภ.ง.ด.51</th>
-                <th class="px-3 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">ภงด.1ก</th>
-                <th class="px-3 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">กท.26ก</th>
-                <th class="px-3 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">ภ.ง.ด.50</th>
-                <th class="px-3 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">งบการเงิน</th>
-                <th class="px-3 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">ผู้สอบฯ</th>
-                <th class="px-3 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">ส่ง DBD</th>
-                <th class="px-3 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">บอจ.5</th>
-                <th class="px-3 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200" style="min-width:110px">ความคืบหน้า</th>
-              </tr>
-            </thead>
-            <tbody id="yearend-tbody">
-              <tr><td colspan="7" class="py-10 text-gray-400 text-sm">กำลังโหลด…</td></tr>
-            </tbody>
-          </table>
+
+      <!-- SUBTAB: งานรายปี (ภ.ง.ด.51 · ภงด.1ก · กท.26ก · ภ.ง.ด.50) -->
+      <div id="ye-sub-tasks">
+        <div class="grid grid-cols-3 gap-4 px-6 py-4">
+          <div class="bg-white rounded-xl border border-gray-200 p-4">
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">เสร็จครบ</div>
+            <div id="ye-done" class="text-3xl font-black text-green-600 mt-1">—</div>
+            <div class="text-xs text-gray-400 mt-1">บริษัท</div>
+          </div>
+          <div class="bg-white rounded-xl border border-gray-200 p-4">
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">กำลังดำเนินการ</div>
+            <div id="ye-inprog" class="text-3xl font-black text-blue-600 mt-1">—</div>
+            <div class="text-xs text-gray-400 mt-1">บริษัท</div>
+          </div>
+          <div class="bg-white rounded-xl border border-gray-200 p-4">
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">ยังไม่เริ่ม</div>
+            <div id="ye-pending" class="text-3xl font-black text-slate-400 mt-1">—</div>
+            <div class="text-xs text-gray-400 mt-1">บริษัท</div>
+          </div>
+        </div>
+        <div class="px-6 pb-8 overflow-x-auto">
+          <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" style="min-width:560px">
+            <table class="w-full text-center">
+              <thead>
+                <tr>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200" style="min-width:210px">ลูกค้า</th>
+                  <th class="px-3 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200 border-l border-gray-200">ภ.ง.ด.51</th>
+                  <th class="px-3 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">ภงด.1ก</th>
+                  <th class="px-3 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">กท.26ก</th>
+                  <th class="px-3 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">ภ.ง.ด.50</th>
+                  <th class="px-3 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200" style="min-width:110px">ความคืบหน้า</th>
+                </tr>
+              </thead>
+              <tbody id="yearend-tbody">
+                <tr><td colspan="6" class="py-10 text-gray-400 text-sm">กำลังโหลด…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUBTAB: งบการเงิน (งบการเงิน · ผู้สอบฯ · ส่ง DBD · บอจ.5) -->
+      <div id="ye-sub-fin" class="hidden">
+        <div class="grid grid-cols-3 gap-4 px-6 py-4">
+          <div class="bg-white rounded-xl border border-gray-200 p-4">
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">เสร็จครบ</div>
+            <div id="yefin-done" class="text-3xl font-black text-green-600 mt-1">—</div>
+            <div class="text-xs text-gray-400 mt-1">บริษัท</div>
+          </div>
+          <div class="bg-white rounded-xl border border-gray-200 p-4">
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">กำลังดำเนินการ</div>
+            <div id="yefin-inprog" class="text-3xl font-black text-blue-600 mt-1">—</div>
+            <div class="text-xs text-gray-400 mt-1">บริษัท</div>
+          </div>
+          <div class="bg-white rounded-xl border border-gray-200 p-4">
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">ยังไม่เริ่ม</div>
+            <div id="yefin-pending" class="text-3xl font-black text-slate-400 mt-1">—</div>
+            <div class="text-xs text-gray-400 mt-1">บริษัท</div>
+          </div>
+        </div>
+        <div class="px-6 pb-8 overflow-x-auto">
+          <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" style="min-width:560px">
+            <table class="w-full text-center">
+              <thead>
+                <tr>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200" style="min-width:210px">ลูกค้า</th>
+                  <th class="px-3 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200 border-l border-gray-200">งบการเงิน</th>
+                  <th class="px-3 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">ผู้สอบฯ</th>
+                  <th class="px-3 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">ส่ง DBD</th>
+                  <th class="px-3 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">บอจ.5</th>
+                  <th class="px-3 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200" style="min-width:110px">ความคืบหน้า</th>
+                </tr>
+              </thead>
+              <tbody id="yearend-fin-tbody">
+                <tr><td colspan="6" class="py-10 text-gray-400 text-sm">กำลังโหลด…</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- PAGE: clients -->
     <div id="page-clients" class="hidden">
-      <div class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
-        <h2 class="text-base font-bold text-gray-900">ข้อมูลลูกค้า</h2>
-        <div class="flex items-center gap-2">
+      <div class="bg-white border-b border-gray-200 px-6 sticky top-0 z-10">
+        <div class="flex items-center justify-between pt-4">
+          <h2 class="text-base font-bold text-gray-900">ข้อมูลลูกค้า</h2>
+        </div>
+        <div class="flex border-b-0 mt-2">
+          <button class="tab-btn active" id="clientsTab-current" onclick="showClientsSubTab('current')">ลูกค้า</button>
+          <button class="tab-btn" id="clientsTab-old" onclick="showClientsSubTab('old')">ลูกค้าเก่า</button>
+        </div>
+      </div>
+
+      <!-- SUBTAB: ลูกค้า (ปัจจุบัน) -->
+      <div id="clients-sub-current">
+        <div class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-end gap-2">
           <input id="client-search" type="text" placeholder="ค้นหา…" oninput="renderClientList()"
             class="px-3.5 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-48">
           <select id="client-type-filter" onchange="clientTypeFilter=this.value; renderClientList();"
@@ -463,44 +519,114 @@
             + เพิ่มลูกค้า
           </button>
         </div>
-      </div>
-      <div class="p-6">
-        <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <div class="flex items-center gap-3 px-4 py-2.5 border-b border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
-            <span class="w-6 flex-shrink-0"></span>
-            <span class="w-12 flex-shrink-0">#</span>
-            <span class="w-16 flex-shrink-0">CODE</span>
-            <span class="flex-1">NAME</span>
-            <span class="w-20 flex-shrink-0 text-center">TYPE</span>
-            <span class="w-14 flex-shrink-0 text-center">EDIT</span>
+        <div class="p-6">
+          <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <div class="flex items-center gap-3 px-4 py-2.5 border-b border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+              <span class="w-6 flex-shrink-0"></span>
+              <span class="w-12 flex-shrink-0">#</span>
+              <span class="w-16 flex-shrink-0">CODE</span>
+              <span class="flex-1">NAME</span>
+              <span class="w-20 flex-shrink-0 text-center">TYPE</span>
+              <span class="w-14 flex-shrink-0 text-center">EDIT</span>
+            </div>
+            <!-- 10 rows visible before scrolling: each row = py-2.5 (20px) + text-sm line (20px) + 1px border ≈ 41px -->
+            <div id="client-list" style="max-height:420px;overflow-y:auto"></div>
           </div>
-          <!-- 10 rows visible before scrolling: each row = py-2.5 (20px) + text-sm line (20px) + 1px border ≈ 41px -->
-          <div id="client-list" style="max-height:420px;overflow-y:auto"></div>
+        </div>
+      </div>
+
+      <!-- SUBTAB: ลูกค้าเก่า -->
+      <div id="clients-sub-old" class="hidden">
+        <div class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between gap-2">
+          <p class="text-xs text-gray-400">ลูกค้าที่ปิดใช้งานแล้ว</p>
+          <input id="old-client-search" type="text" placeholder="ค้นหา…" oninput="renderOldClients()"
+            class="px-3.5 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-48">
+        </div>
+        <div class="p-6">
+          <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <div class="flex items-center gap-3 px-4 py-2.5 border-b border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+              <span class="w-6 flex-shrink-0"></span>
+              <span class="w-12 flex-shrink-0">#</span>
+              <span class="w-16 flex-shrink-0">CODE</span>
+              <span class="flex-1">NAME</span>
+              <span class="w-20 flex-shrink-0 text-center">TYPE</span>
+              <span class="w-14 flex-shrink-0 text-center">EDIT</span>
+            </div>
+            <div id="old-client-list" style="max-height:420px;overflow-y:auto"></div>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- PAGE: old-clients -->
-    <div id="page-old-clients" class="hidden">
-      <div class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
-        <div>
-          <h2 class="text-base font-bold text-gray-900">ลูกค้าเก่า</h2>
-          <p class="text-xs text-gray-400 mt-0.5">ลูกค้าที่ปิดใช้งานแล้ว</p>
+    <!-- PAGE: finance -->
+    <div id="page-finance" class="hidden">
+      <div class="bg-white border-b border-gray-200 px-6 sticky top-0 z-10">
+        <div class="flex items-center justify-between pt-4">
+          <h2 class="text-base font-bold text-gray-900">การเงิน</h2>
         </div>
-        <input id="old-client-search" type="text" placeholder="ค้นหา…" oninput="renderOldClients()"
-          class="px-3.5 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-48">
+        <div class="flex border-b-0 mt-2">
+          <button class="tab-btn active" id="finTab-collection" onclick="showFinanceSubTab('collection')">การเก็บเงิน</button>
+          <button class="tab-btn" id="finTab-fee" onclick="showFinanceSubTab('fee')">ค่าบริการ</button>
+        </div>
       </div>
-      <div class="p-6">
-        <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <div class="flex items-center gap-3 px-4 py-2.5 border-b border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
-            <span class="w-6 flex-shrink-0"></span>
-            <span class="w-12 flex-shrink-0">#</span>
-            <span class="w-16 flex-shrink-0">CODE</span>
-            <span class="flex-1">NAME</span>
-            <span class="w-20 flex-shrink-0 text-center">TYPE</span>
-            <span class="w-14 flex-shrink-0 text-center">EDIT</span>
+
+      <!-- SUBTAB: การเก็บเงิน (สถานะใบแจ้งหนี้/รับเงินของเดือนที่กำลังดูอยู่ในหน้ารายเดือน) -->
+      <div id="fin-sub-collection">
+        <div class="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
+          <p class="text-xs text-gray-400">สถานะของเดือน <span id="fin-collection-month" class="font-semibold text-gray-600">—</span> (เดือนเดียวกับหน้า "รายเดือน")</p>
+        </div>
+        <div class="grid grid-cols-3 gap-4 px-6 py-4">
+          <div class="bg-white rounded-xl border border-gray-200 p-4">
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">เก็บเงินแล้ว</div>
+            <div id="fin-paid-count" class="text-3xl font-black text-green-600 mt-1">—</div>
+            <div class="text-xs text-gray-400 mt-1">ราย</div>
           </div>
-          <div id="old-client-list" style="max-height:420px;overflow-y:auto"></div>
+          <div class="bg-white rounded-xl border border-gray-200 p-4">
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">ยังไม่เก็บ</div>
+            <div id="fin-pending-count" class="text-3xl font-black text-slate-400 mt-1">—</div>
+            <div class="text-xs text-gray-400 mt-1">ราย</div>
+          </div>
+          <div class="bg-white rounded-xl border border-gray-200 p-4">
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">ยอดรวมที่เก็บได้</div>
+            <div id="fin-paid-total" class="text-2xl font-black text-blue-600 mt-1">—</div>
+            <div class="text-xs text-gray-400 mt-1">บาท</div>
+          </div>
+        </div>
+        <div class="p-6 pt-0">
+          <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <div class="flex items-center gap-3 px-4 py-2.5 border-b border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+              <span class="w-12 flex-shrink-0">#</span>
+              <span class="w-16 flex-shrink-0">CODE</span>
+              <span class="flex-1">NAME</span>
+              <span class="w-24 flex-shrink-0 text-right">ค่าบริการ</span>
+              <span class="w-24 flex-shrink-0 text-center">สถานะ</span>
+              <span class="w-28 flex-shrink-0 text-center">FlowAccount</span>
+            </div>
+            <div id="fin-collection-list" style="max-height:480px;overflow-y:auto"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUBTAB: ค่าบริการ -->
+      <div id="fin-sub-fee" class="hidden">
+        <div class="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between gap-2">
+          <p class="text-xs text-gray-400">ค่าบริการปัจจุบันของลูกค้าแต่ละราย</p>
+          <input id="fin-fee-search" type="text" placeholder="ค้นหา…" oninput="renderFinanceFees()"
+            class="px-3.5 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-48">
+        </div>
+        <div class="p-6">
+          <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <div class="flex items-center gap-3 px-4 py-2.5 border-b border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+              <span class="w-12 flex-shrink-0">#</span>
+              <span class="w-16 flex-shrink-0">CODE</span>
+              <span class="flex-1">NAME</span>
+              <span class="w-20 flex-shrink-0 text-center">TYPE</span>
+              <span class="w-24 flex-shrink-0 text-right">ค่าบริการ</span>
+              <span class="w-24 flex-shrink-0 text-right">หัก ณ ที่จ่าย</span>
+              <span class="w-24 flex-shrink-0 text-right">สุทธิ</span>
+            </div>
+            <div id="fin-fee-list" style="max-height:480px;overflow-y:auto"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -755,6 +881,9 @@ const ROLE_LABEL = { owner:'เจ้าของ (LV1)', manager:'ผู้จ�
 const PREFIX_OPTIONS = ['นาย','นาง','นางสาว'];
 const FIELDS = ['rd_download','rd_keyed'];
 const YE_FIELDS = ['pnd51','pnd1k','kt26k','pnd50','fin_stmt','audit','dbd_submit','boj5'];
+// รายปี แยกเป็น 2 แท็บย่อย: "งานรายปี" (แบบยื่นภาษีรายปี) กับ "งบการเงิน" (ปิดงบ/ผู้สอบ/ส่ง DBD รวม บอจ.5)
+const YE_TASK_FIELDS = ['pnd51','pnd1k','kt26k','pnd50'];
+const YE_FIN_FIELDS  = ['fin_stmt','audit','dbd_submit','boj5'];
 const GROUP_ITEMS = {
   tax1: {
     label: 'TAX 1', sublabel: 'PND1 · PND3 · PND53 · PND54 · PP36',
@@ -1284,10 +1413,10 @@ async function saveAppSettings() {
 // ─────────────────────────────────────────────────────────────
 // NAVIGATION
 // ─────────────────────────────────────────────────────────────
-const ALL_PAGES = ['tracking','yearend','clients','old-clients','settings','owncompany','employees','teamgrid','appsettings'];
+const ALL_PAGES = ['tracking','yearend','clients','finance','settings','owncompany','employees','teamgrid','appsettings'];
 function navigate(p) {
   document.getElementById('settings-menu')?.classList.add('hidden');
-  if (myLevel() > 3 && !['tracking','yearend','clients','old-clients','settings','employees'].includes(p)) p = 'tracking';
+  if (myLevel() > 3 && !['tracking','yearend','clients','finance','settings','employees'].includes(p)) p = 'tracking';
   curPage = p;
   ALL_PAGES.forEach(pg => {
     document.getElementById(`page-${pg}`).classList.toggle('hidden', pg !== p);
@@ -1297,8 +1426,8 @@ function navigate(p) {
   });
   if (p === 'tracking') renderTracking();
   else if (p === 'yearend') { if (!yearEndLoaded) loadYearEndTasks().then(renderYearEnd); else renderYearEnd(); }
-  else if (p === 'clients') renderClientList();
-  else if (p === 'old-clients') renderOldClients();
+  else if (p === 'clients') showClientsSubTab('current');
+  else if (p === 'finance') showFinanceSubTab('collection');
   else if (p === 'settings') {
     renderOwnProfile();
     if (canSeeAuditLog()) renderActivityLog();
@@ -1990,52 +2119,76 @@ function downloadDocReceiptJpg() {
 // ─────────────────────────────────────────────────────────────
 // PAGE: YEAR-END
 // ─────────────────────────────────────────────────────────────
-function renderYearEnd() {
-  document.getElementById('yearend-display').textContent = `พ.ศ. ${yearEndYear + 543}`;
+function yearEndVisibleClients() {
   const yearFirstStr = `${yearEndYear}-01-01`;
   const yearLastStr = `${yearEndYear}-12-31`;
   const yeMyIds = myTeamIds();
-  const visibleClients = clients.filter(c => (c.is_active || c.end_date))
+  return clients.filter(c => (c.is_active || c.end_date))
     .filter(c => (!c.start_date || c.start_date <= yearLastStr) && (!c.end_date || c.end_date >= yearFirstStr))
     .filter(c => isClientVisibleOnTeamScopedPages(c, yeMyIds));
-
-  let allDone = 0, inProg = 0, pending = 0;
+}
+// สรุปตัวเลข 3 ช่อง (เสร็จครบ/กำลังดำเนินการ/ยังไม่เริ่ม) แยกอิสระต่อแท็บย่อย งานรายปี vs งบการเงิน
+// เรียกทั้งจาก renderYearEnd() (โหลด/เปลี่ยนปี) และ toggleYearEndField() (คลิกเปลี่ยนสถานะ) กันโค้ดซ้ำ
+function renderYearEndSummary() {
+  const visibleClients = yearEndVisibleClients();
+  let taskDone = 0, taskProg = 0, taskPending = 0;
+  let finDone = 0, finProg = 0, finPending = 0;
   visibleClients.forEach(c => {
     const t = yearEndMap[c.id] || {};
-    const pct = calcPct(t, YE_FIELDS);
-    if (pct === 100) allDone++;
-    else if (pct > 0) inProg++;
-    else pending++;
+    const tp = calcPct(t, YE_TASK_FIELDS);
+    if (tp === 100) taskDone++; else if (tp > 0) taskProg++; else taskPending++;
+    const fp = calcPct(t, YE_FIN_FIELDS);
+    if (fp === 100) finDone++; else if (fp > 0) finProg++; else finPending++;
   });
-  document.getElementById('ye-done').textContent    = allDone;
-  document.getElementById('ye-inprog').textContent  = inProg;
-  document.getElementById('ye-pending').textContent = pending;
+  document.getElementById('ye-done').textContent    = taskDone;
+  document.getElementById('ye-inprog').textContent  = taskProg;
+  document.getElementById('ye-pending').textContent = taskPending;
+  document.getElementById('yefin-done').textContent    = finDone;
+  document.getElementById('yefin-inprog').textContent  = finProg;
+  document.getElementById('yefin-pending').textContent = finPending;
+}
+function renderYearEnd() {
+  document.getElementById('yearend-display').textContent = `พ.ศ. ${yearEndYear + 543}`;
+  const visibleClients = yearEndVisibleClients();
+  renderYearEndSummary();
 
-  let rows = '';
+  const mkYeCell = (c, f, bc = '') => {
+    const t = yearEndMap[c.id] || {};
+    const v = t[f] || (['pnd51','audit'].includes(f) ? 'na' : 'todo');
+    return `<td class="status-td px-2 py-2.5 ${bc} ${canEdit() ? 'clickable' : ''}"
+                ${canEdit() ? `onclick="toggleYearEndField(${c.id},'${f}',this)"` : ''}>
+              ${statusDot(v)}</td>`;
+  };
+
+  let taskRows = '', finRows = '';
   visibleClients.forEach(c => {
-    const t   = yearEndMap[c.id] || {};
-    const pct = calcPct(t, YE_FIELDS);
-
-    const mkYeCell = (f, bc = '') => {
-      const v = t[f] || (['pnd51','audit'].includes(f) ? 'na' : 'todo');
-      return `<td class="status-td px-2 py-2.5 ${bc} ${canEdit() ? 'clickable' : ''}"
-                  ${canEdit() ? `onclick="toggleYearEndField(${c.id},'${f}',this)"` : ''}>
-                ${statusDot(v)}</td>`;
-    };
-
-    rows += `<tr class="border-b border-gray-100">
-      <td class="px-4 py-3 text-left cursor-pointer hover:bg-purple-50 transition-colors" onclick="openPanel(${c.id})">
+    const t = yearEndMap[c.id] || {};
+    const taskPct = calcPct(t, YE_TASK_FIELDS);
+    const finPct  = calcPct(t, YE_FIN_FIELDS);
+    const nameCell = `<td class="px-4 py-3 text-left cursor-pointer hover:bg-purple-50 transition-colors" onclick="openPanel(${c.id})">
         <span class="inline-block bg-purple-50 text-purple-700 text-xs font-bold px-1.5 py-0.5 rounded">${e(c.code)}</span>
         <div class="text-sm text-gray-800 mt-0.5 max-w-[190px] leading-tight">${e(c.thai_name)}</div>
-      </td>
-      ${mkYeCell('pnd51','border-l border-gray-200')}
-      ${mkYeCell('pnd1k')}${mkYeCell('kt26k')}${mkYeCell('pnd50')}${mkYeCell('fin_stmt')}${mkYeCell('audit')}${mkYeCell('dbd_submit')}${mkYeCell('boj5')}
-      <td class="px-3 py-2.5">${progressBar(pct)}</td>
+      </td>`;
+
+    taskRows += `<tr class="border-b border-gray-100">
+      ${nameCell}
+      ${mkYeCell(c,'pnd51','border-l border-gray-200')}
+      ${mkYeCell(c,'pnd1k')}${mkYeCell(c,'kt26k')}${mkYeCell(c,'pnd50')}
+      <td class="px-3 py-2.5">${progressBar(taskPct)}</td>
+    </tr>`;
+
+    finRows += `<tr class="border-b border-gray-100">
+      ${nameCell}
+      ${mkYeCell(c,'fin_stmt','border-l border-gray-200')}
+      ${mkYeCell(c,'audit')}${mkYeCell(c,'dbd_submit')}${mkYeCell(c,'boj5')}
+      <td class="px-3 py-2.5">${progressBar(finPct)}</td>
     </tr>`;
   });
 
-  if (!rows) rows = `<tr><td colspan="10" class="py-10 text-gray-400 text-sm text-center">ยังไม่มีลูกค้าในระบบ</td></tr>`;
-  document.getElementById('yearend-tbody').innerHTML = rows;
+  if (!taskRows) taskRows = `<tr><td colspan="6" class="py-10 text-gray-400 text-sm text-center">ยังไม่มีลูกค้าในระบบ</td></tr>`;
+  if (!finRows)  finRows  = `<tr><td colspan="6" class="py-10 text-gray-400 text-sm text-center">ยังไม่มีลูกค้าในระบบ</td></tr>`;
+  document.getElementById('yearend-tbody').innerHTML = taskRows;
+  document.getElementById('yearend-fin-tbody').innerHTML = finRows;
 }
 
 async function changeYearEnd(delta) {
@@ -2043,6 +2196,15 @@ async function changeYearEnd(delta) {
   yearEndLoaded = false;
   await loadYearEndTasks();
   renderYearEnd();
+}
+
+// แท็บย่อยของหน้า "รายปี" — งานรายปี (ภ.ง.ด.51/ภงด.1ก/กท.26ก/ภ.ง.ด.50) กับ งบการเงิน (งบการเงิน/ผู้สอบฯ/ส่ง DBD/บอจ.5)
+// ข้อมูลชุดเดียวกัน (yearEndMap) โหลดมาแล้วทั้งคู่ตอน renderYearEnd() จึงแค่สลับการมองเห็น ไม่ต้องโหลดซ้ำ
+function showYearEndSubTab(tab) {
+  document.getElementById('ye-sub-tasks').classList.toggle('hidden', tab !== 'tasks');
+  document.getElementById('ye-sub-fin').classList.toggle('hidden', tab !== 'fin');
+  document.getElementById('yeTab-tasks').classList.toggle('active', tab === 'tasks');
+  document.getElementById('yeTab-fin').classList.toggle('active', tab === 'fin');
 }
 
 async function toggleYearEndField(clientId, field, cell) {
@@ -2060,7 +2222,8 @@ async function toggleYearEndField(clientId, field, cell) {
   cell.classList.add('saving');
   const row = cell.closest('tr');
   const lastTd = row.querySelector('td:last-child');
-  if (lastTd) lastTd.innerHTML = progressBar(calcPct(yearEndMap[clientId], YE_FIELDS));
+  const rowFields = YE_TASK_FIELDS.includes(field) ? YE_TASK_FIELDS : YE_FIN_FIELDS;
+  if (lastTd) lastTd.innerHTML = progressBar(calcPct(yearEndMap[clientId], rowFields));
 
   const { data, error } = await sb.from('crm_year_end_tasks')
     .upsert({ client_id: clientId, year: yearEndYear, [field]: next }, { onConflict: 'client_id,year' })
@@ -2069,7 +2232,7 @@ async function toggleYearEndField(clientId, field, cell) {
   if (error) {
     yearEndMap[clientId][field] = cur;
     cell.innerHTML = statusDot(cur);
-    if (lastTd) lastTd.innerHTML = progressBar(calcPct(yearEndMap[clientId], YE_FIELDS));
+    if (lastTd) lastTd.innerHTML = progressBar(calcPct(yearEndMap[clientId], rowFields));
     showToast('บันทึกไม่สำเร็จ', 'error');
   } else if (data) {
     yearEndMap[clientId] = data;
@@ -2078,21 +2241,7 @@ async function toggleYearEndField(clientId, field, cell) {
       `${c?.thai_name || ''}: ${YE_FIELD_LABEL[field] || field} → ${TASK_STATUS_LABEL_TH[next] || next} (ปี ${yearEndYear + 543})`);
   }
 
-  let allDone = 0, inProg = 0, pending = 0;
-  const yeYearFirstStr = `${yearEndYear}-01-01`;
-  const yeYearLastStr = `${yearEndYear}-12-31`;
-  const yeToggleMyIds = myTeamIds();
-  clients.filter(c => (c.is_active || c.end_date))
-    .filter(c => (!c.start_date || c.start_date <= yeYearLastStr) && (!c.end_date || c.end_date >= yeYearFirstStr))
-    .filter(c => isClientVisibleOnTeamScopedPages(c, yeToggleMyIds))
-    .forEach(c => {
-    const t = yearEndMap[c.id] || {};
-    const p = calcPct(t, YE_FIELDS);
-    if (p === 100) allDone++; else if (p > 0) inProg++; else pending++;
-  });
-  document.getElementById('ye-done').textContent    = allDone;
-  document.getElementById('ye-inprog').textContent  = inProg;
-  document.getElementById('ye-pending').textContent = pending;
+  renderYearEndSummary();
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -2168,6 +2317,16 @@ async function renderOldClients() {
   container.innerHTML = filtered.length
     ? filtered.map(c => clientRowHtml(c, canEditBasic())).join('')
     : '<div class="text-gray-400 text-sm py-8 text-center">ไม่มีลูกค้าเก่า</div>';
+}
+
+// แท็บย่อยของหน้า "ลูกค้า" — ลูกค้า (ปัจจุบัน) กับ ลูกค้าเก่า (เดิมเป็นหน้าแยก ย้ายมาเป็นแท็บย่อยที่นี่)
+function showClientsSubTab(tab) {
+  document.getElementById('clients-sub-current').classList.toggle('hidden', tab !== 'current');
+  document.getElementById('clients-sub-old').classList.toggle('hidden', tab !== 'old');
+  document.getElementById('clientsTab-current').classList.toggle('active', tab === 'current');
+  document.getElementById('clientsTab-old').classList.toggle('active', tab === 'old');
+  if (tab === 'current') renderClientList();
+  else renderOldClients();
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -3817,6 +3976,113 @@ async function createBatchInvoices() {
     if (curPage === 'clients') renderClientList();
     if (panelClientId != null && invoiceMap[panelClientId]) renderPanelBilling();
   }
+}
+
+// ─────────────────────────────────────────────────────────────
+// PAGE: FINANCE (การเงิน) — การเก็บเงิน + ค่าบริการ
+// ทั้งสองแท็บอ่านจากข้อมูลที่โหลดไว้แล้วเท่านั้น (clients, invoiceMap) ไม่มี query ใหม่
+// การจัดการจริง (สร้าง/ส่ง FlowAccount/บันทึกรับเงิน) ยังทำผ่านแผงลูกค้า (openPanel → แท็บ "ใบแจ้งหนี้")
+// เหมือนเดิมทุกจุด หน้านี้เป็นแค่มุมมองสรุป+ทางลัดไปแผงเดิม ไม่ทำซ้ำ logic ของ FlowAccount
+// ─────────────────────────────────────────────────────────────
+function showFinanceSubTab(tab) {
+  document.getElementById('fin-sub-collection').classList.toggle('hidden', tab !== 'collection');
+  document.getElementById('fin-sub-fee').classList.toggle('hidden', tab !== 'fee');
+  document.getElementById('finTab-collection').classList.toggle('active', tab === 'collection');
+  document.getElementById('finTab-fee').classList.toggle('active', tab === 'fee');
+  if (tab === 'collection') renderFinanceCollection();
+  else renderFinanceFees();
+}
+
+// สรุปสถานะ FlowAccount แบบสั้น สำหรับแสดงในรายการ (รายละเอียด/ปุ่มลองใหม่เต็มๆ อยู่ในแผงลูกค้า แท็บ "ใบแจ้งหนี้" — faSyncLine())
+function faStatusBadge(inv) {
+  if (!inv) return '<span class="text-xs text-gray-300">—</span>';
+  if (inv.status === 'paid') {
+    return inv.fa_receipt_no || inv.fa_receipt_id
+      ? `<span class="text-xs text-green-600 font-semibold" title="ใบเสร็จ ${e(inv.fa_receipt_no || inv.fa_receipt_id)}">✓ ใบเสร็จ</span>`
+      : `<span class="text-xs text-amber-600">ยังไม่ออกใบเสร็จ</span>`;
+  }
+  return inv.fa_invoice_no || inv.fa_invoice_id
+    ? `<span class="text-xs text-gray-500" title="ใบกำกับ ${e(inv.fa_invoice_no || inv.fa_invoice_id)}">✓ ส่งแล้ว</span>`
+    : `<span class="text-xs text-amber-600">ยังไม่ส่ง</span>`;
+}
+
+// ── การเก็บเงิน: สถานะใบแจ้งหนี้ของ "เดือนที่กำลังดูอยู่ในหน้ารายเดือน" (curYear/curMonth ตัวเดียวกับ invoiceMap ที่โหลดไว้แล้ว) ──
+function financeCollectionClients() {
+  const monthFirstStr = `${curYear}-${String(curMonth).padStart(2,'0')}-01`;
+  const monthLastStr = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(new Date(curYear, curMonth, 0).getDate()).padStart(2,'0')}`;
+  return clients.filter(c => (c.is_active || c.end_date) && !c.is_own_company)
+    .filter(c => (!c.start_date || c.start_date <= monthLastStr) && (!c.end_date || c.end_date >= monthFirstStr))
+    .slice()
+    .sort((a, b) => computeClientNo(a.billing_type, a.seq_num).localeCompare(computeClientNo(b.billing_type, b.seq_num)));
+}
+function financeCollectionRowHtml(c, idx) {
+  const inv = invoiceMap[c.id];
+  const amount = inv ? (inv.expected_payment ?? inv.fee_amount) : (c.monthly_fee || 0);
+  const statusHtml = inv ? invBadge(inv.status) : '<span class="inv-badge draft">ยังไม่สร้าง</span>';
+  return `<div onclick="openPanel(${c.id})"
+      class="flex items-center gap-3 px-4 py-2.5 border-b border-gray-100 last:border-b-0 cursor-pointer hover:bg-blue-50/40 transition-colors">
+      <span class="w-12 flex-shrink-0 text-xs text-gray-400">${idx + 1}</span>
+      <span class="w-16 flex-shrink-0 inline-block bg-blue-50 text-blue-700 text-xs font-bold px-1.5 py-0.5 rounded text-center overflow-hidden text-ellipsis whitespace-nowrap">${e(c.code)}</span>
+      <span class="flex-1 min-w-0 text-sm font-semibold text-gray-800 overflow-hidden text-ellipsis whitespace-nowrap">${e(c.thai_name)}</span>
+      <span class="w-24 flex-shrink-0 text-right text-xs font-mono text-gray-700">${fmtMoney(amount)}</span>
+      <span class="w-24 flex-shrink-0 text-center">${statusHtml}</span>
+      <span class="w-28 flex-shrink-0 text-center">${faStatusBadge(inv)}</span>
+    </div>`;
+}
+function renderFinanceCollection() {
+  const monthLabel = document.getElementById('fin-collection-month');
+  if (monthLabel) monthLabel.textContent = `${THAI_MONTHS[curMonth]} ${curYear + 543}`;
+
+  const visible = financeCollectionClients();
+  let paidCount = 0, pendingCount = 0, paidTotal = 0;
+  visible.forEach(c => {
+    const inv = invoiceMap[c.id];
+    if (inv && inv.status === 'paid') { paidCount++; paidTotal += Number(inv.payment_amount ?? inv.expected_payment ?? 0); }
+    else if (!inv || inv.status !== 'cancelled') { pendingCount++; }
+  });
+  document.getElementById('fin-paid-count').textContent = paidCount;
+  document.getElementById('fin-pending-count').textContent = pendingCount;
+  document.getElementById('fin-paid-total').textContent = paidTotal.toLocaleString('th-TH');
+
+  const container = document.getElementById('fin-collection-list');
+  if (!container) return;
+  container.innerHTML = visible.length
+    ? visible.map((c, idx) => financeCollectionRowHtml(c, idx)).join('')
+    : '<div class="text-gray-400 text-sm py-8 text-center">ไม่มีลูกค้าในเดือนนี้</div>';
+}
+
+// ── ค่าบริการ: ตารางค่าบริการปัจจุบันของลูกค้าที่ใช้งานอยู่ (billing_type/monthly_fee/has_wht จาก crm_clients — เหมือน openBatchInvoice() ใช้) ──
+function financeFeeRowHtml(c, idx) {
+  const fee = c.monthly_fee || 0;
+  const wht = c.has_wht !== false ? Math.round(fee * 0.03 * 100) / 100 : 0;
+  const expected = fee - wht;
+  return `<div onclick="openPanel(${c.id})"
+      class="flex items-center gap-3 px-4 py-2.5 border-b border-gray-100 last:border-b-0 cursor-pointer hover:bg-blue-50/40 transition-colors">
+      <span class="w-12 flex-shrink-0 text-xs text-gray-400">${idx + 1}</span>
+      <span class="w-16 flex-shrink-0 inline-block bg-blue-50 text-blue-700 text-xs font-bold px-1.5 py-0.5 rounded text-center overflow-hidden text-ellipsis whitespace-nowrap">${e(c.code)}</span>
+      <span class="flex-1 min-w-0 text-sm font-semibold text-gray-800 overflow-hidden text-ellipsis whitespace-nowrap">${e(c.thai_name)}</span>
+      <span class="w-20 flex-shrink-0 text-center text-[11px] text-gray-500">${BILLING_TYPE_LABEL[c.billing_type] || '—'}</span>
+      <span class="w-24 flex-shrink-0 text-right text-xs font-mono">${fmtMoney(fee)}</span>
+      <span class="w-24 flex-shrink-0 text-right text-xs font-mono text-amber-600">${wht > 0 ? '-' + fmtMoney(wht) : '—'}</span>
+      <span class="w-24 flex-shrink-0 text-right text-xs font-bold font-mono text-green-700">${fmtMoney(expected)}</span>
+    </div>`;
+}
+function renderFinanceFees() {
+  const q = (document.getElementById('fin-fee-search')?.value || '').toLowerCase();
+  let filtered = clients.filter(c => c.is_active && !c.is_own_company);
+  if (q) filtered = filtered.filter(c =>
+    (c.code||'').toLowerCase().includes(q) ||
+    (c.thai_name||'').toLowerCase().includes(q) ||
+    (c.eng_name || '').toLowerCase().includes(q) ||
+    (c.tax_number || '').includes(q));
+  filtered = filtered.slice().sort((a, b) =>
+    computeClientNo(a.billing_type, a.seq_num).localeCompare(computeClientNo(b.billing_type, b.seq_num)));
+
+  const container = document.getElementById('fin-fee-list');
+  if (!container) return;
+  container.innerHTML = filtered.length
+    ? filtered.map((c, idx) => financeFeeRowHtml(c, idx)).join('')
+    : '<div class="text-gray-400 text-sm py-8 text-center">ไม่พบลูกค้า</div>';
 }
 
 // ─────────────────────────────────────────────────────────────
