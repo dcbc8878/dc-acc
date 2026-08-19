@@ -440,14 +440,24 @@
       </div>
       <div class="px-6 pb-8 overflow-x-auto">
         <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <!-- height (fixed, not max-height) = header row (60px) + 12 rows at the shared
+          <!-- height (fixed, not max-height) = header row (60px) + 6 rows at the shared
                49px row height (see "#tracking-tbody tr" in the <style> block) + ~8px
-               buffer = 656px. A genuinely fixed height — not max-height — so the box never
+               buffer = 362px. A genuinely fixed height — not max-height — so the box never
                shrinks for fewer/shorter rows either: its bottom edge stays put and empty
                space shows below the last row instead, per user request ("ท้ายตาราง...ไม่ให้
-               ขยับ"). More than 12 rows scrolls inside it; the header stays pinned via the
-               global sticky thead-th rule. -->
-          <div style="height:656px;overflow-y:auto">
+               ขยับ"). More than 6 rows scrolls inside it; the header stays pinned via the
+               global sticky thead-th rule. Row count dropped from an earlier 12-row target
+               to 6: #app is a fixed h-screen shell with overflow-hidden, and <main> (flex-1
+               overflow-auto) is deliberately the ONE scrollable region inside it — a 12-row
+               box made <main> itself taller than the viewport on every one of these 8 areas
+               (measured 176-274px of forced outer scroll), which is exactly the "outer
+               frame" the user then asked NOT to be scrollable at all ("กรอบด้านนอก ไม่ต้องให้
+               เลื่อนได้"). Measured (not guessed) the largest row count that keeps every one
+               of the 8 areas' main.scrollHeight ≤ main.clientHeight with zero outer scroll:
+               6 rows clears all of them with margin (7 rows was 1-29px short depending on
+               the page's own surrounding chrome — stat cards, sub-tabs — so 6 was chosen as
+               the safe uniform value, same "one shared number everywhere" rule as before). -->
+          <div style="height:362px;overflow-y:auto">
           <table class="text-center" style="table-layout:fixed;width:100%;min-width:1210px">
             <colgroup>
               <col style="width:32px"> <!-- ดาว -->
@@ -544,13 +554,14 @@
         </div>
         <div class="px-6 pb-8 overflow-x-auto">
           <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" style="min-width:620px">
-            <!-- height (fixed) = header row (60px) + 12 rows at the shared 49px row height
-                 (see "#yearend-tbody tr" in the <style> block) + ~8px buffer = 656px. Same
+            <!-- height (fixed) = header row (60px) + 6 rows at the shared 49px row height
+                 (see "#yearend-tbody tr" in the <style> block) + ~8px buffer = 362px. Same
                  fixed-not-elastic + sticky-header pattern as #tracking-tbody's wrapper
-                 earlier in this file — see that comment for the full rationale. This table
+                 earlier in this file — see that comment for the full rationale (incl. why 6
+                 rows, not the original 12). This table
                  (and the other two รายปี sub-tabs below) had no scroll box at all before
                  this change — the whole page scrolled instead; this wrapper is new. -->
-            <div style="height:656px;overflow-y:auto">
+            <div style="height:362px;overflow-y:auto">
             <table class="w-full text-center">
               <thead>
                 <tr>
@@ -598,9 +609,9 @@
         </div>
         <div class="px-6 pb-8 overflow-x-auto">
           <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" style="min-width:880px">
-            <!-- matches #yearend-tbody above: fixed height = header (60px) + 12 rows at
-                 49px + ~8px buffer = 656px -->
-            <div style="height:656px;overflow-y:auto">
+            <!-- matches #yearend-tbody above: fixed height = header (60px) + 6 rows at
+                 49px + ~8px buffer = 362px (see that comment for why 6, not 12) -->
+            <div style="height:362px;overflow-y:auto">
             <table class="w-full text-center">
               <thead>
                 <tr>
@@ -651,9 +662,9 @@
         </div>
         <div class="px-6 pb-8 overflow-x-auto">
           <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" style="min-width:740px">
-            <!-- matches #yearend-tbody above: fixed height = header (60px) + 12 rows at
-                 49px + ~8px buffer = 656px -->
-            <div style="height:656px;overflow-y:auto">
+            <!-- matches #yearend-tbody above: fixed height = header (60px) + 6 rows at
+                 49px + ~8px buffer = 362px (see that comment for why 6, not 12) -->
+            <div style="height:362px;overflow-y:auto">
             <table class="w-full text-center">
               <thead>
                 <tr>
@@ -738,14 +749,15 @@
               <span class="w-20 flex-shrink-0 text-center">TYPE</span>
               <span class="w-14 flex-shrink-0 text-center">EDIT</span>
             </div>
-            <!-- height (fixed, not max-height) = 12 rows at the shared 49px row height (see
-                 "#client-list > div" in the <style> block): 12 × 49px = 588px. No header-row
+            <!-- height (fixed, not max-height) = 6 rows at the shared 49px row height (see
+                 "#client-list > div" in the <style> block): 6 × 49px = 294px (see the
+                 #tracking-tbody wrapper comment for why 6 rows, not the original 12). No header-row
                  addition needed — this list's header (the CODE/NAME/... span row right
                  above) sits outside this scroll box already. Fixed, not max-height, so the
                  box's bottom edge stays put even with fewer results (e.g. after a search) —
                  empty space shows below the last row instead of the box shrinking, per user
                  request ("ท้ายตาราง...ไม่ให้ขยับ"). -->
-            <div id="client-list" style="height:588px;overflow-y:auto"></div>
+            <div id="client-list" style="height:294px;overflow-y:auto"></div>
           </div>
         </div>
       </div>
@@ -786,9 +798,9 @@
               <span class="w-20 flex-shrink-0 text-center">TYPE</span>
               <span class="w-14 flex-shrink-0 text-center">EDIT</span>
             </div>
-            <!-- matches #client-list above: fixed height, 12 rows at the shared 49px row
-                 height = 588px -->
-            <div id="old-client-list" style="height:588px;overflow-y:auto"></div>
+            <!-- matches #client-list above: fixed height, 6 rows at the shared 49px row
+                 height = 294px -->
+            <div id="old-client-list" style="height:294px;overflow-y:auto"></div>
           </div>
         </div>
       </div>
@@ -857,9 +869,9 @@
               <span class="w-36 flex-shrink-0 text-center">สถานะ</span>
               <span class="w-28 flex-shrink-0 text-center">FlowAccount</span>
             </div>
-            <!-- height (fixed, not max-height) = 12 rows at the shared 49px row height:
-                 12 × 49px = 588px. Same fixed-not-elastic rationale as #client-list above. -->
-            <div id="fin-collection-list" style="height:588px;overflow-y:auto"></div>
+            <!-- height (fixed, not max-height) = 6 rows at the shared 49px row height:
+                 6 × 49px = 294px. Same fixed-not-elastic rationale as #client-list above. -->
+            <div id="fin-collection-list" style="height:294px;overflow-y:auto"></div>
           </div>
         </div>
       </div>
@@ -910,9 +922,9 @@
               <span class="w-24 flex-shrink-0 text-right">หัก ณ ที่จ่าย</span>
               <span class="w-24 flex-shrink-0 text-right">สุทธิ</span>
             </div>
-            <!-- matches #fin-collection-list above: fixed height, 12 rows at the shared
-                 49px row height = 588px -->
-            <div id="fin-fee-list" style="height:588px;overflow-y:auto"></div>
+            <!-- matches #fin-collection-list above: fixed height, 6 rows at the shared
+                 49px row height = 294px -->
+            <div id="fin-fee-list" style="height:294px;overflow-y:auto"></div>
           </div>
         </div>
       </div>
