@@ -2714,9 +2714,11 @@ function suggestCode() {
 }
 
 const BILLING_TYPE_PREFIX = { monthly: 'M', annual: 'Y', filing: 'T', dissolved: 'Z' };
+// บริษัทภายใน (is_own_company) ไม่มีเลขลำดับ (seq_num เป็น null เสมอ — ไม่นับรวมอยู่ในลำดับการรับ
+// ลูกค้าเพราะไม่ใช่ลูกค้าจริง) ให้ปล่อยว่างเปล่า ไม่ใช่ขีด "—" (ยืนยันจากผู้ใช้)
 function computeClientNo(billingType, seqNum) {
   const prefix = BILLING_TYPE_PREFIX[billingType] || '';
-  if (!prefix || !seqNum) return '—';
+  if (!prefix || !seqNum) return '';
   return prefix + String(seqNum).padStart(3, '0');
 }
 function syncClientNo() {
