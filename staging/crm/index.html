@@ -561,10 +561,6 @@
             <option value="annual">รายปี</option>
             <option value="filing">ยื่นแบบเปล่า</option>
           </select>
-          <button id="add-client-btn" onclick="openAddClient()"
-            class="hidden bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
-            + เพิ่มลูกค้า
-          </button>
         </div>
         <!-- Stat-card summary row (สรุปฐานลูกค้าปัจจุบันทั้งหมด — ไม่ผูกกับตัวกรอง
              ประเภท/คำค้นหาด้านบน ตั้งใจให้ตัวเลขนิ่ง ไม่กระพริบเวลาพิมพ์ค้นหา ดู
@@ -716,8 +712,14 @@
       <div id="fin-sub-fee" class="hidden">
         <div class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between gap-2">
           <p class="text-xs text-gray-400">ค่าบริการปัจจุบันของลูกค้าแต่ละราย</p>
-          <input id="fin-fee-search" type="text" placeholder="ค้นหา…" oninput="renderFinanceFees()"
-            class="px-3.5 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-48">
+          <div class="flex items-center gap-2">
+            <button id="add-client-btn" onclick="openAddClient()"
+              class="hidden bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors flex-shrink-0">
+              + เพิ่มลูกค้า
+            </button>
+            <input id="fin-fee-search" type="text" placeholder="ค้นหา…" oninput="renderFinanceFees()"
+              class="px-3.5 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-48">
+          </div>
         </div>
         <!-- Stat-card summary row (สรุปค่าบริการของฐานลูกค้าปัจจุบันทั้งหมด — ไม่ผูกกับ
              คำค้นหาด้านบน ตั้งใจให้ตัวเลขนิ่ง ไม่กระพริบเวลาพิมพ์ค้นหา ดู renderFinanceFees())
@@ -4644,6 +4646,7 @@ async function saveNewClient() {
   showToast('เพิ่มลูกค้าสำเร็จ');
   if (curPage === 'clients') renderClientList();
   if (curPage === 'tracking') renderTracking();
+  if (curPage === 'finance') renderFinanceFees();
 }
 
 // ─────────────────────────────────────────────────────────────
