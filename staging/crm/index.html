@@ -77,7 +77,15 @@
     .settings-menu-item:hover { background: #f1f5f9; }
 
     table { border-collapse: separate; border-spacing: 0; }
-    thead th { position: sticky; top: 0; z-index: 1; background: #f8fafc; }
+    /* Shared table-header-row sizing: every <th> in the file gets this one rule so
+       header rows are the same height everywhere (tall enough for the tracking
+       table's 2-line TAX1/SSO/TAX2 headers, single-line headers get extra breathing
+       room instead via vertical-align, not stretched text) and is centered by
+       default. Per-column text-align (name columns left, money columns right) is
+       set with an explicit class on that <th> and still wins — this rule has no
+       class in its selector, so it's lower specificity and only fills in the
+       default. */
+    thead th { position: sticky; top: 0; z-index: 1; background: #f8fafc; height: 60px; vertical-align: middle; text-align: center; }
     tbody tr:hover td { background: #fafbff; }
     tbody tr:last-child td { border-bottom: none; }
     .col-fav  { position:sticky; left:0;     z-index:2; background:#fff; }
@@ -358,16 +366,16 @@
             </colgroup>
             <thead>
               <tr>
-                <th class="col-fav" style="vertical-align:middle"></th>
-                <th class="px-1 py-3 text-xs font-semibold text-gray-400 border-b-2 border-gray-200 col-num" style="vertical-align:middle">#</th>
-                <th class="px-1 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200 col-code" style="vertical-align:middle">CODE</th>
-                <th class="px-2 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200 col-name" style="vertical-align:middle">ชื่อบริษัท</th>
-                <th class="px-2 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200 border-l border-gray-200" style="vertical-align:middle">โน๊ต</th>
-                <th class="px-2 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200 border-l border-gray-200" style="vertical-align:middle">รับเอกสาร</th>
-                <th class="px-2 py-3 text-xs font-bold text-blue-600 bg-blue-50 border-b-2 border-gray-200 border-l border-gray-200">TAX 1<div class="text-[9px] font-normal text-blue-400 mt-0.5">PND1·3·53·54·PP36</div></th>
-                <th class="px-2 py-3 text-xs font-bold text-green-600 bg-green-50 border-b-2 border-gray-200 border-l border-gray-200" style="vertical-align:middle">SSO</th>
-                <th class="px-2 py-3 text-xs font-bold text-purple-500 bg-purple-50 border-b-2 border-gray-200 border-l border-gray-200">TAX 2<div class="text-[10px] font-normal text-purple-400 mt-0.5">PP30</div></th>
-                <th colspan="2" class="px-2 py-3 text-xs font-semibold text-slate-600 bg-slate-50 border-b-2 border-gray-200 border-l border-gray-200">RD<div class="text-[10px] font-normal text-slate-400 mt-0.5">DL · Key</div></th>
+                <th class="col-fav"></th>
+                <th class="px-1 text-xs font-semibold text-gray-400 border-b-2 border-gray-200 col-num">#</th>
+                <th class="px-1 text-xs font-semibold text-gray-500 border-b-2 border-gray-200 col-code">CODE</th>
+                <th class="px-2 text-xs font-semibold text-gray-500 border-b-2 border-gray-200 col-name">ชื่อบริษัท</th>
+                <th class="px-2 text-xs font-semibold text-gray-500 border-b-2 border-gray-200 border-l border-gray-200">โน๊ต</th>
+                <th class="px-2 text-xs font-semibold text-gray-500 border-b-2 border-gray-200 border-l border-gray-200">รับเอกสาร</th>
+                <th class="px-2 text-xs font-bold text-blue-600 bg-blue-50 border-b-2 border-gray-200 border-l border-gray-200">TAX 1<div class="text-[9px] font-normal text-blue-400 mt-0.5">PND1·3·53·54·PP36</div></th>
+                <th class="px-2 text-xs font-bold text-green-600 bg-green-50 border-b-2 border-gray-200 border-l border-gray-200">SSO</th>
+                <th class="px-2 text-xs font-bold text-purple-500 bg-purple-50 border-b-2 border-gray-200 border-l border-gray-200">TAX 2<div class="text-[10px] font-normal text-purple-400 mt-0.5">PP30</div></th>
+                <th colspan="2" class="px-2 text-xs font-semibold text-slate-600 bg-slate-50 border-b-2 border-gray-200 border-l border-gray-200">RD<div class="text-[10px] font-normal text-slate-400 mt-0.5">DL · Key</div></th>
               </tr>
             </thead>
             <tbody id="tracking-tbody">
@@ -388,12 +396,12 @@
     <!-- PAGE: yearend -->
     <div id="page-yearend" class="hidden">
       <div class="bg-white border-b border-gray-200 px-6 sticky top-0 z-10">
-        <div class="flex items-center justify-between pt-4">
+        <div class="flex items-center justify-between py-4">
           <div>
             <h2 class="text-base font-bold text-gray-900">รายปี</h2>
             <p class="text-xs text-gray-400 mt-0.5">ภ.ง.ด.50/51 · งบการเงิน · ส่ง DBD</p>
           </div>
-          <div class="flex items-center gap-2 pb-4">
+          <div class="flex items-center gap-2">
             <button onclick="changeYearEnd(-1)" class="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors text-gray-600">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
             </button>
@@ -433,12 +441,12 @@
             <table class="w-full text-center">
               <thead>
                 <tr>
-                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200" style="min-width:210px">ลูกค้า</th>
-                  <th class="px-3 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200 border-l border-gray-200">ภ.ง.ด.51</th>
-                  <th class="px-3 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">ภงด.1ก</th>
-                  <th class="px-3 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">กท.26ก</th>
-                  <th class="px-3 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">ภ.ง.ด.50</th>
-                  <th class="px-3 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200" style="min-width:110px">ความคืบหน้า</th>
+                  <th class="text-left px-4 text-xs font-semibold text-gray-500 border-b-2 border-gray-200" style="min-width:210px">ลูกค้า</th>
+                  <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200 border-l border-gray-200">ภ.ง.ด.51</th>
+                  <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">ภงด.1ก</th>
+                  <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">กท.26ก</th>
+                  <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">ภ.ง.ด.50</th>
+                  <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200" style="min-width:110px">ความคืบหน้า</th>
                 </tr>
               </thead>
               <tbody id="yearend-tbody">
@@ -473,12 +481,12 @@
             <table class="w-full text-center">
               <thead>
                 <tr>
-                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200" style="min-width:210px">ลูกค้า</th>
-                  <th class="px-3 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200 border-l border-gray-200">งบการเงิน</th>
-                  <th class="px-3 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">ผู้สอบฯ</th>
-                  <th class="px-3 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">ส่ง DBD</th>
-                  <th class="px-3 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">บอจ.5</th>
-                  <th class="px-3 py-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200" style="min-width:110px">ความคืบหน้า</th>
+                  <th class="text-left px-4 text-xs font-semibold text-gray-500 border-b-2 border-gray-200" style="min-width:210px">ลูกค้า</th>
+                  <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200 border-l border-gray-200">งบการเงิน</th>
+                  <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">ผู้สอบฯ</th>
+                  <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">ส่ง DBD</th>
+                  <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">บอจ.5</th>
+                  <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200" style="min-width:110px">ความคืบหน้า</th>
                 </tr>
               </thead>
               <tbody id="yearend-fin-tbody">
@@ -493,7 +501,7 @@
     <!-- PAGE: clients -->
     <div id="page-clients" class="hidden">
       <div class="bg-white border-b border-gray-200 px-6 sticky top-0 z-10">
-        <div class="flex items-center justify-between pt-4">
+        <div class="flex items-center justify-between py-4">
           <h2 class="text-base font-bold text-gray-900">ข้อมูลลูกค้า</h2>
         </div>
         <div class="flex border-b-0 mt-2">
@@ -561,7 +569,7 @@
     <!-- PAGE: finance -->
     <div id="page-finance" class="hidden">
       <div class="bg-white border-b border-gray-200 px-6 sticky top-0 z-10">
-        <div class="flex items-center justify-between pt-4">
+        <div class="flex items-center justify-between py-4">
           <h2 class="text-base font-bold text-gray-900">การเงิน</h2>
         </div>
         <div class="flex border-b-0 mt-2">
@@ -715,7 +723,7 @@
     <!-- PAGE: employees -->
     <div id="page-employees" class="hidden">
       <div class="bg-white border-b border-gray-200 px-6 sticky top-0 z-10">
-        <div class="flex items-center justify-between pt-4">
+        <div class="flex items-center justify-between py-4">
           <h2 class="text-base font-bold text-gray-900">พนักงาน</h2>
         </div>
         <div class="flex border-b-0 mt-2">
@@ -2797,10 +2805,10 @@ async function renderPanelChanges() {
       <table class="w-full">
         <thead>
           <tr class="border-b border-gray-100">
-            <th class="text-left pb-2 text-[10px] font-semibold text-gray-400 uppercase">NO</th>
-            <th class="text-left pb-2 text-[10px] font-semibold text-gray-400 uppercase">TYPE</th>
-            <th class="text-left pb-2 text-[10px] font-semibold text-gray-400 uppercase">Effective date</th>
-            <th class="text-right pb-2 text-[10px] font-semibold text-gray-400 uppercase">Edit/Remove</th>
+            <th class="text-left text-[10px] font-semibold text-gray-400 uppercase">NO</th>
+            <th class="text-left text-[10px] font-semibold text-gray-400 uppercase">TYPE</th>
+            <th class="text-left text-[10px] font-semibold text-gray-400 uppercase">Effective date</th>
+            <th class="text-right text-[10px] font-semibold text-gray-400 uppercase">Edit/Remove</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
@@ -3534,7 +3542,7 @@ function renderPanelDocsContent() {
         ${panelBankAccounts.length ? `
         <table class="w-full border-collapse">
           <thead><tr class="text-[10px] font-semibold text-gray-400 uppercase tracking-wide text-left">
-            <th class="pb-1 font-semibold">ธนาคาร</th><th class="pb-1 font-semibold">เลขที่บัญชี</th>${editable ? '<th></th>' : ''}
+            <th class="text-left font-semibold">ธนาคาร</th><th class="text-left font-semibold">เลขที่บัญชี</th>${editable ? '<th></th>' : ''}
           </tr></thead>
           <tbody id="panel-bank-rows">${bankRows}</tbody>
         </table>` : '<p class="text-xs text-gray-300 italic">ยังไม่มีบัญชีธนาคาร</p>'}
@@ -3912,11 +3920,11 @@ function openBatchInvoice() {
       <table class="w-full text-sm">
         <thead class="sticky top-0 bg-gray-50">
           <tr>
-            <th class="py-2 pr-2 w-8"></th>
-            <th class="py-2 pr-3 text-left text-xs font-semibold text-gray-500">ลูกค้า</th>
-            <th class="py-2 pr-3 text-right text-xs font-semibold text-gray-500">ค่าบริการ</th>
-            <th class="py-2 pr-3 text-right text-xs font-semibold text-gray-500">WHT</th>
-            <th class="py-2 text-right text-xs font-semibold text-gray-500">ที่รับจริง</th>
+            <th class="pr-2 w-8"></th>
+            <th class="pr-3 text-left text-xs font-semibold text-gray-500">ลูกค้า</th>
+            <th class="pr-3 text-right text-xs font-semibold text-gray-500">ค่าบริการ</th>
+            <th class="pr-3 text-right text-xs font-semibold text-gray-500">WHT</th>
+            <th class="text-right text-xs font-semibold text-gray-500">ที่รับจริง</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
@@ -4686,8 +4694,8 @@ function renderTeamGrid() {
   }
   const canEditGrid = canManageTeams();
   const header = `<tr>
-    <th class="col-fav text-left px-3 py-2.5 text-xs font-semibold text-gray-500 border-b-2 border-gray-200" style="min-width:220px;position:sticky;left:0;background:#f8fafc;z-index:2">ลูกค้า</th>
-    ${teams.map(t => `<th class="px-3 py-2.5 text-xs font-semibold text-gray-500 border-b-2 border-l border-gray-200 text-center" style="min-width:110px">${e(t.name)}</th>`).join('')}
+    <th class="col-fav text-left px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200" style="min-width:220px;position:sticky;left:0;background:#f8fafc;z-index:2">ลูกค้า</th>
+    ${teams.map(t => `<th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-l border-gray-200 text-center" style="min-width:110px">${e(t.name)}</th>`).join('')}
   </tr>`;
   const body = rows.map(c => `<tr>
     <td class="px-3 py-2 text-sm text-gray-800 border-b border-gray-100" style="position:sticky;left:0;background:#fff"><span class="text-xs font-bold text-gray-400 mr-1.5">${e(c.code)}</span>${e(c.thai_name)}</td>
