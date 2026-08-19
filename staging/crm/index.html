@@ -88,6 +88,18 @@
     thead th { position: sticky; top: 0; z-index: 1; background: #f8fafc; height: 60px; vertical-align: middle; text-align: center; }
     tbody tr:hover td { background: #fafbff; }
     tbody tr:last-child td { border-bottom: none; }
+    /* Caps the outer white card of the flex-row list views (ลูกค้า/ลูกค้าเก่า/การเก็บเงิน/
+       ค่าบริการ — clientRowHtml/financeCollectionRowHtml/financeFeeRowHtml and their header
+       spans) so the flex-1 NAME column doesn't stretch edge-to-edge on wide monitors and
+       leave a huge dead gap before the right-hand data columns. Left-aligned on purpose, no
+       margin:auto — matches this file's other capped-width block (page-settings' .max-w-3xl/
+       .max-w-md, also left-aligned). Written as a plain hand-authored rule instead of a
+       Tailwind arbitrary-value utility (max-w-[1000px]) so it renders identically here and
+       in the offline preview build (preview-crm.html), which ships a pre-generated Tailwind
+       snapshot with no JIT step and can't produce a class that wasn't already in use when
+       that snapshot was built. Real <table> views (page-tracking, page-yearend) don't need
+       this — more columns already fill the width evenly. */
+    .list-card-cap { max-width: 1000px; }
     .col-fav  { position:sticky; left:0;     z-index:2; background:#fff; }
     .col-num  { position:sticky; left:32px;  z-index:2; background:#fff; }
     .col-code { position:sticky; left:72px;  z-index:2; background:#fff; }
@@ -554,29 +566,29 @@
             + เพิ่มลูกค้า
           </button>
         </div>
-        <!-- Invisible spacer: this page has no stat-card summary row (unlike
-             รายเดือน/รายปี/การเก็บเงิน) — reserve the same height a real
-             grid-cols-3 stat row renders at, so the table below still starts
-             at the same Y across every page/sub-tab. -->
-        <div class="grid grid-cols-3 gap-4 px-6 py-4" style="visibility:hidden" aria-hidden="true">
+        <!-- Stat-card summary row (สรุปฐานลูกค้าปัจจุบันทั้งหมด — ไม่ผูกกับตัวกรอง
+             ประเภท/คำค้นหาด้านบน ตั้งใจให้ตัวเลขนิ่ง ไม่กระพริบเวลาพิมพ์ค้นหา ดู
+             renderClientList()) ก็ยังทำหน้าที่เดิมของสเปเซอร์เดิมด้วย: ความสูงเท่ากับ
+             grid-cols-3 แถวสถิติของหน้าอื่น ทำให้ตารางด้านล่างเริ่มที่ Y เดียวกันทุกหน้า/แท็บย่อย. -->
+        <div class="grid grid-cols-3 gap-4 px-6 py-4">
           <div class="bg-white rounded-xl border border-gray-200 p-4">
-            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">&nbsp;</div>
-            <div class="text-3xl font-black text-gray-900 mt-1">&nbsp;</div>
-            <div class="text-xs text-gray-400 mt-1">&nbsp;</div>
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">ลูกค้าทั้งหมด</div>
+            <div id="cl-total" class="text-3xl font-black text-gray-900 mt-1">—</div>
+            <div class="text-xs text-gray-400 mt-1">บริษัท</div>
           </div>
           <div class="bg-white rounded-xl border border-gray-200 p-4">
-            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">&nbsp;</div>
-            <div class="text-3xl font-black text-gray-900 mt-1">&nbsp;</div>
-            <div class="text-xs text-gray-400 mt-1">&nbsp;</div>
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">มี VAT</div>
+            <div id="cl-vat" class="text-3xl font-black text-gray-900 mt-1">—</div>
+            <div class="text-xs text-gray-400 mt-1">บริษัท</div>
           </div>
           <div class="bg-white rounded-xl border border-gray-200 p-4">
-            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">&nbsp;</div>
-            <div class="text-3xl font-black text-gray-900 mt-1">&nbsp;</div>
-            <div class="text-xs text-gray-400 mt-1">&nbsp;</div>
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">มี SSO</div>
+            <div id="cl-sso" class="text-3xl font-black text-gray-900 mt-1">—</div>
+            <div class="text-xs text-gray-400 mt-1">บริษัท</div>
           </div>
         </div>
         <div class="p-6 pt-0">
-          <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <div class="bg-white border border-gray-200 rounded-xl overflow-hidden list-card-cap">
             <div class="flex items-center gap-3 px-4 py-2.5 border-b border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
               <span class="w-6 flex-shrink-0"></span>
               <span class="w-12 flex-shrink-0">#</span>
@@ -598,26 +610,27 @@
           <input id="old-client-search" type="text" placeholder="ค้นหา…" oninput="renderOldClients()"
             class="px-3.5 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-48">
         </div>
-        <!-- Invisible spacer: see the matching one in #clients-sub-current above. -->
-        <div class="grid grid-cols-3 gap-4 px-6 py-4" style="visibility:hidden" aria-hidden="true">
+        <!-- Stat-card summary row: see the matching one in #clients-sub-current above,
+             scoped to the inactive-client set instead (renderOldClients()). -->
+        <div class="grid grid-cols-3 gap-4 px-6 py-4">
           <div class="bg-white rounded-xl border border-gray-200 p-4">
-            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">&nbsp;</div>
-            <div class="text-3xl font-black text-gray-900 mt-1">&nbsp;</div>
-            <div class="text-xs text-gray-400 mt-1">&nbsp;</div>
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">ลูกค้าทั้งหมด</div>
+            <div id="clold-total" class="text-3xl font-black text-gray-900 mt-1">—</div>
+            <div class="text-xs text-gray-400 mt-1">บริษัท</div>
           </div>
           <div class="bg-white rounded-xl border border-gray-200 p-4">
-            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">&nbsp;</div>
-            <div class="text-3xl font-black text-gray-900 mt-1">&nbsp;</div>
-            <div class="text-xs text-gray-400 mt-1">&nbsp;</div>
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">มี VAT</div>
+            <div id="clold-vat" class="text-3xl font-black text-gray-900 mt-1">—</div>
+            <div class="text-xs text-gray-400 mt-1">บริษัท</div>
           </div>
           <div class="bg-white rounded-xl border border-gray-200 p-4">
-            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">&nbsp;</div>
-            <div class="text-3xl font-black text-gray-900 mt-1">&nbsp;</div>
-            <div class="text-xs text-gray-400 mt-1">&nbsp;</div>
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">มี SSO</div>
+            <div id="clold-sso" class="text-3xl font-black text-gray-900 mt-1">—</div>
+            <div class="text-xs text-gray-400 mt-1">บริษัท</div>
           </div>
         </div>
         <div class="p-6 pt-0">
-          <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <div class="bg-white border border-gray-200 rounded-xl overflow-hidden list-card-cap">
             <div class="flex items-center gap-3 px-4 py-2.5 border-b border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
               <span class="w-6 flex-shrink-0"></span>
               <span class="w-12 flex-shrink-0">#</span>
@@ -684,7 +697,7 @@
           </div>
         </div>
         <div class="p-6 pt-0">
-          <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <div class="bg-white border border-gray-200 rounded-xl overflow-hidden list-card-cap">
             <div class="flex items-center gap-3 px-4 py-2.5 border-b border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
               <span class="w-12 flex-shrink-0">#</span>
               <span class="w-16 flex-shrink-0">CODE</span>
@@ -705,29 +718,29 @@
           <input id="fin-fee-search" type="text" placeholder="ค้นหา…" oninput="renderFinanceFees()"
             class="px-3.5 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-48">
         </div>
-        <!-- Invisible spacer: this sub-tab has no stat-card summary row (unlike
-             การเก็บเงิน) — reserve the same height a real grid-cols-3 stat row
-             renders at, so the table below still starts at the same Y across
-             every page/sub-tab. -->
-        <div class="grid grid-cols-3 gap-4 px-6 py-4" style="visibility:hidden" aria-hidden="true">
+        <!-- Stat-card summary row (สรุปค่าบริการของฐานลูกค้าปัจจุบันทั้งหมด — ไม่ผูกกับ
+             คำค้นหาด้านบน ตั้งใจให้ตัวเลขนิ่ง ไม่กระพริบเวลาพิมพ์ค้นหา ดู renderFinanceFees())
+             ก็ยังทำหน้าที่เดิมของสเปเซอร์เดิมด้วย: ความสูงเท่ากับ grid-cols-3 แถวสถิติของ
+             หน้าอื่น (เช่น การเก็บเงิน) ทำให้ตารางด้านล่างเริ่มที่ Y เดียวกันทุกหน้า/แท็บย่อย. -->
+        <div class="grid grid-cols-3 gap-4 px-6 py-4">
           <div class="bg-white rounded-xl border border-gray-200 p-4">
-            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">&nbsp;</div>
-            <div class="text-3xl font-black text-gray-900 mt-1">&nbsp;</div>
-            <div class="text-xs text-gray-400 mt-1">&nbsp;</div>
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">ยอดรวมค่าบริการ/เดือน</div>
+            <div id="fee-total" class="text-2xl font-black text-gray-900 mt-1">—</div>
+            <div class="text-xs text-gray-400 mt-1">บาท</div>
           </div>
           <div class="bg-white rounded-xl border border-gray-200 p-4">
-            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">&nbsp;</div>
-            <div class="text-3xl font-black text-gray-900 mt-1">&nbsp;</div>
-            <div class="text-xs text-gray-400 mt-1">&nbsp;</div>
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">เฉลี่ยต่อราย</div>
+            <div id="fee-avg" class="text-2xl font-black text-gray-900 mt-1">—</div>
+            <div class="text-xs text-gray-400 mt-1">บาท/เดือน</div>
           </div>
           <div class="bg-white rounded-xl border border-gray-200 p-4">
-            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">&nbsp;</div>
-            <div class="text-3xl font-black text-gray-900 mt-1">&nbsp;</div>
-            <div class="text-xs text-gray-400 mt-1">&nbsp;</div>
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">จำนวนลูกค้า</div>
+            <div id="fee-count" class="text-3xl font-black text-gray-900 mt-1">—</div>
+            <div class="text-xs text-gray-400 mt-1">บริษัท</div>
           </div>
         </div>
         <div class="p-6 pt-0">
-          <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <div class="bg-white border border-gray-200 rounded-xl overflow-hidden list-card-cap">
             <div class="flex items-center gap-3 px-4 py-2.5 border-b border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
               <span class="w-12 flex-shrink-0">#</span>
               <span class="w-16 flex-shrink-0">CODE</span>
@@ -2400,7 +2413,12 @@ function clientRowHtml(c, editable) {
 
 function renderClientList() {
   const q = (document.getElementById('client-search')?.value || '').toLowerCase();
-  let filtered = clients.filter(c => c.is_active && !c.is_own_company);
+  // base = full active-client set (matches the stat cards above the list, which must NOT
+  // flicker while typing a search query — they always summarize this unfiltered set, not
+  // `filtered` below). .filter() always returns a new array, so narrowing `filtered` further
+  // by type/search never mutates `base`.
+  const base = clients.filter(c => c.is_active && !c.is_own_company);
+  let filtered = base;
   if (clientTypeFilter !== 'all') filtered = filtered.filter(c => (c.billing_type || 'monthly') === clientTypeFilter);
   if (q) filtered = filtered.filter(c =>
     (c.code||'').toLowerCase().includes(q) ||
@@ -2416,6 +2434,10 @@ function renderClientList() {
   container.innerHTML = filtered.length
     ? filtered.map(c => clientRowHtml(c, canEditBasic())).join('')
     : '<div class="text-gray-400 text-sm py-8 text-center">ไม่พบลูกค้า</div>';
+
+  document.getElementById('cl-total').textContent = base.length;
+  document.getElementById('cl-vat').textContent = base.filter(c => c.has_vat !== false).length;
+  document.getElementById('cl-sso').textContent = base.filter(c => c.has_sso !== false).length;
 }
 
 async function renderOldClients() {
@@ -2426,7 +2448,9 @@ async function renderOldClients() {
   }
 
   const q = (document.getElementById('old-client-search')?.value || '').toLowerCase();
-  let filtered = clients.filter(c => !c.is_active && !c.is_own_company);
+  // base = full inactive-client set — same non-flicker rationale as renderClientList() above.
+  const base = clients.filter(c => !c.is_active && !c.is_own_company);
+  let filtered = base;
   if (q) filtered = filtered.filter(c =>
     (c.code||'').toLowerCase().includes(q) ||
     (c.thai_name||'').toLowerCase().includes(q) ||
@@ -2441,6 +2465,10 @@ async function renderOldClients() {
   container.innerHTML = filtered.length
     ? filtered.map(c => clientRowHtml(c, canEditBasic())).join('')
     : '<div class="text-gray-400 text-sm py-8 text-center">ไม่มีลูกค้าเก่า</div>';
+
+  document.getElementById('clold-total').textContent = base.length;
+  document.getElementById('clold-vat').textContent = base.filter(c => c.has_vat !== false).length;
+  document.getElementById('clold-sso').textContent = base.filter(c => c.has_sso !== false).length;
 }
 
 // แท็บย่อยของหน้า "ลูกค้า" — ลูกค้า (ปัจจุบัน) กับ ลูกค้าเก่า (เดิมเป็นหน้าแยก ย้ายมาเป็นแท็บย่อยที่นี่)
@@ -4413,7 +4441,9 @@ function financeFeeRowHtml(c, idx) {
 }
 function renderFinanceFees() {
   const q = (document.getElementById('fin-fee-search')?.value || '').toLowerCase();
-  let filtered = clients.filter(c => c.is_active && !c.is_own_company);
+  // base = full active-client set — same non-flicker rationale as renderClientList() above.
+  const base = clients.filter(c => c.is_active && !c.is_own_company);
+  let filtered = base;
   if (q) filtered = filtered.filter(c =>
     (c.code||'').toLowerCase().includes(q) ||
     (c.thai_name||'').toLowerCase().includes(q) ||
@@ -4427,6 +4457,16 @@ function renderFinanceFees() {
   container.innerHTML = filtered.length
     ? filtered.map((c, idx) => financeFeeRowHtml(c, idx)).join('')
     : '<div class="text-gray-400 text-sm py-8 text-center">ไม่พบลูกค้า</div>';
+
+  // Same resolution financeFeeRowHtml() uses per-row (ค่าบริการ "ที่มีผลจริง ณ วันนี้" ผ่าน
+  // ประวัติสัญญา), just summed across the full unsearched set for the stat-card row.
+  const today = new Date();
+  const feeTotal = base.reduce((sum, c) =>
+    sum + (resolveEffectiveFee(c, today.getFullYear(), today.getMonth() + 1, billingContractsByClient[c.id]).fee_amount || 0), 0);
+  const feeAvg = base.length ? feeTotal / base.length : 0;
+  document.getElementById('fee-total').textContent = feeTotal.toLocaleString('th-TH');
+  document.getElementById('fee-avg').textContent = feeAvg.toLocaleString('th-TH', { maximumFractionDigits: 2 });
+  document.getElementById('fee-count').textContent = base.length;
 }
 
 // ─────────────────────────────────────────────────────────────
