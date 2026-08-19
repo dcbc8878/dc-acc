@@ -578,10 +578,19 @@
         </div>
       </div>
 
-      <!-- SUBTAB: การเก็บเงิน (สถานะใบแจ้งหนี้/รับเงินของเดือนที่กำลังดูอยู่ในหน้ารายเดือน) -->
+      <!-- SUBTAB: การเก็บเงิน (มีเดือนที่กำลังดูเป็นของตัวเอง แยกจากหน้า "รายเดือน" โดยสิ้นเชิง — finYear/finMonth) -->
       <div id="fin-sub-collection">
-        <div class="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
-          <p class="text-xs text-gray-400">สถานะของเดือน <span id="fin-collection-month" class="font-semibold text-gray-600">—</span> (เดือนเดียวกับหน้า "รายเดือน")</p>
+        <div class="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between gap-2">
+          <p class="text-xs text-gray-400">สถานะการเก็บเงินของลูกค้าแต่ละราย</p>
+          <div class="flex items-center gap-2">
+            <button id="finPrevBtn" onclick="changeFinMonth(-1)" class="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors text-gray-600 disabled:opacity-30 disabled:hover:bg-white disabled:cursor-not-allowed">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <div id="fin-collection-month" class="px-4 py-1.5 bg-blue-50 text-blue-700 font-bold text-sm rounded-full border border-blue-100 min-w-[130px] text-center">—</div>
+            <button id="finNextBtn" onclick="changeFinMonth(1)" class="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors text-gray-600 disabled:opacity-30 disabled:hover:bg-white disabled:cursor-not-allowed">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
         </div>
         <div class="grid grid-cols-3 gap-4 px-6 py-4">
           <div class="bg-white rounded-xl border border-gray-200 p-4">
@@ -607,7 +616,7 @@
               <span class="w-16 flex-shrink-0">CODE</span>
               <span class="flex-1">NAME</span>
               <span class="w-24 flex-shrink-0 text-right">ค่าบริการ</span>
-              <span class="w-24 flex-shrink-0 text-center">สถานะ</span>
+              <span class="w-36 flex-shrink-0 text-center">สถานะ</span>
               <span class="w-28 flex-shrink-0 text-center">FlowAccount</span>
             </div>
             <div id="fin-collection-list" style="max-height:480px;overflow-y:auto"></div>
@@ -981,6 +990,14 @@ let programSettings = null; // {start_year,start_month,latest_year,latest_month}
 let employeeSubTab = 'list';
 let staffListLoaded = false, teamsLoaded = false, requestsLoaded = false;
 
+// ── การเก็บเงิน (แท็บย่อยของ "การเงิน") — เดือนที่กำลังดู + ข้อมูลใบแจ้งหนี้ของเดือนนั้น เป็นสถานะของ
+// ตัวเอง แยกขาดจาก curYear/curMonth (ของหน้า "รายเดือน") โดยสิ้นเชิง เปลี่ยนเดือนหน้าไหนไม่กระทบอีกหน้า ──
+let finYear      = new Date().getFullYear();
+let finMonth     = new Date().getMonth() + 1;
+let finInvoiceMap = {};            // เหมือน invoiceMap แต่คีย์ด้วย finYear/finMonth แทน
+let billingContractsByClient = {}; // ประวัติ crm_billing_contracts ทุกแถวทุกลูกค้า จัดกลุ่มตาม client_id — ใช้โดย resolveEffectiveFee()
+let financeDataLoaded = false;     // โหลด finInvoiceMap/billingContractsByClient ครั้งแรกตอนเข้าแท็บ "การเงิน" เท่านั้น
+
 // LV1 = owner (highest) ... LV5 = parttime (lowest)
 const ROLE_LEVEL = { owner: 1, manager: 2, senior: 3, junior: 4, parttime: 5 };
 const role      = () => profile?.role || 'parttime';
@@ -1336,6 +1353,10 @@ function initTrackingMonth() {
   const clamped = clampToProgramRange(suggested.year, suggested.month);
   curYear = clamped.year;
   curMonth = clamped.month;
+  // การเก็บเงินเปิดที่เดือนเดียวกันเป็นค่าเริ่มต้น (ค่าที่เข้าใจง่ายที่สุด) แต่จากจุดนี้ไปเปลี่ยนเดือนอิสระ
+  // จากกันได้เสมอ เพราะเก็บคนละตัวแปร ไม่ผูกกับ curYear/curMonth อีกต่อไป
+  finYear = clamped.year;
+  finMonth = clamped.month;
 }
 function isTrkAtProgramStart() {
   return !!programSettings && curYear === programSettings.start_year && curMonth === programSettings.start_month;
@@ -1435,7 +1456,7 @@ function navigate(p) {
   if (p === 'tracking') renderTracking();
   else if (p === 'yearend') { if (!yearEndLoaded) loadYearEndTasks().then(renderYearEnd); else renderYearEnd(); }
   else if (p === 'clients') showClientsSubTab('current');
-  else if (p === 'finance') showFinanceSubTab('collection');
+  else if (p === 'finance') { ensureFinanceDataLoaded().then(() => showFinanceSubTab('collection')); }
   else if (p === 'settings') {
     renderOwnProfile();
     if (canSeeAuditLog()) renderActivityLog();
@@ -2509,15 +2530,20 @@ async function deleteInvoice(invId) {
   const { error } = await sb.from('crm_invoices').delete().eq('id', invId);
   if (error) { showToast('ลบไม่สำเร็จ: ' + error.message, 'error'); return; }
   if (invoiceMap[panelClientId]?.id === invId) delete invoiceMap[panelClientId];
+  if (finInvoiceMap[panelClientId]?.id === invId) delete finInvoiceMap[panelClientId];
   showToast('ลบใบแจ้งหนี้แล้ว');
   renderPanelBilling();
   renderTrackingSummary();
+  if (curPage === 'finance') renderFinanceCollection();
 }
 
 async function deleteBillingContract(contractId) {
   if (!confirm('ต้องการลบสัญญาค่าบริการนี้ใช่หรือไม่?')) return;
   const { error } = await sb.from('crm_billing_contracts').delete().eq('id', contractId);
   if (error) { showToast('ลบไม่สำเร็จ: ' + error.message, 'error'); return; }
+  if (billingContractsByClient[panelClientId]) {
+    billingContractsByClient[panelClientId] = billingContractsByClient[panelClientId].filter(c => c.id !== contractId);
+  }
   showToast('ลบสัญญาแล้ว');
   loadBillingContracts(panelClientId);
 }
@@ -2922,14 +2948,20 @@ async function applyClientChange() {
       const c = clients.find(x => x.id === panelClientId);
       await sb.from('crm_billing_contracts')
         .update({ effective_to: cd }).eq('client_id', panelClientId).is('effective_to', null);
-      await sb.from('crm_billing_contracts').insert({
+      const { data: newContract } = await sb.from('crm_billing_contracts').insert({
         client_id: panelClientId,
         billing_type: c?.billing_type || 'monthly',
         fee_amount: updates.monthly_fee,
         has_wht: c?.has_wht !== false,
         effective_from: cd,
         notes: `เปลี่ยนค่าบริการ: ${newValue} บาท (${cd})`
-      });
+      }).select().single();
+      // sync cache ประวัติสัญญาที่โหลดไว้แล้ว (ถ้าเคยเปิดแท็บ "การเงิน" มาก่อน) ให้ตรงกับ DB ทันที ไม่ต้องรอ
+      // โหลดใหม่ทั้งหน้า — กัน resolveEffectiveFee() ในแท็บการเงินเห็นประวัติเก่าค้างในหน้าเดียวกันนี้
+      if (billingContractsByClient[panelClientId]) {
+        billingContractsByClient[panelClientId].forEach(bc => { if (bc.effective_to == null) bc.effective_to = cd; });
+        if (newContract) billingContractsByClient[panelClientId].push(newContract);
+      }
     }
     const idx = clients.findIndex(x => x.id === panelClientId);
     if (idx !== -1) Object.assign(clients[idx], updates);
@@ -3220,36 +3252,49 @@ function openMarkPaid(clientId) {
     </div>`);
 }
 
+// ── แกนกลาง "บันทึกรับเงิน" — ใช้ร่วมกันทั้ง modal เดิม (confirmMarkPaid ด้านล่าง พิมพ์ยอดเองได้) และปุ่ม
+// คลิกเดียวในแท็บการเก็บเงิน (toggleFinCollected, auto-fill ยอด — ดูหัวข้อ PAGE: FINANCE) ต่างกันแค่ "ยอดมา
+// จากไหน" เท่านั้น ตัวเขียน DB (status/payment_amount/payment_received_at + อัปเดต Acct Fee) และการ trigger
+// FlowAccount receipt sync เหมือนกันทุกจุด ไม่มี logic แยกกันสองชุด คืนค่าใบแจ้งหนี้ที่อัปเดตแล้ว หรือ null
+// ถ้าบันทึกไม่สำเร็จ (แสดง toast ให้แล้วในนี้)
+async function markInvoicePaidCore_(clientId, inv, amount, updateTask) {
+  const { data, error } = await sb.from('crm_invoices').update({
+    status: 'paid',
+    payment_amount: amount,
+    payment_received_at: new Date().toISOString()
+  }).eq('id', inv.id).select().single();
+  if (error) { showToast('บันทึกไม่สำเร็จ', 'error'); return null; }
+
+  // invoiceMap/finInvoiceMap เป็น map เฉพาะเดือนที่แต่ละหน้ากำลังดูอยู่ (curYear/curMonth กับ finYear/finMonth
+  // ตามลำดับ) เขียนกลับเข้า map ไหนก็ต่อเมื่อปี/เดือนของใบแจ้งหนี้ที่เพิ่งอัปเดตตรงกับเดือนที่ map นั้นแทนอยู่จริง
+  if (data.year === curYear && data.month === curMonth) invoiceMap[clientId] = data;
+  if (data.year === finYear && data.month === finMonth) finInvoiceMap[clientId] = data;
+
+  if (updateTask) {
+    const upsertData = { client_id: clientId, year: data.year, month: data.month, acct_fee: 'done', invoice_id: data.id };
+    const { data: td } = await sb.from('crm_tax_tasks')
+      .upsert(upsertData, { onConflict: 'client_id,year,month' }).select().single();
+    if (td && data.year === curYear && data.month === curMonth) taskMap[clientId] = td;
+  }
+
+  return data;
+}
+
 async function confirmMarkPaid(clientId) {
   const inv = invoiceMap[clientId];
   if (!inv) return;
   const amount = parseFloat(document.getElementById('paid-amount').value) || 0;
   const updateTask = document.getElementById('paid-update-task').checked;
 
-  const { data, error } = await sb.from('crm_invoices').update({
-    status: 'paid',
-    payment_amount: amount,
-    payment_received_at: new Date().toISOString()
-  }).eq('id', inv.id).select().single();
-
-  if (error) { showToast('บันทึกไม่สำเร็จ', 'error'); return; }
-  invoiceMap[clientId] = data;
-
-  if (updateTask) {
-    const upsertData = {
-      client_id: clientId, year: curYear, month: curMonth,
-      acct_fee: 'done', invoice_id: inv.id
-    };
-    const { data: td } = await sb.from('crm_tax_tasks')
-      .upsert(upsertData, { onConflict: 'client_id,year,month' }).select().single();
-    if (td) taskMap[clientId] = td;
-  }
+  const data = await markInvoicePaidCore_(clientId, inv, amount, updateTask);
+  if (!data) return;
 
   closeModal();
   showToast('บันทึกรับเงินสำเร็จ');
   renderPanelBilling();
   renderTrackingSummary();
   if (curPage === 'tracking') renderTracking();
+  if (curPage === 'finance' && data.year === finYear && data.month === finMonth) renderFinanceCollection();
 
   // "Paid" is already recorded above — receipt/email is a fact-independent
   // best-effort follow-up; its failure must never undo the paid status.
@@ -3988,9 +4033,14 @@ async function createBatchInvoices() {
 
 // ─────────────────────────────────────────────────────────────
 // PAGE: FINANCE (การเงิน) — การเก็บเงิน + ค่าบริการ
-// ทั้งสองแท็บอ่านจากข้อมูลที่โหลดไว้แล้วเท่านั้น (clients, invoiceMap) ไม่มี query ใหม่
-// การจัดการจริง (สร้าง/ส่ง FlowAccount/บันทึกรับเงิน) ยังทำผ่านแผงลูกค้า (openPanel → แท็บ "ใบแจ้งหนี้")
-// เหมือนเดิมทุกจุด หน้านี้เป็นแค่มุมมองสรุป+ทางลัดไปแผงเดิม ไม่ทำซ้ำ logic ของ FlowAccount
+// การเก็บเงิน มีเดือน/ข้อมูลใบแจ้งหนี้เป็นของตัวเอง (finYear/finMonth/finInvoiceMap — โหลดครั้งแรกตอนเข้าแท็บ
+// "การเงิน" ผ่าน ensureFinanceDataLoaded() ดู navigate()) แยกขาดจากหน้ารายเดือนโดยสิ้นเชิง คลิกเซลล์สถานะ
+// mark จ่ายแล้ว/ยกเลิกได้ตรงนี้เลยแบบเดียวกับ checklist รายเดือน (คลิกเดียว ไม่มี modal) ผ่าน
+// markInvoicePaidCore_ ตัวเดียวกับที่ confirmMarkPaid (แผงลูกค้า) ใช้ ไม่มี logic แยกกันสองชุด
+// ค่าบริการ เป็นมุมมองอ่านอย่างเดียว (ไม่มีปุ่มจัดการ เหมือนเดิม) แต่อ่านค่าบริการที่ resolve ตามประวัติสัญญา
+// (resolveEffectiveFee ณ วันนี้) แทนที่จะอ่าน crm_clients.monthly_fee ตรงๆ เหมือนก่อนหน้านี้ — กันเคส fee
+// เปลี่ยนแบบตั้งวันมีผลล่วงหน้าไว้ (monthly_fee ถูกอัปเดตทันทีตอนบันทึกการเปลี่ยนแปลง ต่อให้วันที่มีผลเป็น
+// อนาคตก็ตาม ดู applyClientChange) ทำให้ตัวเลขไม่ตรงกับสัญญาที่ "มีผลจริง ณ วันนี้"
 // ─────────────────────────────────────────────────────────────
 function showFinanceSubTab(tab) {
   document.getElementById('fin-sub-collection').classList.toggle('hidden', tab !== 'collection');
@@ -4014,37 +4064,126 @@ function faStatusBadge(inv) {
     : `<span class="text-xs text-amber-600">ยังไม่ส่ง</span>`;
 }
 
-// ── การเก็บเงิน: สถานะใบแจ้งหนี้ของ "เดือนที่กำลังดูอยู่ในหน้ารายเดือน" (curYear/curMonth ตัวเดียวกับ invoiceMap ที่โหลดไว้แล้ว) ──
+// ── ตัว resolve ค่าบริการ "ที่มีผลจริง ณ ช่วงเดือนนั้น" จากประวัติ crm_billing_contracts ──
+// ใช้ร่วมกันทั้งการเก็บเงิน (ตามเดือนที่เลือกดู) และค่าบริการ (ตามวันนี้) — เกณฑ์: แถวสัญญาที่
+// effective_from <= วันสุดท้ายของเดือนนั้น AND (effective_to ว่าง OR effective_to >= วันแรกของเดือนนั้น)
+// ถ้าตรงมากกว่า 1 แถว (ปกติไม่ควรเกิดถ้าข้อมูลสมบูรณ์ แต่เกิดได้ 1 วันพอดีตอนเปลี่ยนสัญญา เพราะ
+// applyClientChange ปิดแถวเก่า/เปิดแถวใหม่ด้วยวันเดียวกัน) เอา effective_from ล่าสุดชนะ — ถ้าลูกค้าไม่เคยมี
+// ประวัติเปลี่ยนค่าบริการเลย (ไม่มีแถวใน crm_billing_contracts) fallback ไปที่ crm_clients.monthly_fee/has_wht
+// ตรงๆ (ค่าตั้งต้นตอนสร้างลูกค้า ก่อนจะมีการเปลี่ยนแปลงครั้งแรก)
+function resolveEffectiveFee(client, year, month, contractsForClient) {
+  const monthFirstStr = `${year}-${String(month).padStart(2,'0')}-01`;
+  const monthLastStr = `${year}-${String(month).padStart(2,'0')}-${String(new Date(year, month, 0).getDate()).padStart(2,'0')}`;
+  const matches = (contractsForClient || []).filter(ct =>
+    ct.effective_from && ct.effective_from <= monthLastStr &&
+    (!ct.effective_to || ct.effective_to >= monthFirstStr));
+  if (matches.length) {
+    const best = matches.reduce((a, b) => (b.effective_from > a.effective_from ? b : a));
+    return {
+      fee_amount: best.fee_amount || 0,
+      has_wht: best.has_wht !== false,
+      billing_type: best.billing_type || client?.billing_type || 'monthly',
+      source: 'contract',
+    };
+  }
+  return {
+    fee_amount: client?.monthly_fee || 0,
+    has_wht: client?.has_wht !== false,
+    billing_type: client?.billing_type || 'monthly',
+    source: 'client_default',
+  };
+}
+
+async function loadAllBillingContracts() {
+  const { data } = await sb.from('crm_billing_contracts').select('*');
+  billingContractsByClient = {};
+  (data || []).forEach(ct => { (billingContractsByClient[ct.client_id] ||= []).push(ct); });
+}
+async function loadFinInvoices() {
+  const { data } = await sb.from('crm_invoices').select('*').eq('year', finYear).eq('month', finMonth);
+  finInvoiceMap = {};
+  (data || []).forEach(inv => { finInvoiceMap[inv.client_id] = inv; });
+}
+// เรียกครั้งแรกที่เข้าแท็บ "การเงิน" เท่านั้น (ดู navigate()) — เปลี่ยนเดือนภายในแท็บทีหลังใช้ loadFinInvoices()
+// ตรงๆ ผ่าน changeFinMonth() ไม่ต้องผ่านตัวนี้ซ้ำ (billingContractsByClient ไม่ขึ้นกับเดือน โหลดครั้งเดียวพอ)
+async function ensureFinanceDataLoaded() {
+  if (financeDataLoaded) return;
+  await Promise.all([loadFinInvoices(), loadAllBillingContracts()]);
+  financeDataLoaded = true;
+}
+
+function isFinAtProgramStart() {
+  return !!programSettings && finYear === programSettings.start_year && finMonth === programSettings.start_month;
+}
+function isFinAtProgramLatest() {
+  return !!programSettings && finYear === programSettings.latest_year && finMonth === programSettings.latest_month;
+}
+function updateFinNavButtons() {
+  const prevBtn = document.getElementById('finPrevBtn');
+  const nextBtn = document.getElementById('finNextBtn');
+  if (prevBtn) prevBtn.disabled = isFinAtProgramStart();
+  if (nextBtn) nextBtn.disabled = isFinAtProgramLatest();
+}
+// ปุ่มเดือนก่อนหน้า/ถัดไปของแท็บนี้เอง — ไม่แตะ curYear/curMonth (ตัวแปรของหน้ารายเดือน) เลย
+async function changeFinMonth(delta) {
+  let m = finMonth + delta, y = finYear;
+  if (m > 12) { m = 1;  y++; }
+  if (m <  1) { m = 12; y--; }
+  if (programSettings) {
+    if (y < programSettings.start_year || (y === programSettings.start_year && m < programSettings.start_month)) return;
+    if (y > programSettings.latest_year || (y === programSettings.latest_year && m > programSettings.latest_month)) return;
+  }
+  finYear = y; finMonth = m;
+  await loadFinInvoices();
+  renderFinanceCollection();
+}
+
+// ── การเก็บเงิน: สถานะใบแจ้งหนี้ของเดือน finYear/finMonth (เดือนของแท็บนี้เอง เป็นอิสระจากหน้ารายเดือน) ──
 function financeCollectionClients() {
-  const monthFirstStr = `${curYear}-${String(curMonth).padStart(2,'0')}-01`;
-  const monthLastStr = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(new Date(curYear, curMonth, 0).getDate()).padStart(2,'0')}`;
+  const monthFirstStr = `${finYear}-${String(finMonth).padStart(2,'0')}-01`;
+  const monthLastStr = `${finYear}-${String(finMonth).padStart(2,'0')}-${String(new Date(finYear, finMonth, 0).getDate()).padStart(2,'0')}`;
   return clients.filter(c => (c.is_active || c.end_date) && !c.is_own_company)
     .filter(c => (!c.start_date || c.start_date <= monthLastStr) && (!c.end_date || c.end_date >= monthFirstStr))
     .slice()
-    .sort((a, b) => computeClientNo(a.billing_type, a.seq_num).localeCompare(computeClientNo(b.billing_type, b.seq_num)));
+    .sort((a, b) =>
+      (favoriteClientIds.has(b.id) - favoriteClientIds.has(a.id)) ||
+      computeClientNo(a.billing_type, a.seq_num).localeCompare(computeClientNo(b.billing_type, b.seq_num)));
+}
+// เซลล์สถานะ: คลิกเดียวสลับ "ยังไม่เก็บ" ↔ "✓ เก็บแล้ว <ยอด>" (เหมือน checklist รายเดือน ไม่มี modal/ฟอร์ม —
+// ดู toggleFinCollected ด้านล่าง) เฉพาะ canEdit() เท่านั้นที่คลิกได้ คนอื่นเห็นเป็นป้ายสถานะเฉยๆ
+function finStatusCellHtml(c, inv) {
+  const isPaid = !!inv && inv.status === 'paid';
+  const label = isPaid ? `✓ เก็บแล้ว ${fmtMoney(inv.payment_amount ?? inv.expected_payment)}` : 'ยังไม่เก็บ';
+  const editable = canEdit();
+  const cls = `inv-badge ${isPaid ? 'paid' : 'draft'}${editable ? ' status-td clickable' : ''}`;
+  const handler = editable ? ` onclick="event.stopPropagation();toggleFinCollected(${c.id})"` : '';
+  return `<span id="fin-status-${c.id}" class="${cls}"${handler}>${label}</span>`;
 }
 function financeCollectionRowHtml(c, idx) {
-  const inv = invoiceMap[c.id];
-  const amount = inv ? (inv.expected_payment ?? inv.fee_amount) : (c.monthly_fee || 0);
-  const statusHtml = inv ? invBadge(inv.status) : '<span class="inv-badge draft">ยังไม่สร้าง</span>';
+  const inv = finInvoiceMap[c.id];
+  // มีใบแจ้งหนี้แล้ว → ใช้ยอดที่บันทึกไว้จริงบนใบนั้น (ค่าที่ถูกต้องที่สุดเพราะเป็นยอดที่ตัดสินใจ ณ ตอนออก
+  // ใบจริง) ยังไม่มี → resolve ย้อนหลังจากประวัติสัญญา (ยอดเดียวกับที่ toggleFinCollected จะใช้ถ้ากด "เก็บเงิน")
+  const resolved = resolveEffectiveFee(c, finYear, finMonth, billingContractsByClient[c.id]);
+  const amount = inv ? inv.fee_amount : resolved.fee_amount;
   return `<div onclick="openPanel(${c.id})"
       class="flex items-center gap-3 px-4 py-2.5 border-b border-gray-100 last:border-b-0 cursor-pointer hover:bg-blue-50/40 transition-colors">
       <span class="w-12 flex-shrink-0 text-xs text-gray-400">${idx + 1}</span>
       <span class="w-16 flex-shrink-0 inline-block bg-blue-50 text-blue-700 text-xs font-bold px-1.5 py-0.5 rounded text-center overflow-hidden text-ellipsis whitespace-nowrap">${e(c.code)}</span>
       <span class="flex-1 min-w-0 text-sm font-semibold text-gray-800 overflow-hidden text-ellipsis whitespace-nowrap">${e(c.thai_name)}</span>
       <span class="w-24 flex-shrink-0 text-right text-xs font-mono text-gray-700">${fmtMoney(amount)}</span>
-      <span class="w-24 flex-shrink-0 text-center">${statusHtml}</span>
+      <span class="w-36 flex-shrink-0 text-center">${finStatusCellHtml(c, inv)}</span>
       <span class="w-28 flex-shrink-0 text-center">${faStatusBadge(inv)}</span>
     </div>`;
 }
 function renderFinanceCollection() {
   const monthLabel = document.getElementById('fin-collection-month');
-  if (monthLabel) monthLabel.textContent = `${THAI_MONTHS[curMonth]} ${curYear + 543}`;
+  if (monthLabel) monthLabel.textContent = `${THAI_MONTHS[finMonth]} ${finYear + 543}`;
+  updateFinNavButtons();
 
   const visible = financeCollectionClients();
   let paidCount = 0, pendingCount = 0, paidTotal = 0;
   visible.forEach(c => {
-    const inv = invoiceMap[c.id];
+    const inv = finInvoiceMap[c.id];
     if (inv && inv.status === 'paid') { paidCount++; paidTotal += Number(inv.payment_amount ?? inv.expected_payment ?? 0); }
     else if (!inv || inv.status !== 'cancelled') { pendingCount++; }
   });
@@ -4059,10 +4198,112 @@ function renderFinanceCollection() {
     : '<div class="text-gray-400 text-sm py-8 text-center">ไม่มีลูกค้าในเดือนนี้</div>';
 }
 
-// ── ค่าบริการ: ตารางค่าบริการปัจจุบันของลูกค้าที่ใช้งานอยู่ (billing_type/monthly_fee/has_wht จาก crm_clients — เหมือน openBatchInvoice() ใช้) ──
+// ── คลิกเซลล์สถานะ: mark ว่าเก็บเงินแล้ว (auto-fill ยอด, trigger FlowAccount receipt sync ตัวเดียวกับ
+// confirmMarkPaid) หรือกดซ้ำเพื่อ undo ถ้าตอนนี้ "เก็บแล้ว" อยู่ — ไม่มี modal/ฟอร์มทั้งสองทาง ──
+async function toggleFinCollected(clientId) {
+  if (!canEdit()) return;
+  const c = clients.find(x => x.id === clientId);
+  if (!c) return;
+  const cell = document.getElementById(`fin-status-${clientId}`);
+  const existing = finInvoiceMap[clientId];
+
+  if (existing && existing.status === 'paid') {
+    await undoFinCollected_(clientId, existing, cell);
+    return;
+  }
+
+  if (cell) cell.classList.add('saving');
+  let inv = existing;
+  if (!inv) {
+    // ยังไม่เคยมีใบแจ้งหนี้เดือนนี้เลย — สร้างร่างใหม่ก่อนด้วยค่าบริการที่ resolve ตามประวัติสัญญา ณ เดือน
+    // ที่กำลังดูอยู่ (แบบเดียวกับ createSingleInvoice/createBatchInvoices แต่ใช้ fee ที่ resolve ตามประวัติ
+    // แทน monthly_fee ตรงๆ เพราะเดือนที่เลือกดูอาจเป็นเดือนย้อนหลังที่ fee ไม่เท่าปัจจุบันแล้ว) ไม่เรียก
+    // FlowAccount create_invoice ที่นี่โดยเจตนา — นั่นเป็นคนละ business event (ออกใบกำกับภาษี) จาก "บันทึกว่า
+    // เก็บเงินแล้ว" ซึ่งเป็นแค่ receipt/payment-confirmation sync เหมือน confirmMarkPaid ทำอยู่แล้ว
+    const resolved = resolveEffectiveFee(c, finYear, finMonth, billingContractsByClient[clientId]);
+    const wht = resolved.has_wht ? Math.round(resolved.fee_amount * 0.03 * 100) / 100 : 0;
+    const payload = {
+      client_id: clientId, year: finYear, month: finMonth,
+      billing_type: resolved.billing_type, fee_amount: resolved.fee_amount,
+      wht_amount: wht, expected_payment: resolved.fee_amount - wht,
+      status: 'draft',
+    };
+    const { data, error } = await sb.from('crm_invoices')
+      .upsert(payload, { onConflict: 'client_id,year,month' }).select().single();
+    if (error) {
+      if (cell) cell.classList.remove('saving');
+      showToast('สร้างใบแจ้งหนี้ไม่สำเร็จ: ' + error.message, 'error');
+      return;
+    }
+    inv = data;
+    finInvoiceMap[clientId] = data;
+    if (finYear === curYear && finMonth === curMonth) invoiceMap[clientId] = data;
+  }
+
+  const amount = inv.expected_payment ?? inv.fee_amount ?? 0;
+  const updated = await markInvoicePaidCore_(clientId, inv, amount, true);
+  if (cell) cell.classList.remove('saving');
+  if (!updated) return;
+
+  renderFinanceCollection();
+  renderTrackingSummary();
+  if (curPage === 'tracking') renderTracking();
+  if (panelClientId === clientId) renderPanelBilling();
+
+  await syncReceiptToFlowAccount(clientId, updated.id);
+  renderFinanceCollection();
+  if (panelClientId === clientId) renderPanelBilling();
+}
+
+// Undo: คืนสถานะกลับไปก่อนหน้า — เดาจาก invoice_sent_at ว่าเคยถูกส่ง (sent) มาก่อนไหม เพราะ schema ไม่มี
+// คอลัมน์เก็บ "สถานะก่อนหน้า" ตรงๆ ให้อ่าน (ถ้าใบนี้เพิ่งถูกสร้างจากคลิกเดียวกันนี้เอง invoice_sent_at จะยัง
+// ว่างอยู่ → กลับไปเป็น draft พอดี ถูกต้องตามจริง) ล้างตัวชี้ใบเสร็จ/การรับเงินทั้งหมดด้วย เพื่อให้กด "เก็บแล้ว"
+// รอบใหม่ภายหลังออกใบเสร็จ FlowAccount รอบใหม่ได้จริง (create_receipt_and_email ปฏิเสธถ้า fa_receipt_id ยัง
+// ค้างอยู่จากรอบก่อน) — ไม่เรียก FlowAccount ให้ยกเลิก/ลบอะไรระยะไกลเลย ตามธรรมเนียมเดิมของโปรเจกต์นี้ (local
+// state คือความจริงหลัก ฝั่ง FlowAccount sync เป็น best-effort ทางเดียวเท่านั้น)
+async function undoFinCollected_(clientId, inv, cell) {
+  if (cell) cell.classList.add('saving');
+  const revertStatus = inv.invoice_sent_at ? 'sent' : 'draft';
+  const { data, error } = await sb.from('crm_invoices').update({
+    status: revertStatus,
+    payment_amount: null,
+    payment_received_at: null,
+    fa_receipt_id: null,
+    fa_receipt_no: null,
+    receipt_sent_at: null,
+  }).eq('id', inv.id).select().single();
+  if (error) {
+    if (cell) cell.classList.remove('saving');
+    showToast('ยกเลิกไม่สำเร็จ: ' + error.message, 'error');
+    return;
+  }
+  finInvoiceMap[clientId] = data;
+  if (invoiceMap[clientId]?.id === data.id) invoiceMap[clientId] = data;
+
+  // ถอด "Acct Fee: เสร็จแล้ว" ที่ toggle เคยตั้งไว้ ก็ต่อเมื่อยังผูกกับใบแจ้งหนี้ใบนี้จริง (invoice_id ตรงกัน —
+  // เขียนเป็นเงื่อนไขในตัว query เอง ถ้าไม่ตรง เช่นพนักงานติ๊กเองจากหน้ารายเดือนแยกต่างหาก จะไม่ถูกแตะ) ใช้
+  // .select() ธรรมดา (ไม่ใช้ .single()/.maybeSingle()) เพราะกรณีปกติคือไม่มีแถวไหนตรงเงื่อนไขเลย
+  const { data: tdRows } = await sb.from('crm_tax_tasks')
+    .update({ acct_fee: 'todo', invoice_id: null })
+    .eq('client_id', clientId).eq('year', finYear).eq('month', finMonth).eq('invoice_id', inv.id)
+    .select();
+  const td = tdRows?.[0];
+  if (td && finYear === curYear && finMonth === curMonth) taskMap[clientId] = td;
+
+  if (cell) cell.classList.remove('saving');
+  renderFinanceCollection();
+  renderTrackingSummary();
+  if (curPage === 'tracking') renderTracking();
+  if (panelClientId === clientId) renderPanelBilling();
+}
+
+// ── ค่าบริการ: ตารางค่าบริการของลูกค้าที่ใช้งานอยู่ "ณ วันนี้" — resolve ผ่านประวัติสัญญาเหมือนการเก็บเงิน
+// (ไม่ใช่แค่อ่าน crm_clients.monthly_fee ตรงๆ เหมือนก่อนหน้านี้ ดูคอมเมนต์บนสุดของ PAGE: FINANCE) ──
 function financeFeeRowHtml(c, idx) {
-  const fee = c.monthly_fee || 0;
-  const wht = c.has_wht !== false ? Math.round(fee * 0.03 * 100) / 100 : 0;
+  const today = new Date();
+  const resolved = resolveEffectiveFee(c, today.getFullYear(), today.getMonth() + 1, billingContractsByClient[c.id]);
+  const fee = resolved.fee_amount;
+  const wht = resolved.has_wht ? Math.round(fee * 0.03 * 100) / 100 : 0;
   const expected = fee - wht;
   return `<div onclick="openPanel(${c.id})"
       class="flex items-center gap-3 px-4 py-2.5 border-b border-gray-100 last:border-b-0 cursor-pointer hover:bg-blue-50/40 transition-colors">
