@@ -471,7 +471,7 @@
           </div>
         </div>
         <div class="px-6 pb-8 overflow-x-auto">
-          <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" style="min-width:560px">
+          <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" style="min-width:620px">
             <table class="w-full text-center">
               <thead>
                 <tr>
@@ -479,15 +479,14 @@
                   <th class="text-center px-1 text-xs font-semibold text-gray-400 border-b-2 border-gray-200" style="width:40px">#</th>
                   <th class="text-center px-1 text-xs font-semibold text-gray-500 border-b-2 border-gray-200" style="width:76px">CODE</th>
                   <th class="text-left px-2 text-xs font-semibold text-gray-500 border-b-2 border-gray-200" style="min-width:150px">ชื่อบริษัท</th>
-                  <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200 border-l border-gray-200">ภ.ง.ด.51</th>
-                  <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">ภงด.1ก</th>
-                  <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">กท.26ก</th>
-                  <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">ภ.ง.ด.50</th>
+                  <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200 border-l border-gray-200">กท.26ก</th>
+                  <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">กท.20ก</th>
+                  <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">ภ.ง.ด.1ก</th>
                   <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200" style="min-width:110px">ความคืบหน้า</th>
                 </tr>
               </thead>
               <tbody id="yearend-tbody">
-                <tr><td colspan="9" class="py-10 text-gray-400 text-sm">กำลังโหลด…</td></tr>
+                <tr><td colspan="8" class="py-10 text-gray-400 text-sm">กำลังโหลด…</td></tr>
               </tbody>
             </table>
           </div>
@@ -518,7 +517,7 @@
           </div>
         </div>
         <div class="px-6 pb-8 overflow-x-auto">
-          <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" style="min-width:560px">
+          <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" style="min-width:780px">
             <table class="w-full text-center">
               <thead>
                 <tr>
@@ -526,15 +525,16 @@
                   <th class="text-center px-1 text-xs font-semibold text-gray-400 border-b-2 border-gray-200" style="width:40px">#</th>
                   <th class="text-center px-1 text-xs font-semibold text-gray-500 border-b-2 border-gray-200" style="width:76px">CODE</th>
                   <th class="text-left px-2 text-xs font-semibold text-gray-500 border-b-2 border-gray-200" style="min-width:150px">ชื่อบริษัท</th>
-                  <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200 border-l border-gray-200">งบการเงิน</th>
-                  <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">ผู้สอบฯ</th>
-                  <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">ส่ง DBD</th>
-                  <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">บอจ.5</th>
+                  <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200 border-l border-gray-200">ภ.ง.ด.51</th>
+                  <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">กระทบยอด</th>
+                  <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">การตรวจสอบ</th>
+                  <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">ผู้สอบ</th>
+                  <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">ยื่นแบบ</th>
                   <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200" style="min-width:110px">ความคืบหน้า</th>
                 </tr>
               </thead>
               <tbody id="yearend-fin-tbody">
-                <tr><td colspan="9" class="py-10 text-gray-400 text-sm">กำลังโหลด…</td></tr>
+                <tr><td colspan="10" class="py-10 text-gray-400 text-sm">กำลังโหลด…</td></tr>
               </tbody>
             </table>
           </div>
@@ -1064,10 +1064,85 @@ const THAI_MONTHS = ['','มกราคม','กุมภาพันธ์','�
 const ROLE_LABEL = { owner:'เจ้าของ (LV1)', manager:'ผู้จัดการ (LV2)', senior:'พนักงานอาวุโส (LV3)', junior:'พนักงาน (LV4)', parttime:'นักศึกษาฝึกงาน (LV5)' };
 const PREFIX_OPTIONS = ['นาย','นาง','นางสาว'];
 const FIELDS = ['rd_download','rd_keyed'];
-const YE_FIELDS = ['pnd51','pnd1k','kt26k','pnd50','fin_stmt','audit','dbd_submit','boj5'];
-// รายปี แยกเป็น 2 แท็บย่อย: "งานรายปี" (แบบยื่นภาษีรายปี) กับ "งบการเงิน" (ปิดงบ/ผู้สอบ/ส่ง DBD รวม บอจ.5)
-const YE_TASK_FIELDS = ['pnd51','pnd1k','kt26k','pnd50'];
-const YE_FIN_FIELDS  = ['fin_stmt','audit','dbd_submit','boj5'];
+// รายปี แยกเป็น 2 แท็บย่อย: "งานรายปี" กับ "งบการเงิน" — แต่ละหัวข้อ (group) มีหลายขั้นตอนย่อย (steps)
+// เป็นเช็คลิสต์ ไม่ใช่สถานะเดียวแบบเดิม แต่ละขั้นตอนย่อยคือคอลัมน์จริงชื่อ `${groupKey}_${stepKey}` บน
+// crm_year_end_tasks (ดู supabase-yearend-checklist-migration.sql) step ที่มี condKey จะนับเฉพาะลูกค้าที่
+// client[condKey] เป็นจริงเท่านั้น (ตอนนี้มีแค่ recon.sso ผูกกับ has_sso — "ประกันสังคม(ถ้ามี)")
+const YE_TASK_GROUPS = [
+  { key: 'kt26k', label: 'กท.26ก', steps: [
+    { key: 'received', label: 'รับ' },
+    { key: 'paid', label: 'จ่าย' },
+  ] },
+  { key: 'kt20k', label: 'กท.20ก', steps: [
+    { key: 'draft', label: 'ร่าง' },
+    { key: 'approved', label: 'อนุมัติ' },
+    { key: 'notify_confirm', label: 'แจ้งลูกค้ายืนยัน' },
+    { key: 'filed', label: 'ยื่นแบบ' },
+    { key: 'paid', label: 'จ่ายเงิน' },
+  ] },
+  { key: 'pnd1k', label: 'ภ.ง.ด.1ก', steps: [
+    { key: 'draft', label: 'ร่าง' },
+    { key: 'approved', label: 'อนุมัติ' },
+    { key: 'notify', label: 'แจ้งลูกค้า' },
+    { key: 'confirm', label: 'ยืนยัน' },
+    { key: 'filed', label: 'ยื่นแบบ' },
+  ] },
+];
+const YE_FIN_GROUPS = [
+  { key: 'pnd51', label: 'ภ.ง.ด.51', steps: [
+    { key: 'draft', label: 'ร่างแบบ' },
+    { key: 'approved', label: 'อนุมัติ' },
+    { key: 'sent', label: 'ส่งลูกค้า' },
+    { key: 'confirm', label: 'ยืนยัน' },
+    { key: 'filed', label: 'ยื่นแบบ' },
+  ] },
+  { key: 'recon', label: 'กระทบยอด', steps: [
+    { key: 'bank', label: 'Confirm Bank' },
+    { key: 'bankstatement', label: 'Bank Statement' },
+    { key: 'tax', label: 'ภาษี' },
+    { key: 'sso', label: 'ประกันสังคม', condKey: 'has_sso' },
+    { key: 'prepaid', label: 'ค่าใช้จ่ายจ่ายล่วงหน้า' },
+    { key: 'accrued', label: 'ค่าใช้จ่ายค้างจ่าย' },
+    { key: 'deposit', label: 'เงินมัดจำ' },
+    { key: 'payables', label: 'เจ้าหนี้รายตัว' },
+    { key: 'receivables', label: 'ลูกหนี้รายตัว' },
+    { key: 'assets', label: 'สินทรัพย์' },
+    { key: 'payroll', label: 'เงินเดือน' },
+  ] },
+  { key: 'review', label: 'การตรวจสอบ', steps: [
+    { key: 'draft', label: 'ร่างงบการเงิน' },
+    { key: 'approved', label: 'อนุมัติ' },
+    { key: 'sent', label: 'ส่งลูกค้ายืนยัน' },
+    { key: 'confirm', label: 'ยืนยัน' },
+  ] },
+  { key: 'auditor', label: 'ผู้สอบ', steps: [
+    { key: 'sent', label: 'ส่งผู้สอบ' },
+    { key: 'revision', label: 'ต้องแก้ไข' },
+    { key: 'approved', label: 'อนุมัติงบการเงิน' },
+  ] },
+  { key: 'filing', label: 'ยื่นแบบ', steps: [
+    { key: 'minutes', label: 'รายงานการประชุมอนุมัติงบการเงิน' },
+    { key: 'boj5', label: 'บอจ.5' },
+    { key: 'dbd', label: 'DBD' },
+    { key: 'pnd50', label: 'ภ.ง.ด.50' },
+  ] },
+];
+function yeGroupApplicableSteps(group, c) {
+  return group.steps.filter(s => !s.condKey || c[s.condKey]);
+}
+function yeGroupField(group, step) { return `${group.key}_${step.key}`; }
+function yeGroupProgress(group, c, t) {
+  const steps = yeGroupApplicableSteps(group, c);
+  const done = steps.filter(s => (t[yeGroupField(group, s)] || 'todo') === 'done').length;
+  return { done, total: steps.length };
+}
+// % ความคืบหน้ารวมท้ายแถว — รวมทุก step ที่เกี่ยวข้องของทุก group ในหน้านั้น (ตัด step ที่ condKey ไม่ผ่าน
+// ออกจากตัวหารด้วย เช่น ลูกค้าไม่มี SSO จะไม่นับ recon_sso เลย ไม่ใช่นับเป็น "ยังไม่เสร็จ")
+function yeGroupsPct(groups, c, t) {
+  let done = 0, total = 0;
+  groups.forEach(g => { const p = yeGroupProgress(g, c, t); done += p.done; total += p.total; });
+  return total ? Math.round(done / total * 100) : 100;
+}
 const GROUP_ITEMS = {
   tax1: {
     label: 'TAX 1', sublabel: 'PND1 · PND3 · PND53 · PND54 · PP36',
@@ -1095,13 +1170,9 @@ const GROUP_ITEMS = {
     ],
   },
 };
-// ป้ายกำกับสำหรับข้อความสรุปที่บันทึกลง crm_activity_log ตอนติ๊กงานภาษี/งานปลายปี (ดู logActivity ในฟังก์ชัน toggleField/saveGroupItemField/toggleYearEndField)
+// ป้ายกำกับสำหรับข้อความสรุปที่บันทึกลง crm_activity_log ตอนติ๊กงานภาษี/งานปลายปี (ดู logActivity ในฟังก์ชัน toggleField/saveGroupItemField/toggleYeStep)
 const TASK_STATUS_LABEL_TH = { todo: 'ยังไม่ทำ', inprogress: 'กำลังทำ', done: 'เสร็จ', na: 'ไม่มี' };
 const RD_FIELD_LABEL = { rd_download: 'RD: Download', rd_keyed: 'RD: Key' };
-const YE_FIELD_LABEL = {
-  pnd51: 'ภ.ง.ด.51', pnd1k: 'ภ.ง.ด.1ก', kt26k: 'กท.26ก', pnd50: 'ภ.ง.ด.50',
-  fin_stmt: 'งบการเงิน', audit: 'ผู้สอบบัญชี', dbd_submit: 'ส่ง DBD', boj5: 'บอจ.5',
-};
 const INV_STATUS_LABEL = { draft:'ร่าง', sent:'ส่งแล้ว', paid:'ชำระแล้ว', cancelled:'ยกเลิก' };
 const BILLING_TYPE_LABEL = { monthly:'รายเดือน', annual:'รายปี', filing:'ยื่นแบบ', dissolved:'เลิกกิจการ' };
 const ENTITY_TYPES = ['บริษัทจำกัด','ห้างหุ้นส่วน','บุคคลธรรมดา'];
@@ -2330,81 +2401,90 @@ function yearEndVisibleClients() {
     .filter(c => (!c.start_date || c.start_date <= yearLastStr) && (!c.end_date || c.end_date >= yearFirstStr))
     .filter(c => isClientVisibleOnTeamScopedPages(c, yeMyIds));
 }
-// สรุปตัวเลข 3 ช่อง (เสร็จครบ/กำลังดำเนินการ/ยังไม่เริ่ม) แยกอิสระต่อแท็บย่อย งานรายปี vs งบการเงิน
-// เรียกทั้งจาก renderYearEnd() (โหลด/เปลี่ยนปี) และ toggleYearEndField() (คลิกเปลี่ยนสถานะ) กันโค้ดซ้ำ
-function renderYearEndSummary() {
+// star/#/code/ชื่อบริษัท แยกเป็น 4 คอลัมน์เหมือนหน้ารายเดือน/ลูกค้า/การเงินทุกหน้า — # ใช้
+// computeClientNo() ตรงกับหน้ารายเดือนที่เป็นตารางจริงเหมือนกัน ใช้ร่วมกันทั้ง 3 แท็บย่อยของหน้ารายปี
+// (งานรายปี/งบการเงิน/เลิกกิจการ) จึงดึงออกมาเป็นฟังก์ชันแยกแทนที่จะเป็น const ผูกกับ renderYearEnd() เดียว
+function yeFavNumCodeName(c) {
+  const isFav = favoriteClientIds.has(c.id);
+  return `
+    <td class="py-3 text-center">
+      <button onclick="event.stopPropagation();toggleFavorite(${c.id})" title="${isFav ? 'เอาออกจากรายการโปรด' : 'เพิ่มในรายการโปรด'}" class="w-6 h-6 flex items-center justify-center mx-auto ${isFav ? 'text-amber-500' : 'text-gray-300 hover:text-amber-500'}">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      </button>
+    </td>
+    <td class="py-3 text-center text-xs text-gray-400">${e(computeClientNo(c.billing_type, c.seq_num))}</td>
+    <td class="px-1 py-3 text-center cursor-pointer" onclick="openPanel(${c.id})">
+      <span class="inline-block bg-purple-50 text-purple-700 text-xs font-bold px-1.5 py-0.5 rounded">${e(c.code)}</span>
+    </td>
+    <td class="px-2 py-3 text-left cursor-pointer hover:bg-purple-50 transition-colors" onclick="openPanel(${c.id})">
+      <div class="text-sm text-gray-800 max-w-[190px] leading-tight">${e(c.thai_name)}</div>
+    </td>`;
+}
+// คอลัมน์สรุปของแต่ละ "หัวข้อ" (group) — โชว์ "เสร็จ/ทั้งหมด" ตัวเลขเดียว กดแล้วเปิด modal เช็คลิสต์
+// ทีละขั้นตอนย่อย (แทนจุดเดียวแบบเดิม เพราะแต่ละหัวข้อตอนนี้มีหลายขั้นตอน บางหัวข้อเช่นกระทบยอดมีถึง 11)
+function mkYeGroupTd(group, c, t, groupsKind, first) {
+  const { done, total } = yeGroupProgress(group, c, t);
+  const cls = total > 0 && done === total ? 'text-green-700' : done > 0 ? 'text-blue-700' : 'text-gray-400';
+  return `<td class="px-2 py-2.5 text-center ${first ? 'border-l border-gray-200' : ''}">
+            <button onclick="openYeGroupDetail(${c.id},'${groupsKind}','${group.key}')" class="text-xs font-bold ${cls} hover:underline">${done}/${total}</button>
+          </td>`;
+}
+function renderYeTaskSummary() {
   const visibleClients = yearEndVisibleClients();
-  let taskDone = 0, taskProg = 0, taskPending = 0;
-  let finDone = 0, finProg = 0, finPending = 0;
+  let done = 0, prog = 0, pending = 0;
+  visibleClients.forEach(c => {
+    const pct = yeGroupsPct(YE_TASK_GROUPS, c, yearEndMap[c.id] || {});
+    if (pct === 100) done++; else if (pct > 0) prog++; else pending++;
+  });
+  document.getElementById('ye-done').textContent    = done;
+  document.getElementById('ye-inprog').textContent  = prog;
+  document.getElementById('ye-pending').textContent = pending;
+}
+function renderYeFinSummary() {
+  const visibleClients = yearEndVisibleClients();
+  let done = 0, prog = 0, pending = 0;
+  visibleClients.forEach(c => {
+    const pct = yeGroupsPct(YE_FIN_GROUPS, c, yearEndMap[c.id] || {});
+    if (pct === 100) done++; else if (pct > 0) prog++; else pending++;
+  });
+  document.getElementById('yefin-done').textContent    = done;
+  document.getElementById('yefin-inprog').textContent  = prog;
+  document.getElementById('yefin-pending').textContent = pending;
+}
+function renderYeTaskTable() {
+  const visibleClients = yearEndVisibleClients();
+  renderYeTaskSummary();
+  let rows = '';
   visibleClients.forEach(c => {
     const t = yearEndMap[c.id] || {};
-    const tp = calcPct(t, YE_TASK_FIELDS);
-    if (tp === 100) taskDone++; else if (tp > 0) taskProg++; else taskPending++;
-    const fp = calcPct(t, YE_FIN_FIELDS);
-    if (fp === 100) finDone++; else if (fp > 0) finProg++; else finPending++;
+    rows += `<tr class="border-b border-gray-100">
+      ${yeFavNumCodeName(c)}
+      ${YE_TASK_GROUPS.map((g, i) => mkYeGroupTd(g, c, t, 'task', i === 0)).join('')}
+      <td class="px-3 py-2.5">${progressBar(yeGroupsPct(YE_TASK_GROUPS, c, t))}</td>
+    </tr>`;
   });
-  document.getElementById('ye-done').textContent    = taskDone;
-  document.getElementById('ye-inprog').textContent  = taskProg;
-  document.getElementById('ye-pending').textContent = taskPending;
-  document.getElementById('yefin-done').textContent    = finDone;
-  document.getElementById('yefin-inprog').textContent  = finProg;
-  document.getElementById('yefin-pending').textContent = finPending;
+  if (!rows) rows = `<tr><td colspan="8" class="py-10 text-gray-400 text-sm text-center">ยังไม่มีลูกค้าในระบบ</td></tr>`;
+  document.getElementById('yearend-tbody').innerHTML = rows;
+}
+function renderYeFinTable() {
+  const visibleClients = yearEndVisibleClients();
+  renderYeFinSummary();
+  let rows = '';
+  visibleClients.forEach(c => {
+    const t = yearEndMap[c.id] || {};
+    rows += `<tr class="border-b border-gray-100">
+      ${yeFavNumCodeName(c)}
+      ${YE_FIN_GROUPS.map((g, i) => mkYeGroupTd(g, c, t, 'fin', i === 0)).join('')}
+      <td class="px-3 py-2.5">${progressBar(yeGroupsPct(YE_FIN_GROUPS, c, t))}</td>
+    </tr>`;
+  });
+  if (!rows) rows = `<tr><td colspan="10" class="py-10 text-gray-400 text-sm text-center">ยังไม่มีลูกค้าในระบบ</td></tr>`;
+  document.getElementById('yearend-fin-tbody').innerHTML = rows;
 }
 function renderYearEnd() {
   document.getElementById('yearend-display').textContent = `พ.ศ. ${yearEndYear + 543}`;
-  const visibleClients = yearEndVisibleClients();
-  renderYearEndSummary();
-
-  const mkYeCell = (c, f, bc = '') => {
-    const t = yearEndMap[c.id] || {};
-    const v = t[f] || (['pnd51','audit'].includes(f) ? 'na' : 'todo');
-    return `<td class="status-td px-2 py-2.5 ${bc} ${canEdit() ? 'clickable' : ''}"
-                ${canEdit() ? `onclick="toggleYearEndField(${c.id},'${f}',this)"` : ''}>
-              ${statusDot(v)}</td>`;
-  };
-
-  let taskRows = '', finRows = '';
-  visibleClients.forEach(c => {
-    const t = yearEndMap[c.id] || {};
-    const taskPct = calcPct(t, YE_TASK_FIELDS);
-    const finPct  = calcPct(t, YE_FIN_FIELDS);
-    const isFav = favoriteClientIds.has(c.id);
-    // star/#/code/ชื่อบริษัท แยกเป็น 4 คอลัมน์เหมือนหน้ารายเดือน/ลูกค้า/การเงินทุกหน้า (ก่อนหน้านี้อัดรวมกัน
-    // เป็นคอลัมน์ "ลูกค้า" คอลัมน์เดียว ไม่มีดาว) — # ใช้ computeClientNo() ตรงกับหน้ารายเดือนที่เป็นตาราง
-    // จริงเหมือนกัน (ต่างจากหน้า flex-list อย่างลูกค้า/การเก็บเงินที่ใช้เลขลำดับแถวแทน)
-    const favNumCodeName = `
-      <td class="py-3 text-center">
-        <button onclick="event.stopPropagation();toggleFavorite(${c.id})" title="${isFav ? 'เอาออกจากรายการโปรด' : 'เพิ่มในรายการโปรด'}" class="w-6 h-6 flex items-center justify-center mx-auto ${isFav ? 'text-amber-500' : 'text-gray-300 hover:text-amber-500'}">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-        </button>
-      </td>
-      <td class="py-3 text-center text-xs text-gray-400">${e(computeClientNo(c.billing_type, c.seq_num))}</td>
-      <td class="px-1 py-3 text-center cursor-pointer" onclick="openPanel(${c.id})">
-        <span class="inline-block bg-purple-50 text-purple-700 text-xs font-bold px-1.5 py-0.5 rounded">${e(c.code)}</span>
-      </td>
-      <td class="px-2 py-3 text-left cursor-pointer hover:bg-purple-50 transition-colors" onclick="openPanel(${c.id})">
-        <div class="text-sm text-gray-800 max-w-[190px] leading-tight">${e(c.thai_name)}</div>
-      </td>`;
-
-    taskRows += `<tr class="border-b border-gray-100">
-      ${favNumCodeName}
-      ${mkYeCell(c,'pnd51','border-l border-gray-200')}
-      ${mkYeCell(c,'pnd1k')}${mkYeCell(c,'kt26k')}${mkYeCell(c,'pnd50')}
-      <td class="px-3 py-2.5">${progressBar(taskPct)}</td>
-    </tr>`;
-
-    finRows += `<tr class="border-b border-gray-100">
-      ${favNumCodeName}
-      ${mkYeCell(c,'fin_stmt','border-l border-gray-200')}
-      ${mkYeCell(c,'audit')}${mkYeCell(c,'dbd_submit')}${mkYeCell(c,'boj5')}
-      <td class="px-3 py-2.5">${progressBar(finPct)}</td>
-    </tr>`;
-  });
-
-  if (!taskRows) taskRows = `<tr><td colspan="9" class="py-10 text-gray-400 text-sm text-center">ยังไม่มีลูกค้าในระบบ</td></tr>`;
-  if (!finRows)  finRows  = `<tr><td colspan="9" class="py-10 text-gray-400 text-sm text-center">ยังไม่มีลูกค้าในระบบ</td></tr>`;
-  document.getElementById('yearend-tbody').innerHTML = taskRows;
-  document.getElementById('yearend-fin-tbody').innerHTML = finRows;
+  renderYeTaskTable();
+  renderYeFinTable();
   renderDissolved();
 }
 
@@ -2415,8 +2495,9 @@ async function changeYearEnd(delta) {
   renderYearEnd();
 }
 
-// แท็บย่อยของหน้า "รายปี" — งานรายปี (ภ.ง.ด.51/ภงด.1ก/กท.26ก/ภ.ง.ด.50) กับ งบการเงิน (งบการเงิน/ผู้สอบฯ/ส่ง DBD/บอจ.5)
-// ข้อมูลชุดเดียวกัน (yearEndMap) โหลดมาแล้วทั้งคู่ตอน renderYearEnd() จึงแค่สลับการมองเห็น ไม่ต้องโหลดซ้ำ
+// แท็บย่อยของหน้า "รายปี" — งานรายปี (กท.26ก/กท.20ก/ภ.ง.ด.1ก) กับ งบการเงิน (ภ.ง.ด.51/กระทบยอด/
+// การตรวจสอบ/ผู้สอบ/ยื่นแบบ) ข้อมูลชุดเดียวกัน (yearEndMap) โหลดมาแล้วทั้งคู่ตอน renderYearEnd() จึงแค่
+// สลับการมองเห็น ไม่ต้องโหลดซ้ำ
 function showYearEndSubTab(tab) {
   document.getElementById('ye-sub-tasks').classList.toggle('hidden', tab !== 'tasks');
   document.getElementById('ye-sub-fin').classList.toggle('hidden', tab !== 'fin');
@@ -2551,41 +2632,69 @@ async function saveDissolutionDate(clientId) {
   if (panelClientId === clientId) renderPanelInfo();
 }
 
-async function toggleYearEndField(clientId, field, cell) {
+// modal เช็คลิสต์ของหนึ่ง "หัวข้อ" (group) — คลิกทีละขั้นตอนย่อยเพื่อสลับ todo/done บันทึกทันทีแบบเดียว
+// กับจุดอื่นๆ ในแอพนี้ ไม่ต้องกดปุ่ม "บันทึก" แยก step ที่ condKey ไม่ผ่าน (เช่น recon.sso ของลูกค้าที่ไม่มี
+// SSO) แสดงเป็น "—" ตัวเทาๆ ไม่ให้คลิก ไม่นับรวมในความคืบหน้าเลย
+function openYeGroupDetail(clientId, groupsKind, groupKey) {
+  renderYeGroupModalBody(clientId, groupsKind, groupKey);
+}
+function renderYeGroupModalBody(clientId, groupsKind, groupKey) {
+  const groups = groupsKind === 'task' ? YE_TASK_GROUPS : YE_FIN_GROUPS;
+  const group = groups.find(g => g.key === groupKey);
+  const c = clients.find(x => x.id === clientId);
+  if (!c || !group) return;
+  const t = yearEndMap[clientId] || {};
+  const rows = group.steps.map(s => {
+    const applicable = !s.condKey || c[s.condKey];
+    const field = yeGroupField(group, s);
+    const v = applicable ? (t[field] || 'todo') : 'na';
+    const clickable = applicable && canEdit();
+    return `<div class="flex items-center justify-between py-2.5 px-2 -mx-2 border-b border-gray-100 last:border-0 rounded ${clickable ? 'cursor-pointer hover:bg-gray-50' : ''}"
+                 ${clickable ? `onclick="toggleYeStep(${clientId},'${groupsKind}','${groupKey}','${field}')"` : ''}>
+              <span class="text-sm text-gray-700">${e(s.label)}</span>
+              <span data-ye-step="${field}">${statusDot(v)}</span>
+            </div>`;
+  }).join('');
+  const { done, total } = yeGroupProgress(group, c, t);
+  openModal(`
+    <h3 class="text-base font-bold text-gray-900 mb-1">${e(group.label)} <span class="text-gray-400 font-normal text-sm">(${done}/${total})</span></h3>
+    <p class="text-xs text-gray-400 mb-4">${e(c.thai_name)}</p>
+    <div>${rows}</div>
+    <div class="flex justify-end mt-6">
+      <button onclick="closeModal()" class="px-4 py-2 text-sm text-gray-600 font-medium hover:text-gray-900">ปิด</button>
+    </div>`);
+}
+async function toggleYeStep(clientId, groupsKind, groupKey, field) {
   if (!canEdit()) return;
-  const naDefault = ['pnd51','audit'];
-  const defaultVal = naDefault.includes(field) ? 'na' : 'todo';
-  const cur  = yearEndMap[clientId]?.[field] || defaultVal;
-  const next = cur === 'todo' ? 'done' : cur === 'done' ? 'na' : 'todo';
-  if (!yearEndMap[clientId]) {
-    yearEndMap[clientId] = { client_id: clientId, year: yearEndYear };
-    YE_FIELDS.forEach(f => { yearEndMap[clientId][f] = naDefault.includes(f) ? 'na' : 'todo'; });
-  }
+  const cur = yearEndMap[clientId]?.[field] || 'todo';
+  const next = cur === 'todo' ? 'done' : 'todo';
+  if (!yearEndMap[clientId]) yearEndMap[clientId] = { client_id: clientId, year: yearEndYear };
   yearEndMap[clientId][field] = next;
-  cell.innerHTML = statusDot(next);
-  cell.classList.add('saving');
-  const row = cell.closest('tr');
-  const lastTd = row.querySelector('td:last-child');
-  const rowFields = YE_TASK_FIELDS.includes(field) ? YE_TASK_FIELDS : YE_FIN_FIELDS;
-  if (lastTd) lastTd.innerHTML = progressBar(calcPct(yearEndMap[clientId], rowFields));
+  const dot = document.querySelector(`[data-ye-step="${field}"]`);
+  if (dot) dot.innerHTML = statusDot(next);
 
   const { data, error } = await sb.from('crm_year_end_tasks')
     .upsert({ client_id: clientId, year: yearEndYear, [field]: next }, { onConflict: 'client_id,year' })
     .select().single();
-  cell.classList.remove('saving');
   if (error) {
     yearEndMap[clientId][field] = cur;
-    cell.innerHTML = statusDot(cur);
-    if (lastTd) lastTd.innerHTML = progressBar(calcPct(yearEndMap[clientId], rowFields));
+    if (dot) dot.innerHTML = statusDot(cur);
     showToast('บันทึกไม่สำเร็จ', 'error');
-  } else if (data) {
-    yearEndMap[clientId] = data;
-    const c = clients.find(x => x.id === clientId);
-    await logActivity('year_end_task_toggle', 'client', clientId,
-      `${c?.thai_name || ''}: ${YE_FIELD_LABEL[field] || field} → ${TASK_STATUS_LABEL_TH[next] || next} (ปี ${yearEndYear + 543})`);
+    return;
   }
+  if (data) yearEndMap[clientId] = data;
 
-  renderYearEndSummary();
+  const c = clients.find(x => x.id === clientId);
+  const groups = groupsKind === 'task' ? YE_TASK_GROUPS : YE_FIN_GROUPS;
+  const group = groups.find(g => g.key === groupKey);
+  const step = group?.steps.find(s => yeGroupField(group, s) === field);
+  await logActivity('year_end_task_toggle', 'client', clientId,
+    `${c?.thai_name || ''}: ${group?.label || groupKey} - ${step?.label || field} → ${TASK_STATUS_LABEL_TH[next] || next} (ปี ${yearEndYear + 543})`);
+
+  // รีเฟรชหัวข้อในหน้า modal (ตัวเลข done/total ในหัวข้อ) + ตารางข้างหลัง (ปุ่มสรุป + progress bar
+  // ท้ายแถว) — ข้อมูลไม่เยอะ re-render ทั้งสองส่วนง่ายกว่าไล่แก้ DOM ทีละจุดเหมือนจุดอื่นในแอพนี้
+  renderYeGroupModalBody(clientId, groupsKind, groupKey);
+  if (groupsKind === 'task') renderYeTaskTable(); else renderYeFinTable();
 }
 
 // ─────────────────────────────────────────────────────────────
