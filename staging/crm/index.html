@@ -322,6 +322,19 @@
           </button>
         </div>
       </div>
+      <!-- Invisible spacers: unlike รายปี/ลูกค้า/การเงิน, this page has no sub-tab
+           row and no separate toolbar row (its controls live inline in the sticky
+           header above) — reserve the same vertical space those rows take up on
+           every other page so the table below starts at the same Y everywhere.
+           visibility:hidden removes these from paint AND from hit-testing/focus,
+           so nothing fake is ever visible or clickable. -->
+      <div class="flex border-b-0 mt-2 px-6" style="visibility:hidden" aria-hidden="true">
+        <span class="tab-btn">&nbsp;</span>
+        <span class="tab-btn">&nbsp;</span>
+      </div>
+      <div class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-end gap-2" style="visibility:hidden" aria-hidden="true">
+        <span class="px-3.5 py-2 rounded-lg border border-gray-200 text-sm w-48 inline-block">&nbsp;</span>
+      </div>
       <div class="grid grid-cols-4 gap-4 px-6 py-4">
         <div class="bg-white rounded-xl border border-gray-200 p-4">
           <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">ลูกค้าทั้งหมด</div>
@@ -419,6 +432,13 @@
 
       <!-- SUBTAB: งานรายปี (ภ.ง.ด.51 · ภงด.1ก · กท.26ก · ภ.ง.ด.50) -->
       <div id="ye-sub-tasks">
+        <!-- Invisible spacer: this page's controls live in the sticky header
+             above, with no separate toolbar row here — but ลูกค้า/การเงิน DO have
+             one at this exact position, so reserve the same height to keep the
+             table below aligned at the same Y across every page/sub-tab. -->
+        <div class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-end gap-2" style="visibility:hidden" aria-hidden="true">
+          <span class="px-3.5 py-2 rounded-lg border border-gray-200 text-sm w-48 inline-block">&nbsp;</span>
+        </div>
         <div class="grid grid-cols-3 gap-4 px-6 py-4">
           <div class="bg-white rounded-xl border border-gray-200 p-4">
             <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">เสร็จครบ</div>
@@ -459,6 +479,10 @@
 
       <!-- SUBTAB: งบการเงิน (งบการเงิน · ผู้สอบฯ · ส่ง DBD · บอจ.5) -->
       <div id="ye-sub-fin" class="hidden">
+        <!-- Invisible spacer: see the matching one in #ye-sub-tasks above. -->
+        <div class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-end gap-2" style="visibility:hidden" aria-hidden="true">
+          <span class="px-3.5 py-2 rounded-lg border border-gray-200 text-sm w-48 inline-block">&nbsp;</span>
+        </div>
         <div class="grid grid-cols-3 gap-4 px-6 py-4">
           <div class="bg-white rounded-xl border border-gray-200 p-4">
             <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">เสร็จครบ</div>
@@ -502,7 +526,10 @@
     <div id="page-clients" class="hidden">
       <div class="bg-white border-b border-gray-200 px-6 sticky top-0 z-10">
         <div class="flex items-center justify-between py-4">
-          <h2 class="text-base font-bold text-gray-900">ข้อมูลลูกค้า</h2>
+          <div>
+            <h2 class="text-base font-bold text-gray-900">ข้อมูลลูกค้า</h2>
+            <p class="text-xs text-gray-400 mt-0.5">ลูกค้าปัจจุบัน · ลูกค้าเก่า</p>
+          </div>
         </div>
         <div class="flex border-b-0 mt-2">
           <button class="tab-btn active" id="clientsTab-current" onclick="showClientsSubTab('current')">ลูกค้า</button>
@@ -527,7 +554,28 @@
             + เพิ่มลูกค้า
           </button>
         </div>
-        <div class="p-6">
+        <!-- Invisible spacer: this page has no stat-card summary row (unlike
+             รายเดือน/รายปี/การเก็บเงิน) — reserve the same height a real
+             grid-cols-3 stat row renders at, so the table below still starts
+             at the same Y across every page/sub-tab. -->
+        <div class="grid grid-cols-3 gap-4 px-6 py-4" style="visibility:hidden" aria-hidden="true">
+          <div class="bg-white rounded-xl border border-gray-200 p-4">
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">&nbsp;</div>
+            <div class="text-3xl font-black text-gray-900 mt-1">&nbsp;</div>
+            <div class="text-xs text-gray-400 mt-1">&nbsp;</div>
+          </div>
+          <div class="bg-white rounded-xl border border-gray-200 p-4">
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">&nbsp;</div>
+            <div class="text-3xl font-black text-gray-900 mt-1">&nbsp;</div>
+            <div class="text-xs text-gray-400 mt-1">&nbsp;</div>
+          </div>
+          <div class="bg-white rounded-xl border border-gray-200 p-4">
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">&nbsp;</div>
+            <div class="text-3xl font-black text-gray-900 mt-1">&nbsp;</div>
+            <div class="text-xs text-gray-400 mt-1">&nbsp;</div>
+          </div>
+        </div>
+        <div class="p-6 pt-0">
           <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
             <div class="flex items-center gap-3 px-4 py-2.5 border-b border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
               <span class="w-6 flex-shrink-0"></span>
@@ -550,7 +598,25 @@
           <input id="old-client-search" type="text" placeholder="ค้นหา…" oninput="renderOldClients()"
             class="px-3.5 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-48">
         </div>
-        <div class="p-6">
+        <!-- Invisible spacer: see the matching one in #clients-sub-current above. -->
+        <div class="grid grid-cols-3 gap-4 px-6 py-4" style="visibility:hidden" aria-hidden="true">
+          <div class="bg-white rounded-xl border border-gray-200 p-4">
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">&nbsp;</div>
+            <div class="text-3xl font-black text-gray-900 mt-1">&nbsp;</div>
+            <div class="text-xs text-gray-400 mt-1">&nbsp;</div>
+          </div>
+          <div class="bg-white rounded-xl border border-gray-200 p-4">
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">&nbsp;</div>
+            <div class="text-3xl font-black text-gray-900 mt-1">&nbsp;</div>
+            <div class="text-xs text-gray-400 mt-1">&nbsp;</div>
+          </div>
+          <div class="bg-white rounded-xl border border-gray-200 p-4">
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">&nbsp;</div>
+            <div class="text-3xl font-black text-gray-900 mt-1">&nbsp;</div>
+            <div class="text-xs text-gray-400 mt-1">&nbsp;</div>
+          </div>
+        </div>
+        <div class="p-6 pt-0">
           <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
             <div class="flex items-center gap-3 px-4 py-2.5 border-b border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
               <span class="w-6 flex-shrink-0"></span>
@@ -570,7 +636,10 @@
     <div id="page-finance" class="hidden">
       <div class="bg-white border-b border-gray-200 px-6 sticky top-0 z-10">
         <div class="flex items-center justify-between py-4">
-          <h2 class="text-base font-bold text-gray-900">การเงิน</h2>
+          <div>
+            <h2 class="text-base font-bold text-gray-900">การเงิน</h2>
+            <p class="text-xs text-gray-400 mt-0.5">การเก็บเงิน · ค่าบริการ</p>
+          </div>
         </div>
         <div class="flex border-b-0 mt-2">
           <button class="tab-btn active" id="finTab-collection" onclick="showFinanceSubTab('collection')">การเก็บเงิน</button>
@@ -580,7 +649,12 @@
 
       <!-- SUBTAB: การเก็บเงิน (มีเดือนที่กำลังดูเป็นของตัวเอง แยกจากหน้า "รายเดือน" โดยสิ้นเชิง — finYear/finMonth) -->
       <div id="fin-sub-collection">
-        <div class="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between gap-2">
+        <!-- min-height: this row's own content (date pill + w-8 h-8 nav buttons,
+             32px tall) is naturally a few px shorter than the search-input-based
+             toolbar rows on ลูกค้า/ค่าบริการ (36px tall) — pin it to the same
+             measured total row height so the stat cards/table below still line
+             up at the same Y as those pages. -->
+        <div class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between gap-2" style="min-height:71px">
           <p class="text-xs text-gray-400">สถานะการเก็บเงินของลูกค้าแต่ละราย</p>
           <div class="flex items-center gap-2">
             <button id="finPrevBtn" onclick="changeFinMonth(-1)" class="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors text-gray-600 disabled:opacity-30 disabled:hover:bg-white disabled:cursor-not-allowed">
@@ -626,12 +700,33 @@
 
       <!-- SUBTAB: ค่าบริการ -->
       <div id="fin-sub-fee" class="hidden">
-        <div class="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between gap-2">
+        <div class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between gap-2">
           <p class="text-xs text-gray-400">ค่าบริการปัจจุบันของลูกค้าแต่ละราย</p>
           <input id="fin-fee-search" type="text" placeholder="ค้นหา…" oninput="renderFinanceFees()"
             class="px-3.5 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-48">
         </div>
-        <div class="p-6">
+        <!-- Invisible spacer: this sub-tab has no stat-card summary row (unlike
+             การเก็บเงิน) — reserve the same height a real grid-cols-3 stat row
+             renders at, so the table below still starts at the same Y across
+             every page/sub-tab. -->
+        <div class="grid grid-cols-3 gap-4 px-6 py-4" style="visibility:hidden" aria-hidden="true">
+          <div class="bg-white rounded-xl border border-gray-200 p-4">
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">&nbsp;</div>
+            <div class="text-3xl font-black text-gray-900 mt-1">&nbsp;</div>
+            <div class="text-xs text-gray-400 mt-1">&nbsp;</div>
+          </div>
+          <div class="bg-white rounded-xl border border-gray-200 p-4">
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">&nbsp;</div>
+            <div class="text-3xl font-black text-gray-900 mt-1">&nbsp;</div>
+            <div class="text-xs text-gray-400 mt-1">&nbsp;</div>
+          </div>
+          <div class="bg-white rounded-xl border border-gray-200 p-4">
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">&nbsp;</div>
+            <div class="text-3xl font-black text-gray-900 mt-1">&nbsp;</div>
+            <div class="text-xs text-gray-400 mt-1">&nbsp;</div>
+          </div>
+        </div>
+        <div class="p-6 pt-0">
           <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
             <div class="flex items-center gap-3 px-4 py-2.5 border-b border-gray-200 bg-gray-50 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
               <span class="w-12 flex-shrink-0">#</span>
