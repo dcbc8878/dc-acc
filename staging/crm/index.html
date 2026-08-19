@@ -57,6 +57,11 @@
     .prog-fill { height: 100%; border-radius: 3px; transition: width .3s; }
     .prog-pct  { font-size: 11px; font-weight: 700; color: #64748b; min-width: 30px; text-align: right; }
 
+    .ye-bar-chip  { display: inline-flex; flex-direction: column; align-items: center; gap: 4px; background: none; border: none; cursor: pointer; padding: 5px 8px; border-radius: 8px; }
+    .ye-bar-chip:hover { background: #f1f5f9; }
+    .ye-bar-track { width: 48px; height: 5px; background: #e5e7eb; border-radius: 3px; overflow: hidden; }
+    .ye-bar-fill  { display: block; height: 100%; border-radius: 3px; transition: width .3s; }
+
     #client-panel { transform: translateX(100%); transition: transform .25s cubic-bezier(.4,0,.2,1); }
     #client-panel.open { transform: translateX(0); }
 
@@ -2466,9 +2471,15 @@ function mkYeGroupTd(group, c, t, groupsKind, first, subtitle) {
     return `<td class="${cellCls}"><span class="text-xs text-gray-300">—</span></td>`;
   }
   const { done, total } = yeGroupProgress(group, c, t);
-  const cls = total > 0 && done === total ? 'text-green-700' : done > 0 ? 'text-blue-700' : 'text-gray-400';
+  const pct = total > 0 ? Math.round(done / total * 100) : 0;
+  const isDone = total > 0 && done === total;
+  const fillColor = isDone ? '#15803d' : done > 0 ? '#1d4ed8' : '#cbd5e1';
+  const numCls = isDone ? 'text-green-700' : done > 0 ? 'text-blue-700' : 'text-gray-400';
   return `<td class="${cellCls}">
-            <button onclick="openYeGroupDetail(${c.id},'${groupsKind}','${group.key}')" class="text-xs font-bold ${cls} hover:underline">${done}/${total}</button>
+            <button onclick="openYeGroupDetail(${c.id},'${groupsKind}','${group.key}')" class="ye-bar-chip">
+              <span class="ye-bar-track"><span class="ye-bar-fill" style="width:${pct}%;background:${fillColor}"></span></span>
+              <span class="text-[11px] font-bold ${numCls}">${done}/${total}</span>
+            </button>
             ${subtitle ? `<div class="text-[10px] text-gray-400 mt-0.5 whitespace-nowrap">${subtitle}</div>` : ''}
           </td>`;
 }
