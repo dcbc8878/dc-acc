@@ -473,7 +473,10 @@
             <table class="w-full text-center">
               <thead>
                 <tr>
-                  <th class="text-left px-4 text-xs font-semibold text-gray-500 border-b-2 border-gray-200" style="min-width:210px">ลูกค้า</th>
+                  <th class="text-center px-1 text-xs font-semibold text-gray-400 border-b-2 border-gray-200" style="width:32px"></th>
+                  <th class="text-center px-1 text-xs font-semibold text-gray-400 border-b-2 border-gray-200" style="width:40px">#</th>
+                  <th class="text-center px-1 text-xs font-semibold text-gray-500 border-b-2 border-gray-200" style="width:70px">CODE</th>
+                  <th class="text-left px-2 text-xs font-semibold text-gray-500 border-b-2 border-gray-200" style="min-width:150px">ชื่อบริษัท</th>
                   <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200 border-l border-gray-200">ภ.ง.ด.51</th>
                   <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">ภงด.1ก</th>
                   <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">กท.26ก</th>
@@ -482,7 +485,7 @@
                 </tr>
               </thead>
               <tbody id="yearend-tbody">
-                <tr><td colspan="6" class="py-10 text-gray-400 text-sm">กำลังโหลด…</td></tr>
+                <tr><td colspan="9" class="py-10 text-gray-400 text-sm">กำลังโหลด…</td></tr>
               </tbody>
             </table>
           </div>
@@ -517,7 +520,10 @@
             <table class="w-full text-center">
               <thead>
                 <tr>
-                  <th class="text-left px-4 text-xs font-semibold text-gray-500 border-b-2 border-gray-200" style="min-width:210px">ลูกค้า</th>
+                  <th class="text-center px-1 text-xs font-semibold text-gray-400 border-b-2 border-gray-200" style="width:32px"></th>
+                  <th class="text-center px-1 text-xs font-semibold text-gray-400 border-b-2 border-gray-200" style="width:40px">#</th>
+                  <th class="text-center px-1 text-xs font-semibold text-gray-500 border-b-2 border-gray-200" style="width:70px">CODE</th>
+                  <th class="text-left px-2 text-xs font-semibold text-gray-500 border-b-2 border-gray-200" style="min-width:150px">ชื่อบริษัท</th>
                   <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200 border-l border-gray-200">งบการเงิน</th>
                   <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">ผู้สอบฯ</th>
                   <th class="px-3 text-xs font-semibold text-gray-500 border-b-2 border-gray-200">ส่ง DBD</th>
@@ -526,7 +532,7 @@
                 </tr>
               </thead>
               <tbody id="yearend-fin-tbody">
-                <tr><td colspan="6" class="py-10 text-gray-400 text-sm">กำลังโหลด…</td></tr>
+                <tr><td colspan="9" class="py-10 text-gray-400 text-sm">กำลังโหลด…</td></tr>
               </tbody>
             </table>
           </div>
@@ -1366,6 +1372,7 @@ async function toggleFavorite(clientId) {
   if (oldClientsLoaded) renderOldClients();
   if (curPage === 'tracking') renderTracking();
   if (curPage === 'finance') { renderFinanceCollection(); renderFinanceFees(); }
+  if (curPage === 'yearend') renderYearEnd();
 }
 async function loadTasks() {
   const prevMonths = [];
@@ -2307,28 +2314,41 @@ function renderYearEnd() {
     const t = yearEndMap[c.id] || {};
     const taskPct = calcPct(t, YE_TASK_FIELDS);
     const finPct  = calcPct(t, YE_FIN_FIELDS);
-    const nameCell = `<td class="px-4 py-3 text-left cursor-pointer hover:bg-purple-50 transition-colors" onclick="openPanel(${c.id})">
+    const isFav = favoriteClientIds.has(c.id);
+    // star/#/code/ชื่อบริษัท แยกเป็น 4 คอลัมน์เหมือนหน้ารายเดือน/ลูกค้า/การเงินทุกหน้า (ก่อนหน้านี้อัดรวมกัน
+    // เป็นคอลัมน์ "ลูกค้า" คอลัมน์เดียว ไม่มีดาว) — # ใช้ computeClientNo() ตรงกับหน้ารายเดือนที่เป็นตาราง
+    // จริงเหมือนกัน (ต่างจากหน้า flex-list อย่างลูกค้า/การเก็บเงินที่ใช้เลขลำดับแถวแทน)
+    const favNumCodeName = `
+      <td class="py-3 text-center">
+        <button onclick="event.stopPropagation();toggleFavorite(${c.id})" title="${isFav ? 'เอาออกจากรายการโปรด' : 'เพิ่มในรายการโปรด'}" class="w-6 h-6 flex items-center justify-center mx-auto ${isFav ? 'text-amber-500' : 'text-gray-300 hover:text-amber-500'}">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </button>
+      </td>
+      <td class="py-3 text-center text-xs text-gray-400">${e(computeClientNo(c.billing_type, c.seq_num))}</td>
+      <td class="px-1 py-3 text-center cursor-pointer" onclick="openPanel(${c.id})">
         <span class="inline-block bg-purple-50 text-purple-700 text-xs font-bold px-1.5 py-0.5 rounded">${e(c.code)}</span>
-        <div class="text-sm text-gray-800 mt-0.5 max-w-[190px] leading-tight">${e(c.thai_name)}</div>
+      </td>
+      <td class="px-2 py-3 text-left cursor-pointer hover:bg-purple-50 transition-colors" onclick="openPanel(${c.id})">
+        <div class="text-sm text-gray-800 max-w-[190px] leading-tight">${e(c.thai_name)}</div>
       </td>`;
 
     taskRows += `<tr class="border-b border-gray-100">
-      ${nameCell}
+      ${favNumCodeName}
       ${mkYeCell(c,'pnd51','border-l border-gray-200')}
       ${mkYeCell(c,'pnd1k')}${mkYeCell(c,'kt26k')}${mkYeCell(c,'pnd50')}
       <td class="px-3 py-2.5">${progressBar(taskPct)}</td>
     </tr>`;
 
     finRows += `<tr class="border-b border-gray-100">
-      ${nameCell}
+      ${favNumCodeName}
       ${mkYeCell(c,'fin_stmt','border-l border-gray-200')}
       ${mkYeCell(c,'audit')}${mkYeCell(c,'dbd_submit')}${mkYeCell(c,'boj5')}
       <td class="px-3 py-2.5">${progressBar(finPct)}</td>
     </tr>`;
   });
 
-  if (!taskRows) taskRows = `<tr><td colspan="6" class="py-10 text-gray-400 text-sm text-center">ยังไม่มีลูกค้าในระบบ</td></tr>`;
-  if (!finRows)  finRows  = `<tr><td colspan="6" class="py-10 text-gray-400 text-sm text-center">ยังไม่มีลูกค้าในระบบ</td></tr>`;
+  if (!taskRows) taskRows = `<tr><td colspan="9" class="py-10 text-gray-400 text-sm text-center">ยังไม่มีลูกค้าในระบบ</td></tr>`;
+  if (!finRows)  finRows  = `<tr><td colspan="9" class="py-10 text-gray-400 text-sm text-center">ยังไม่มีลูกค้าในระบบ</td></tr>`;
   document.getElementById('yearend-tbody').innerHTML = taskRows;
   document.getElementById('yearend-fin-tbody').innerHTML = finRows;
 }
@@ -3178,6 +3198,90 @@ async function saveEditFee(clientId) {
 
   closeModal();
   showToast('เปลี่ยนค่าบริการสำเร็จ');
+  if (curPage === 'finance') renderFinanceFees();
+  if (panelClientId === clientId) renderPanelInfo();
+}
+
+// ปุ่มเปลี่ยนประเภทลูกค้าแบบเร็วในหน้าค่าบริการ (financeFeeRowHtml, คลิกที่คอลัมน์ TYPE) — เปลี่ยน
+// billing_type ต้องคิดเรื่อง seq_num คู่กันเสมอ เพราะสองค่านี้รวมกันเป็นรหัส "#" ของลูกค้า
+// (computeClientNo) เปลี่ยนประเภทโดยไม่ปรับเลขอาจชนกับลูกค้ารายอื่นที่มีอยู่แล้วในประเภทใหม่ —
+// เดิมมีฟังก์ชันช่วยชื่อ nextClientNo()/no-billing-type ฯลฯ ที่ตั้งใจทำเรื่องนี้ไว้ แต่ไม่เคยต่อเข้ากับ
+// ฟอร์มจริงเลยสักจุด (อ้างอิง element id ที่ไม่มีอยู่จริง) ฟังก์ชันนี้แทนที่ตรงนั้นแบบเชื่อมกับ UI จริง
+function nextSeqNumForType(billingType, excludeClientId) {
+  const nums = clients.filter(c => c.billing_type === billingType && c.id !== excludeClientId && c.seq_num).map(c => c.seq_num);
+  return nums.length ? Math.max(...nums) + 1 : 1;
+}
+
+function openEditType(clientId) {
+  if (!canEdit()) return;
+  const c = clients.find(x => x.id === clientId);
+  if (!c) return;
+  openModal(`
+    <h3 class="text-base font-bold text-gray-900 mb-1">เปลี่ยนประเภทลูกค้า</h3>
+    <p class="text-xs text-gray-400 mb-4">${e(c.thai_name)} · ปัจจุบัน ${e(computeClientNo(c.billing_type, c.seq_num))} (${BILLING_TYPE_LABEL[c.billing_type] || '—'})</p>
+    <div class="space-y-3">
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">ประเภทใหม่ *</div>
+          <select id="et-type" onchange="etSyncPreview()" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="monthly" ${c.billing_type==='monthly'?'selected':''}>รายเดือน (M)</option>
+            <option value="annual" ${c.billing_type==='annual'?'selected':''}>รายปี (Y)</option>
+            <option value="filing" ${c.billing_type==='filing'?'selected':''}>ยื่นแบบเปล่า (T)</option>
+          </select>
+        </div>
+        <div>
+          <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">ลำดับที่ *</div>
+          <div class="flex gap-1.5">
+            <input id="et-seq" type="number" min="1" max="999" value="${c.seq_num || ''}" oninput="etSyncPreview()"
+              class="flex-1 px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <button type="button" onclick="etSuggestSeq(${clientId})" title="แนะนำเลขว่างถัดไป" class="px-2.5 py-1 rounded border border-gray-200 text-gray-400 hover:bg-gray-50 text-xs flex-shrink-0">↻</button>
+          </div>
+        </div>
+      </div>
+      <div class="text-xs text-gray-500">รหัสใหม่: <span id="et-preview" class="font-bold text-blue-700"></span></div>
+      <div id="et-err" class="hidden text-sm text-red-600"></div>
+    </div>
+    <div class="flex justify-end gap-2 mt-6">
+      <button onclick="closeModal()" class="px-4 py-2 text-sm text-gray-600 font-medium hover:text-gray-900">ยกเลิก</button>
+      <button onclick="saveEditType(${clientId})" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors">บันทึก</button>
+    </div>`);
+  etSyncPreview();
+}
+
+function etSyncPreview() {
+  const bt = document.getElementById('et-type')?.value;
+  const sn = document.getElementById('et-seq')?.value;
+  const preview = document.getElementById('et-preview');
+  if (preview) preview.textContent = computeClientNo(bt, sn);
+}
+
+function etSuggestSeq(clientId) {
+  const bt = document.getElementById('et-type')?.value;
+  document.getElementById('et-seq').value = nextSeqNumForType(bt, clientId);
+  etSyncPreview();
+}
+
+async function saveEditType(clientId) {
+  const c = clients.find(x => x.id === clientId);
+  if (!c) return;
+  const newType = document.getElementById('et-type')?.value;
+  const newSeq = parseInt(document.getElementById('et-seq')?.value);
+  const err = document.getElementById('et-err');
+  if (!newType) { err.textContent = 'กรุณาเลือกประเภท'; err.classList.remove('hidden'); return; }
+  if (!(newSeq > 0)) { err.textContent = 'กรุณากรอกลำดับที่'; err.classList.remove('hidden'); return; }
+  const collision = clients.find(x => x.id !== clientId && x.billing_type === newType && x.seq_num === newSeq);
+  if (collision) { err.textContent = `เลขนี้ถูกใช้แล้วโดย ${collision.code} — กรุณาเลือกเลขอื่น`; err.classList.remove('hidden'); return; }
+  err.classList.add('hidden');
+
+  const { error } = await sb.from('crm_clients').update({ billing_type: newType, seq_num: newSeq }).eq('id', clientId);
+  if (error) { showToast('บันทึกไม่สำเร็จ: ' + error.message, 'error'); return; }
+
+  c.billing_type = newType;
+  c.seq_num = newSeq;
+  await logActivity('client_info_update', 'client', clientId, `เปลี่ยนประเภทลูกค้า → ${computeClientNo(newType, newSeq)}`);
+
+  closeModal();
+  showToast('เปลี่ยนประเภทสำเร็จ');
   if (curPage === 'finance') renderFinanceFees();
   if (panelClientId === clientId) renderPanelInfo();
 }
@@ -4543,7 +4647,7 @@ function financeFeeRowHtml(c, idx) {
       <span class="w-12 flex-shrink-0 text-xs text-gray-400">${idx + 1}</span>
       <span class="w-16 flex-shrink-0 inline-block bg-blue-50 text-blue-700 text-xs font-bold px-1.5 py-0.5 rounded text-center overflow-hidden text-ellipsis whitespace-nowrap">${e(c.code)}</span>
       <span class="flex-1 min-w-0 text-sm font-semibold text-gray-800 overflow-hidden text-ellipsis whitespace-nowrap">${e(c.thai_name)}</span>
-      <span class="w-20 flex-shrink-0 text-center text-[11px] text-gray-500">${BILLING_TYPE_LABEL[c.billing_type] || '—'}</span>
+      <span class="w-20 flex-shrink-0 text-center text-[11px] text-gray-500 ${canEdit() ? 'cursor-pointer hover:text-blue-600' : ''}"${canEdit() ? ` onclick="event.stopPropagation();openEditType(${c.id})" title="เปลี่ยนประเภท"` : ''}>${BILLING_TYPE_LABEL[c.billing_type] || '—'}${canEdit() ? ' <span class="text-gray-300">✎</span>' : ''}</span>
       <span class="w-24 flex-shrink-0 text-right text-xs font-mono ${canEdit() ? 'cursor-pointer hover:text-blue-600' : ''}"${canEdit() ? ` onclick="event.stopPropagation();openEditFee(${c.id})" title="แก้ไขค่าบริการ"` : ''}>${fmtMoney(fee)}${canEdit() ? ' <span class="text-gray-300">✎</span>' : ''}</span>
       <span class="w-24 flex-shrink-0 text-right text-xs font-mono text-amber-600">${wht > 0 ? '-' + fmtMoney(wht) : '—'}</span>
       <span class="w-24 flex-shrink-0 text-right text-xs font-bold font-mono text-green-700">${fmtMoney(expected)}</span>
