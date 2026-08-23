@@ -1331,16 +1331,7 @@ function disconnectMicrosoft(){
 async function getSupabaseClient(){
   if(sb) return sb;
   await loadScript('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js');
-  // autoRefreshToken:false -- this app normally runs inside the dc-acc shell's
-  // iframe, and the shell (dc-acc/index.html) is the single "owner" that
-  // refreshes the session token. If this client ALSO auto-refreshed on its
-  // own, two clients could race to refresh the same stored refresh token at
-  // once -- Supabase's refresh-token rotation invalidates whichever one loses
-  // that race, signing the user out unexpectedly. Still reads/writes the
-  // shared localStorage session normally, so login state stays in sync.
-  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: { autoRefreshToken: false, persistSession: true, detectSessionInUrl: false }
-  });
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   return sb;
 }
 async function initAuthOnLoad(){

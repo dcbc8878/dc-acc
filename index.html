@@ -405,12 +405,14 @@
   // Default config already persists the session to localStorage and keeps it
   // refreshed (that's supabase-js's out-of-the-box behavior) -- staying signed
   // in across page reloads/browser restarts already works from this alone.
-  // This shell is the single "owner" that auto-refreshes the token; the CRM
-  // and Calendar iframes below deliberately turn their OWN auto-refresh off
-  // (see the matching comment in each of those files) so two clients never
-  // race to refresh the same stored token at once -- Supabase's refresh-token
-  // rotation would invalidate whichever one loses that race and sign
-  // everyone out. Don't add autoRefreshToken:false here too.
+  //
+  // Tried making this shell the single auto-refresh "owner" (with the CRM/
+  // Calendar iframes' own clients set to autoRefreshToken:false) to avoid a
+  // theoretical multi-client refresh race -- that made things WORSE in
+  // practice (reported: login succeeds, then immediately bounces back to the
+  // login screen), so it was reverted. All clients now use plain defaults
+  // again. If a real refresh-race bug shows up, investigate live (this
+  // sandbox has no real network to reproduce/verify it) before changing this.
   const sb = supabase.createClient(SB_URL, SB_ANON);
 
   const loginScreen = document.getElementById('loginScreen');
