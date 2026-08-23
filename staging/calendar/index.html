@@ -83,6 +83,10 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
 .day-cell .tax-tag{font-size:10px;color:#fff;background:#dc2626;border-radius:3px;padding:0 3px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px;}
 .event-pill{margin-top:2px;font-size:11px;padding:2px 5px;border-radius:5px;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;}
 .more-link{font-size:10px;color:var(--accent);margin-top:2px;cursor:pointer;}
+/* กิจกรรมข้ามพนักงาน (crm_activity_log) ที่ขึ้นตรงบนตารางปฏิทิน — สีน้ำเงินตัวเดียวกับหน้า "กิจกรรมประจำวัน"
+   กันสับสนกับ event-pill สีตามหมวดหมู่ของผู้ใช้เอง / tax-tag สีแดงของกำหนดส่งภาษี */
+.activity-tag{margin-top:2px;font-size:10px;padding:2px 5px;border-radius:5px;background:#3b82f622;color:#3b82f6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;}
+.activity-tag:hover{background:#3b82f644;}
 
 /* Week view */
 .week-wrap{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:var(--panel);}
@@ -646,6 +650,10 @@ let cloudProfile = null;   // matching row from cal_profiles
 let cloudClients = [];     // crm_clients loaded live once logged in, for the event client picker
 let dailyActivityDate = new Date();  // selected day for the "กิจกรรมประจำวัน" view
 let staffNameMap = {};     // org_staff id -> display_name, lazy-loaded for the daily activity view
+let staffCodeMap = {};     // org_staff id -> staff_code, for the compact grid tag ("CODE - item - status - staff_code")
+let clientCodeMap = {};    // crm_clients id -> code, same purpose
+let calActivityByDate = {};   // iso date -> array of {code, item, status, staffCode}, for tags shown right on the calendar grid
+let calActivityRangeKey = ''; // which visible range calActivityByDate currently holds (month/week key), to avoid refetching every render
 
 if(events === null){ events = seedEvents(); lsSet('dcbc_events', events); }
 if(tasks === null){ tasks = seedTasks(); lsSet('dcbc_tasks', tasks); }
@@ -745,6 +753,7 @@ function applyFilterLock(selectEl){
 }
 
 function renderCalendar(){
+  ensureCalendarActivityLoaded();
   enforceFilterAccess();
   applyFilterLock(document.getElementById('calFilterSelect'));
   document.getElementById('calFilterSelect').value = calFilter;
@@ -791,6 +800,7 @@ function renderMonthGrid(){
       ${taxDl ? `<span class="tax-tag" title="${taxDl.name}">📋 ${taxDl.short}</span>` : ''}
       ${shown.map(ev=>`<div class="event-pill" style="background:${CATEGORIES[ev.category].color}" data-action="edit-event" data-id="${ev.id}">${ev.all_day?'':(ev.time+' ')}${escapeHtml(ev.title)}</div>`).join('')}
       ${extra>0 ? `<div class="more-link" data-action="show-day" data-date="${iso}">+${extra} เพิ่มเติม</div>` : ''}
+      ${calActivityTagsHtml(iso)}
     </div>`;
   }
   html += '</div>';
@@ -821,6 +831,7 @@ function renderWeekGrid(){
       ${hol?`<div class="event-pill" style="background:${CATEGORIES.holiday.color}">${hol.name}</div>`:''}
       ${taxDl?`<div class="event-pill" style="background:#dc2626" title="${taxDl.name}">📋 ${taxDl.short}</div>`:''}
       ${allday.map(ev=>`<div class="event-pill" style="background:${CATEGORIES[ev.category].color}" data-action="edit-event" data-id="${ev.id}">${escapeHtml(ev.title)}</div>`).join('')}
+      ${calActivityTagsHtml(iso)}
     </div>`;
   });
   html += '</div>';
@@ -863,12 +874,17 @@ function renderAgendaList(){
     const hol = holidayOn(iso);
     const taxDl = taxDeadlineOn(iso);
     const dayEvents = eventsOn(iso);
-    if(!hol && !taxDl && dayEvents.length===0) continue;
+    const dayActivity = calActivityByDate[iso] || [];
+    if(!hol && !taxDl && dayEvents.length===0 && dayActivity.length===0) continue;
     any = true;
     const isToday = isSameDay(d, today);
     html += `<div class="agenda-day"><h4>${TH_DAYS[d.getDay()]} ${dnum} ${TH_MONTHS[m]} ${beYear(y)} ${isToday?'<span class="badge">วันนี้</span>':''}</h4>`;
     if(hol) html += `<div class="agenda-item" style="border-color:${CATEGORIES.holiday.color}"><span class="dot" style="background:${CATEGORIES.holiday.color}"></span><span class="time">ทั้งวัน</span><span class="title">${CATEGORIES.holiday.emoji} ${hol.name}</span></div>`;
     if(taxDl) html += `<div class="agenda-item" style="border-color:#dc2626"><span class="dot" style="background:#dc2626"></span><span class="time">ทั้งวัน</span><span class="title">📋 ${taxDl.name}</span></div>`;
+    dayActivity.forEach(a=>{
+      const label = [a.code, a.item, a.status, a.staffCode].filter(Boolean).join(' - ');
+      html += `<div class="agenda-item" style="border-color:#3b82f6" data-action="view-activity" data-date="${iso}"><span class="dot" style="background:#3b82f6"></span><span class="time">🔧</span><span class="title">${escapeHtml(label)}</span></div>`;
+    });
     dayEvents.forEach(ev=>{
       html += `<div class="agenda-item" data-action="edit-event" data-id="${ev.id}">
         <span class="dot" style="background:${CATEGORIES[ev.category].color}"></span>
@@ -1136,9 +1152,100 @@ const ACTIVITY_ACTION_LABEL_TH = {
 };
 async function loadActivityStaffNames(client){
   try{
-    const { data } = await client.from('org_staff').select('id, display_name');
-    (data||[]).forEach(s=>{ staffNameMap[s.id] = s.display_name; });
+    const { data } = await client.from('org_staff').select('id, display_name, staff_code');
+    (data||[]).forEach(s=>{ staffNameMap[s.id] = s.display_name; staffCodeMap[s.id] = s.staff_code || ''; });
   }catch(e){ /* โหลดรายชื่อไม่สำเร็จ — จะ fallback ไปแสดง "ไม่ทราบชื่อ" แทน ไม่กระทบการแสดงผลหลัก */ }
+}
+async function loadActivityClientCodes(client){
+  try{
+    const { data } = await client.from('crm_clients').select('id, code');
+    (data||[]).forEach(c=>{ clientCodeMap[c.id] = c.code || ''; });
+  }catch(e){ /* โหลดรหัสลูกค้าไม่สำเร็จ — tag จะไม่มี CODE นำหน้า ไม่กระทบส่วนอื่น */ }
+}
+// แกะข้อความสรุปที่ logActivity() ของ CRM สร้างไว้ (รูปแบบคงที่ทั้ง 3 จุดที่เกี่ยวกับงานติ๊กสถานะ — ดู
+// toggleField/saveGroupItemField/toggleYearEndField ใน crm/index.html): "...: {รายการ} → {สถานะ} (...)"
+// คืน {item, status} หรือ null ถ้าไม่ตรงรูปแบบ (เช่น action อื่นที่ไม่ใช่การติ๊กงาน — จะถูกกรองออกไปก่อน
+// ด้วย .in('action', [...]) ในตัวโหลดอยู่แล้ว แต่กันไว้อีกชั้นเผื่อรูปแบบข้อความเปลี่ยนในอนาคต)
+function parseActivitySummary(summary){
+  if(!summary) return null;
+  const arrowIdx = summary.indexOf('→');
+  if(arrowIdx === -1) return null;
+  let itemPart = summary.slice(0, arrowIdx);
+  const colonIdx = itemPart.indexOf(': ');
+  if(colonIdx !== -1) itemPart = itemPart.slice(colonIdx + 2);
+  const itemParenIdx = itemPart.lastIndexOf(' (');
+  if(itemParenIdx !== -1) itemPart = itemPart.slice(0, itemParenIdx);
+  itemPart = itemPart.trim();
+  let statusPart = summary.slice(arrowIdx + 1).trim();
+  const statusParenIdx = statusPart.lastIndexOf(' (');
+  if(statusParenIdx !== -1) statusPart = statusPart.slice(0, statusParenIdx);
+  statusPart = statusPart.trim();
+  if(!itemPart || !statusPart) return null;
+  return { item: itemPart, status: statusPart };
+}
+const CAL_ACTIVITY_ACTIONS = ['tax_task_toggle','tax_task_item_update','year_end_task_toggle'];
+// โหลดกิจกรรม (เฉพาะ 3 ประเภทที่เป็น "ติ๊กสถานะงาน" จริงๆ ตรงกับ CODE-รายการ-สถานะ-รหัสพนักงาน ที่ขอ —
+// ไม่รวม action ทั่วไปอื่นๆ เช่น แก้ข้อมูลลูกค้า/รหัสผ่าน ซึ่งยังเห็นได้ในหน้า "กิจกรรมประจำวัน" แบบเดิม)
+// สำหรับช่วงวันที่ที่กำลังโชว์อยู่บนตารางปฏิทิน แล้ว re-render ทับอีกทีเมื่อโหลดเสร็จ
+async function loadCalendarActivityRange(rangeStart, rangeEnd, rangeKey){
+  try{
+    const client = await getSupabaseClient();
+    if(!Object.keys(staffNameMap).length) await loadActivityStaffNames(client);
+    if(!Object.keys(clientCodeMap).length) await loadActivityClientCodes(client);
+    const { data, error } = await client.from('crm_activity_log')
+      .select('*')
+      .in('action', CAL_ACTIVITY_ACTIONS)
+      .gte('created_at', rangeStart.toISOString())
+      .lt('created_at', rangeEnd.toISOString())
+      .order('created_at', { ascending:true });
+    if(error || !data) return;
+    const byDate = {};
+    data.forEach(a=>{
+      const parsed = parseActivitySummary(a.summary);
+      if(!parsed) return;
+      const iso = toISODate(new Date(a.created_at));
+      const tag = {
+        code: (a.entity_type==='client' ? clientCodeMap[a.entity_id] : '') || '',
+        item: parsed.item, status: parsed.status,
+        staffCode: staffCodeMap[a.actor_id] || '',
+      };
+      (byDate[iso] = byDate[iso] || []).push(tag);
+    });
+    calActivityByDate = byDate;
+    if(activeMenu==='calendar') renderCalendar();
+  }catch(e){ /* โหลดไม่สำเร็จ — ตารางจะไม่มี tag เพิ่มเติม ไม่รบกวนผู้ใช้ด้วย toast (ไม่ใช่ฟีเจอร์หลัก) */ }
+}
+// เรียกจากต้น renderCalendar() ทุกครั้ง — ถ้าช่วงที่กำลังดูอยู่ (เดือน/สัปดาห์) ยังไม่เคยโหลด ให้เริ่มโหลด
+// เบื้องหลัง (ไม่ block การ render ครั้งนี้ ตารางจะโชว์แบบยังไม่มี tag ก่อน แล้วขึ้นเองเมื่อโหลดเสร็จ)
+function ensureCalendarActivityLoaded(){
+  if(!authUser || !isOwnerOrManager()) return;
+  let rangeStart, rangeEnd, rangeKey;
+  if(view==='week'){
+    rangeStart = startOfWeek(curDate); rangeEnd = addDays(rangeStart, 7);
+    rangeKey = 'w:' + toISODate(rangeStart);
+  } else {
+    rangeStart = new Date(curDate.getFullYear(), curDate.getMonth(), 1);
+    rangeEnd = new Date(curDate.getFullYear(), curDate.getMonth()+1, 1);
+    rangeKey = 'm:' + curDate.getFullYear() + '-' + curDate.getMonth();
+  }
+  if(rangeKey === calActivityRangeKey) return;
+  calActivityRangeKey = rangeKey;
+  loadCalendarActivityRange(rangeStart, rangeEnd, rangeKey);
+}
+// Tag เดียว: "CODE - รายการ - สถานะ - รหัสพนักงาน" (ตัดส่วนที่ไม่มีค่าออก) — ใช้ร่วมกันทั้ง month grid/
+// week all-day row/agenda list กันโค้ดซ้ำ 3 ที่ จำกัดจำนวนที่โชว์ต่อวันไว้ (ค่าเริ่มต้น 2) กันช่องแน่นเกินไป
+function calActivityTagsHtml(iso, max){
+  const items = calActivityByDate[iso];
+  if(!items || !items.length) return '';
+  const cap = max || 2;
+  const shown = items.slice(0, cap);
+  const extra = items.length - shown.length;
+  let html = shown.map(a=>{
+    const label = [a.code, a.item, a.status, a.staffCode].filter(Boolean).join(' - ');
+    return `<div class="activity-tag" data-action="view-activity" data-date="${iso}" title="${escapeHtml(label)}">${escapeHtml(label)}</div>`;
+  }).join('');
+  if(extra > 0) html += `<div class="more-link" data-action="view-activity" data-date="${iso}">+${extra} กิจกรรม</div>`;
+  return html;
 }
 async function renderDailyActivity(){
   const body = document.getElementById('dailyActivityBody');
@@ -1529,6 +1636,8 @@ function init(){
     if(pill){ openEventModal(pill.dataset.id); return; }
     const more = e.target.closest('[data-action="show-day"]');
     if(more){ curDate = parseISODate(more.dataset.date); view='agenda'; renderCalendar(); return; }
+    const actTag = e.target.closest('[data-action="view-activity"]');
+    if(actTag){ dailyActivityDate = parseISODate(actTag.dataset.date); switchMenu('daily-activity'); return; }
     const addOn = e.target.closest('[data-action="add-on-date"]');
     const cell = e.target.closest('.day-cell');
     if(addOn){ openEventModal(null, addOn.dataset.date); return; }
