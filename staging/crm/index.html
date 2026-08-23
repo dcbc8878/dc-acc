@@ -1574,7 +1574,18 @@ async function doLogin() {
 // INIT
 // ─────────────────────────────────────────────────────────────
 async function init() {
-  const { data: { session } } = await sb.auth.getSession();
+  let { data: { session } } = await sb.auth.getSession();
+  if (!session) {
+    // This app normally loads inside the dc-acc shell's iframe, which only
+    // points the iframe here after ITS OWN login succeeds -- so a session
+    // should already be in the shared localStorage by the time this runs.
+    // If this first check still comes up empty, it's likely a one-off race
+    // (this iframe's script started running a beat before that write landed)
+    // rather than a real "not logged in" -- wait briefly and check once more
+    // before falling back to this app's own login screen.
+    await new Promise(r => setTimeout(r, 1200));
+    ({ data: { session } } = await sb.auth.getSession());
+  }
   if (!session) {
     document.getElementById('loading').classList.add('hidden');
     document.getElementById('login-screen').classList.remove('hidden');
