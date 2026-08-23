@@ -1180,25 +1180,6 @@ const SB_ANON = 'sb_publishable_4U_v9BIrQjKppfchaevA6Q_zWj3zkxE';
 const sb = supabase.createClient(SB_URL, SB_ANON, {
   auth: { autoRefreshToken: false, persistSession: true, detectSessionInUrl: false }
 });
-// Safety net for "signed in on the shell but this iframe still shows its own
-// login screen": init() below only calls getSession() once, at page load. If
-// that one check ever races against the shell finishing its sign-in (this
-// client reads the same localStorage session but doesn't refresh it itself --
-// see the comment above), this app would be stuck on its own login screen
-// forever with no other trigger to re-check. onAuthStateChange also fires
-// when supabase-js detects the session changed via a cross-tab/iframe storage
-// event, so use that as a second chance to pick it up and retry init().
-let sawSignedIn = false;
-sb.auth.onAuthStateChange((event, session) => {
-  if (event !== 'SIGNED_IN' || !session || sawSignedIn) return;
-  const loginScreen = document.getElementById('login-screen');
-  if (loginScreen && !loginScreen.classList.contains('hidden')) {
-    sawSignedIn = true;
-    loginScreen.classList.add('hidden');
-    document.getElementById('loading').classList.remove('hidden');
-    init();
-  }
-});
 const ADMIN_STAFF_FN = 'swift-handler'; // Edge Function slug for admin-staff/index.ts (Supabase keeps the original slug even after renaming "Name" in the dashboard)
 const FLOWACCOUNT_SYNC_FN = 'flowaccount-sync'; // Edge Function slug for flowaccount-sync/index.ts
 
