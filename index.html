@@ -292,6 +292,10 @@
   .login-error.show { display: block; }
   .pw-field { position: relative; margin-bottom: 14px; }
   #loginPass { margin-bottom: 0; padding-right: 40px; }
+  /* Some browsers (Edge, newer Chrome) add their OWN built-in reveal/clear
+     icon inside password fields -- without this it renders right next to
+     our custom eye button, showing what looks like two duplicate icons. */
+  #loginPass::-ms-reveal, #loginPass::-ms-clear { display: none; }
   /* #pwToggle (id selector) deliberately outranks the generic ".login-card
      button" rule above (which sets width:100%/padding/blue background) --
      with plain ".pw-toggle" that rule won, silently stretching this button
