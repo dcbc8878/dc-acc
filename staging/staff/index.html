@@ -206,24 +206,15 @@ const SVC_MONTHS_SHORT = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ
 let EMPLOYEES = [
   {id:1, code:'E001', name:'สมชาย ใจดี', nickname:'ชาย', position:'director', phone:'081-234-5678', email:'somchai@dekchaibunchee.co.th', startDate:'2018-01-15', endDate:null},
   {id:2, code:'E002', name:'วิภา ศรีสุข', nickname:'วิ', position:'manager', phone:'082-345-6789', email:'wipa@dekchaibunchee.co.th', startDate:'2019-03-01', endDate:null},
-  {id:3, code:'E003', name:'ธนากร รุ่งเรือง', nickname:'เอก', position:'senior', phone:'083-456-7890', email:'thanakorn@dekchaibunchee.co.th', startDate:'2020-06-10', endDate:null},
-  {id:4, code:'E004', name:'ปิยะดา แสงทอง', nickname:'ปิว', position:'junior', phone:'084-567-8901', email:'piyada@dekchaibunchee.co.th', startDate:'2022-09-01', endDate:null},
-  {id:5, code:'E005', name:'ณัฐพล ทองดี', nickname:'พล', position:'staff', phone:'085-678-9012', email:'natthapon@dekchaibunchee.co.th', startDate:'2024-02-01', endDate:null},
-  {id:6, code:'E006', name:'สุดา มีทรัพย์', nickname:'ดา', position:'staff', phone:'086-111-2222', email:'suda@dekchaibunchee.co.th', startDate:'2021-05-01', endDate:'2026-05-31'},
-  {id:7, code:'E007', name:'อรุณี พงษ์ไพบูลย์', nickname:'อุ๋ย', position:'manager', phone:'087-222-3333', email:'arunee@dekchaibunchee.co.th', startDate:'2020-01-10', endDate:null},
-  {id:8, code:'E008', name:'กิตติศักดิ์ วงศ์สุวรรณ', nickname:'ตี๋', position:'senior', phone:'088-333-4444', email:'kittisak@dekchaibunchee.co.th', startDate:'2021-02-15', endDate:null},
-  {id:9, code:'E009', name:'มณีรัตน์ ชัยเจริญ', nickname:'แหม่ม', position:'senior', phone:'089-444-5555', email:'maneerat@dekchaibunchee.co.th', startDate:'2021-08-01', endDate:null},
-  {id:10, code:'E010', name:'ธีรพงศ์ อินทร์แสง', nickname:'บอส', position:'junior', phone:'090-555-6666', email:'theerapong@dekchaibunchee.co.th', startDate:'2023-01-20', endDate:null},
-  {id:11, code:'E011', name:'ศิริพร คำแก้ว', nickname:'พร', position:'junior', phone:'091-666-7777', email:'siriporn@dekchaibunchee.co.th', startDate:'2023-06-01', endDate:null},
-  {id:12, code:'E012', name:'ปรีชา ทองสุข', nickname:'ชา', position:'staff', phone:'092-777-8888', email:'preecha@dekchaibunchee.co.th', startDate:'2024-07-15', endDate:null},
-  {id:13, code:'E013', name:'วรรณา สว่างศรี', nickname:'แนน', position:'staff', phone:'093-888-9999', email:'wanna@dekchaibunchee.co.th', startDate:'2025-01-05', endDate:null},
-  {id:14, code:'E014', name:'ประยุทธ์ บุญมี', nickname:'ยุทธ', position:'staff', phone:'094-999-0000', email:'prayuth@dekchaibunchee.co.th', startDate:'2019-03-01', endDate:'2026-03-31'},
-  // 15-16: มาจากคำขอสมัครที่อนุมัติแล้วด้านล่าง (EMPLOYEE_REQUESTS id 3, 4) — เพิ่มไว้ให้ตรงกัน
-  // เผื่อมีคนเปิดดูทะเบียนพนักงาน จะเห็นว่าคำขอที่ "อนุมัติแล้ว" กลายเป็นพนักงานจริงแล้วสอดคล้องกัน
-  {id:15, code:'E015', name:'นายพีรพัฒน์ เจริญสุข', nickname:'พีร', position:'staff', phone:'', email:'peerapat@dekchaibunchee.co.th', startDate:'2026-08-10', endDate:null, taxId:'1-2345-00789-12-3', birthDate:'2001-05-20', idCardAddress:'88 ซ.ลาดพร้าว 42 แขวงสามเสนนอก เขตห้วยขวาง กรุงเทพฯ 10310', personalEmail:'peerapat.p@gmail.com'},
-  {id:16, code:'E016', name:'นางสาวชนิดา รักเรียน', nickname:'ชนิ', position:'junior', phone:'', email:'chanida@dekchaibunchee.co.th', startDate:'2026-08-05', endDate:null, taxId:'1-2345-01011-34-5', birthDate:'1999-09-08', idCardAddress:'12/5 ถ.สุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110', personalEmail:'chanida.r@gmail.com'},
+  {id:7, code:'E003', name:'อรุณี พงษ์ไพบูลย์', nickname:'อุ๋ย', position:'manager', phone:'087-222-3333', email:'arunee@dekchaibunchee.co.th', startDate:'2020-01-10', endDate:null},
+  {id:3, code:'E004', name:'ธนากร รุ่งเรือง', nickname:'เอก', position:'senior', phone:'083-456-7890', email:'thanakorn@dekchaibunchee.co.th', startDate:'2020-06-10', endDate:null},
+  {id:8, code:'E005', name:'กิตติศักดิ์ วงศ์สุวรรณ', nickname:'ตี๋', position:'senior', phone:'088-333-4444', email:'kittisak@dekchaibunchee.co.th', startDate:'2021-02-15', endDate:null},
+  {id:4, code:'E006', name:'ปิยะดา แสงทอง', nickname:'ปิว', position:'junior', phone:'084-567-8901', email:'piyada@dekchaibunchee.co.th', startDate:'2022-09-01', endDate:null},
+  {id:10, code:'E007', name:'ธีรพงศ์ อินทร์แสง', nickname:'บอส', position:'junior', phone:'090-555-6666', email:'theerapong@dekchaibunchee.co.th', startDate:'2023-01-20', endDate:null},
+  {id:5, code:'E008', name:'ณัฐพล ทองดี', nickname:'พล', position:'staff', phone:'085-678-9012', email:'natthapon@dekchaibunchee.co.th', startDate:'2024-02-01', endDate:null},
+  {id:12, code:'E009', name:'ปรีชา ทองสุข', nickname:'ชา', position:'staff', phone:'092-777-8888', email:'preecha@dekchaibunchee.co.th', startDate:'2024-07-15', endDate:null},
 ];
-let empNextId = 16;
+let empNextId = 9;
 function isEmployeeActive(e){
   return !e.endDate || e.endDate >= new Date().toISOString().slice(0,10);
 }
@@ -232,17 +223,16 @@ function isEmployeeActive(e){
 let TEAMS = [
   { id:1, name:'ทีม A', leadId:3, memberIds:[4,5] },
   { id:2, name:'ทีม B', leadId:8, memberIds:[10,12] },
-  { id:3, name:'ทีม C', leadId:9, memberIds:[11,13] },
 ];
-let teamNextId = 3;
+let teamNextId = 2;
 
 // ── คำขอสมัครพนักงานใหม่: พนักงานกรอกเอง → กรรมการหรือ Manager/Admin คนใดคนหนึ่งอนุมัติ (กำหนดระดับผู้ใช้งาน+อีเมลบริษัท) → สร้างพนักงานจริง ──
 const PREFIX_OPTIONS = ['นาย','นาง','นางสาว'];
 let EMPLOYEE_REQUESTS = [
   {id:1, taxId:'1-2345-00123-45-6', prefix:'นาย', firstName:'วีระ', lastName:'สุขเจริญ', birthDate:'1998-04-12', idCardAddress:'123 หมู่ 4 ต.บางรัก อ.เมือง จ.นนทบุรี 11000', personalEmail:'weera.personal@gmail.com', status:'pending', submittedAt:'2026-08-14', position:null, companyEmail:null},
   {id:2, taxId:'1-2345-00456-78-9', prefix:'นางสาว', firstName:'กมลชนก', lastName:'แสงอรุณ', birthDate:'2000-11-02', idCardAddress:'45/2 ถ.รัชดาภิเษก แขวงดินแดง เขตดินแดง กรุงเทพฯ 10400', personalEmail:'kamonchanok.p@gmail.com', status:'pending', submittedAt:'2026-08-08', position:null, companyEmail:null},
-  {id:3, taxId:'1-2345-00789-12-3', prefix:'นาย', firstName:'พีรพัฒน์', lastName:'เจริญสุข', nickname:'พีร', birthDate:'2001-05-20', idCardAddress:'88 ซ.ลาดพร้าว 42 แขวงสามเสนนอก เขตห้วยขวาง กรุงเทพฯ 10310', personalEmail:'peerapat.p@gmail.com', status:'approved', submittedAt:'2026-08-03', position:'staff', companyEmail:'peerapat@dekchaibunchee.co.th', empCode:'E015', approvedBy:{id:7, name:'อรุณี พงษ์ไพบูลย์', position:'manager', date:'2026-08-10'}},
-  {id:4, taxId:'1-2345-01011-34-5', prefix:'นางสาว', firstName:'ชนิดา', lastName:'รักเรียน', nickname:'ชนิ', birthDate:'1999-09-08', idCardAddress:'12/5 ถ.สุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110', personalEmail:'chanida.r@gmail.com', status:'approved', submittedAt:'2026-07-28', position:'junior', companyEmail:'chanida@dekchaibunchee.co.th', empCode:'E016', approvedBy:{id:1, name:'สมชาย ใจดี', position:'director', date:'2026-08-05'}},
+  {id:3, taxId:'1-2345-00789-12-3', prefix:'นาย', firstName:'พีรพัฒน์', lastName:'เจริญสุข', nickname:'พีร', birthDate:'2001-05-20', idCardAddress:'88 ซ.ลาดพร้าว 42 แขวงสามเสนนอก เขตห้วยขวาง กรุงเทพฯ 10310', personalEmail:'peerapat.p@gmail.com', status:'approved', submittedAt:'2026-08-03', position:'staff', companyEmail:'peerapat@dekchaibunchee.co.th', empCode:'E010', approvedBy:{id:7, name:'อรุณี พงษ์ไพบูลย์', position:'manager', date:'2026-08-10'}},
+  {id:4, taxId:'1-2345-01011-34-5', prefix:'นางสาว', firstName:'ชนิดา', lastName:'รักเรียน', nickname:'ชนิ', birthDate:'1999-09-08', idCardAddress:'12/5 ถ.สุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110', personalEmail:'chanida.r@gmail.com', status:'approved', submittedAt:'2026-07-28', position:'junior', companyEmail:'chanida@dekchaibunchee.co.th', empCode:'E011', approvedBy:{id:1, name:'สมชาย ใจดี', position:'director', date:'2026-08-05'}},
   {id:5, taxId:'1-2345-01122-56-7', prefix:'นาย', firstName:'ณรงค์ศักดิ์', lastName:'แข็งขัน', nickname:'ณรงค์', birthDate:'2002-01-30', idCardAddress:'56 ถ.พระราม 4 แขวงคลองเตย เขตคลองเตย กรุงเทพฯ 10110', personalEmail:'narongsak.k@gmail.com', status:'rejected', submittedAt:'2026-08-11', position:null, companyEmail:null, rejectedBy:{id:2, name:'วิภา ศรีสุข', position:'manager', date:'2026-08-12'}},
 ];
 let empReqNextId = 5;
