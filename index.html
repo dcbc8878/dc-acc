@@ -290,6 +290,16 @@
     padding: 8px 10px; margin-bottom: 14px; display: none;
   }
   .login-error.show { display: block; }
+  .pw-field { position: relative; margin-bottom: 14px; }
+  .pw-field input { margin-bottom: 0; padding-right: 40px; }
+  .pw-toggle {
+    position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+    width: 30px; height: 30px; border: none; border-radius: 8px;
+    background: transparent; color: var(--ink-muted); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .pw-toggle:hover { background: var(--surface-2); color: var(--ink); }
+  .pw-toggle svg { width: 18px; height: 18px; }
   .logout-btn {
     margin-left: 12px; width: 30px; height: 30px; border-radius: 8px; border: none;
     background: transparent; color: var(--ink-muted); cursor: pointer;
@@ -310,7 +320,12 @@
     <label for="loginUser">ชื่อผู้ใช้</label>
     <input id="loginUser" type="text" autocomplete="username" required />
     <label for="loginPass">รหัสผ่าน</label>
-    <input id="loginPass" type="password" autocomplete="current-password" required />
+    <div class="pw-field">
+      <input id="loginPass" type="password" autocomplete="current-password" required />
+      <button type="button" class="pw-toggle" id="pwToggle" aria-label="แสดงรหัสผ่าน" tabindex="-1">
+        <svg id="pwEyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </div>
     <button type="submit" id="loginBtn">เข้าสู่ระบบ</button>
   </form>
 </div>
@@ -383,6 +398,15 @@
 <script>
   const SB_URL  = 'https://dqegkyobclqqichhnxfm.supabase.co';
   const SB_ANON = 'sb_publishable_4U_v9BIrQjKppfchaevA6Q_zWj3zkxE';
+  // Default config already persists the session to localStorage and keeps it
+  // refreshed (that's supabase-js's out-of-the-box behavior) -- staying signed
+  // in across page reloads/browser restarts already works from this alone.
+  // This shell is the single "owner" that auto-refreshes the token; the CRM
+  // and Calendar iframes below deliberately turn their OWN auto-refresh off
+  // (see the matching comment in each of those files) so two clients never
+  // race to refresh the same stored token at once -- Supabase's refresh-token
+  // rotation would invalidate whichever one loses that race and sign
+  // everyone out. Don't add autoRefreshToken:false here too.
   const sb = supabase.createClient(SB_URL, SB_ANON);
 
   const loginScreen = document.getElementById('loginScreen');
@@ -391,6 +415,17 @@
   const loginError = document.getElementById('loginError');
   const loginBtn = document.getElementById('loginBtn');
   const logoutBtn = document.getElementById('logoutBtn');
+  const loginPass = document.getElementById('loginPass');
+  const pwToggle = document.getElementById('pwToggle');
+  const pwEyeIcon = document.getElementById('pwEyeIcon');
+  const PW_EYE_OPEN = '<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/>';
+  const PW_EYE_OFF = '<path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a20.6 20.6 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 7 11 7a20.6 20.6 0 0 1-3.22 4.36M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
+  pwToggle.addEventListener('click', () => {
+    const show = loginPass.type === 'password';
+    loginPass.type = show ? 'text' : 'password';
+    pwEyeIcon.innerHTML = show ? PW_EYE_OFF : PW_EYE_OPEN;
+    pwToggle.setAttribute('aria-label', show ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน');
+  });
 
   let iframesLoaded = false;
   function loadIframes() {

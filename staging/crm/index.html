@@ -1170,7 +1170,16 @@
 // ─────────────────────────────────────────────────────────────
 const SB_URL  = 'https://dqegkyobclqqichhnxfm.supabase.co';
 const SB_ANON = 'sb_publishable_4U_v9BIrQjKppfchaevA6Q_zWj3zkxE';
-const sb = supabase.createClient(SB_URL, SB_ANON);
+// autoRefreshToken:false -- this app normally runs inside the dc-acc shell's
+// iframe, and the shell (dc-acc/index.html) is the single "owner" that
+// refreshes the session token. If this client ALSO auto-refreshed on its own,
+// two clients could race to refresh the same stored refresh token at once --
+// Supabase's refresh-token rotation invalidates whichever one loses that
+// race, signing the user out unexpectedly. Still reads/writes the shared
+// localStorage session normally, so login state stays in sync either way.
+const sb = supabase.createClient(SB_URL, SB_ANON, {
+  auth: { autoRefreshToken: false, persistSession: true, detectSessionInUrl: false }
+});
 const ADMIN_STAFF_FN = 'swift-handler'; // Edge Function slug for admin-staff/index.ts (Supabase keeps the original slug even after renaming "Name" in the dashboard)
 const FLOWACCOUNT_SYNC_FN = 'flowaccount-sync'; // Edge Function slug for flowaccount-sync/index.ts
 
