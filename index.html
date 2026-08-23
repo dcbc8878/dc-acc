@@ -291,15 +291,19 @@
   }
   .login-error.show { display: block; }
   .pw-field { position: relative; margin-bottom: 14px; }
-  .pw-field input { margin-bottom: 0; padding-right: 40px; }
-  .pw-toggle {
+  #loginPass { margin-bottom: 0; padding-right: 40px; }
+  /* #pwToggle (id selector) deliberately outranks the generic ".login-card
+     button" rule above (which sets width:100%/padding/blue background) --
+     with plain ".pw-toggle" that rule won, silently stretching this button
+     to full width and hiding the password input completely underneath it. */
+  #pwToggle {
     position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
-    width: 30px; height: 30px; border: none; border-radius: 8px;
+    width: 30px; height: 30px; padding: 0; border: none; border-radius: 8px;
     background: transparent; color: var(--ink-muted); cursor: pointer;
     display: flex; align-items: center; justify-content: center;
   }
-  .pw-toggle:hover { background: var(--surface-2); color: var(--ink); }
-  .pw-toggle svg { width: 18px; height: 18px; }
+  #pwToggle:hover { background: var(--surface-2); color: var(--ink); }
+  #pwToggle svg { width: 18px; height: 18px; }
   .logout-btn {
     margin-left: 12px; width: 30px; height: 30px; border-radius: 8px; border: none;
     background: transparent; color: var(--ink-muted); cursor: pointer;
