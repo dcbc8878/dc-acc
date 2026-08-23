@@ -1385,6 +1385,16 @@ async function loadCloudProfile(){
       const { data: created } = await client.from('cal_profiles').insert(insertObj).select().maybeSingle();
       prof = created || insertObj;
     }
+    // cal_profiles.role อาจเป็นค่าเก่าค้างมาตั้งแต่ trigger handle_new_user() สร้างแถวให้อัตโนมัติตอน
+    // สมัคร (ตั้ง role='member' เสมอ ไม่เคยดู org_staff เลย) หรือ role จริงเปลี่ยนไปทีหลัง (เลื่อนตำแหน่ง)
+    // — sync จาก org_staff (ต้นทางที่ถูกต้องเสมอ) ทุกครั้งที่ล็อกอิน แทนที่จะเชื่อค่า cache เฉยๆ เหมือนเดิม
+    try{
+      const { data: staffRow2 } = await client.from('org_staff').select('role').eq('id', authUser.id).maybeSingle();
+      if(staffRow2 && staffRow2.role && staffRow2.role !== prof.role){
+        prof.role = staffRow2.role;
+        await client.from('cal_profiles').update({ role: staffRow2.role }).eq('id', authUser.id);
+      }
+    }catch(e){ /* sync ไม่สำเร็จ — ใช้ค่าที่มีอยู่เดิมต่อไป ไม่ block การโหลดโปรไฟล์ */ }
     cloudProfile = prof;
     profile.name = prof.display_name || prof.full_name || authUser.email;
     profile.role = mapRoleToLabel(prof.role);
