@@ -362,15 +362,6 @@
     </nav>
     <!-- User -->
     <div class="flex items-center gap-3 ml-2 flex-shrink-0 border-l border-[var(--border)] pl-3">
-      <div class="flex items-center gap-2">
-        <div class="w-7 h-7 bg-[var(--surface-2)] rounded-full flex items-center justify-center flex-shrink-0">
-          <span id="user-initial" class="text-[var(--accent)] text-xs font-bold">?</span>
-        </div>
-        <div class="hidden md:block leading-tight">
-          <div id="user-name" class="text-xs font-semibold text-[var(--ink)]">—</div>
-          <div id="user-role-badge" class="text-[10px] text-[var(--ink-muted)]">—</div>
-        </div>
-      </div>
       <div class="relative flex-shrink-0">
         <button id="settings-btn" onclick="toggleSettingsMenu(event)" class="hidden text-xs text-[var(--ink-muted)] hover:text-[var(--ink)] transition-colors flex items-center gap-1">
           ตั้งค่า
@@ -1637,9 +1628,6 @@ async function init() {
     return;
   }
 
-  document.getElementById('user-name').textContent        = prof.display_name;
-  document.getElementById('user-initial').textContent     = prof.display_name[0] || '?';
-  document.getElementById('user-role-badge').textContent  = ROLE_LABEL[prof.role] || prof.role;
   if (isOwner()) document.getElementById('add-client-btn').classList.remove('hidden');
   if (canSeeAuditLog()) document.getElementById('activity-log-section').classList.remove('hidden');
   if (canManageOwnCompany()) document.getElementById('add-owncompany-btn').classList.remove('hidden');
@@ -6029,8 +6017,6 @@ async function saveOwnProfile() {
   profile.display_name = name;
   profile.nickname = nickname;
   profile.birthdate = birthdate || null;
-  document.getElementById('user-name').textContent = name;
-  document.getElementById('user-initial').textContent = name[0] || '?';
   showToast('บันทึกข้อมูลส่วนตัวสำเร็จ');
 }
 
