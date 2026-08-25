@@ -93,6 +93,11 @@
     font-size: 0.86rem;
     color: var(--ink-muted);
   }
+  .topbar .staff-name {
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: var(--ink);
+  }
 
   /* ── side nav ── */
   .sidenav {
@@ -349,6 +354,7 @@
     <div class="mark">DC</div>
     <span class="name">เด็กชายบัญชี</span>
     <span class="page-title" id="pageTitle">CRM ลูกค้า</span>
+    <span class="staff-name" id="shellStaffName"></span>
     <button class="logout-btn" id="logoutBtn" aria-label="ออกจากระบบ" title="ออกจากระบบ">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
     </button>
@@ -455,8 +461,20 @@
       f.src = f.dataset.src;
     });
   }
-  function showApp() { loginScreen.style.display = 'none'; appEl.style.display = 'grid'; loadIframes(); }
-  function showLogin() { appEl.style.display = 'none'; loginScreen.style.display = 'flex'; }
+  const shellStaffName = document.getElementById('shellStaffName');
+  let staffNameLoaded = false;
+  async function loadStaffName() {
+    if (staffNameLoaded) return;
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) return;
+    const { data: prof } = await sb.from('org_staff').select('display_name').eq('id', session.user.id).single();
+    if (prof && prof.display_name) {
+      shellStaffName.textContent = prof.display_name;
+      staffNameLoaded = true;
+    }
+  }
+  function showApp() { loginScreen.style.display = 'none'; appEl.style.display = 'grid'; loadIframes(); loadStaffName(); }
+  function showLogin() { appEl.style.display = 'none'; loginScreen.style.display = 'flex'; staffNameLoaded = false; shellStaffName.textContent = ''; }
 
   async function checkSession() {
     const { data: { session } } = await sb.auth.getSession();
