@@ -1189,6 +1189,12 @@
 // ─────────────────────────────────────────────────────────────
 const SB_URL  = 'https://dqegkyobclqqichhnxfm.supabase.co';
 const SB_ANON = 'sb_publishable_4U_v9BIrQjKppfchaevA6Q_zWj3zkxE';
+// Plain defaults on purpose -- an earlier attempt to make the dc-acc shell the
+// sole auto-refresh "owner" (this client + Calendar's set to
+// autoRefreshToken:false) made real login worse (bounced back to the login
+// screen right after signing in), so it was reverted everywhere. Don't
+// reintroduce custom auth/persistSession/autoRefreshToken options on this
+// client without a way to actually test the change live.
 const sb = supabase.createClient(SB_URL, SB_ANON);
 const ADMIN_STAFF_FN = 'swift-handler'; // Edge Function slug for admin-staff/index.ts (Supabase keeps the original slug even after renaming "Name" in the dashboard)
 const FLOWACCOUNT_SYNC_FN = 'flowaccount-sync'; // Edge Function slug for flowaccount-sync/index.ts
@@ -1594,16 +1600,26 @@ async function doLogin() {
 // ─────────────────────────────────────────────────────────────
 async function init() {
   let { data: { session } } = await sb.auth.getSession();
+  // This app normally loads inside the dc-acc shell's iframe, which only
+  // points the iframe here after ITS OWN login succeeds -- so a session
+  // should already be in the shared localStorage by the time this runs.
+  // If the first check still comes up empty, it's likely a race (this
+  // iframe's script started running a beat before that write landed, or the
+  // browser's cross-client session lock made this client wait) rather than a
+  // real "not logged in" -- keep checking a few more times, spaced out, before
+  // falling back to this app's own login screen. (Widened from one 1.2s retry
+  // to four retries over ~5s total -- reported: still landing on this app's
+  // own login screen even after the shell login succeeded. Only the wait
+  // budget changed here, not the auth/refresh config itself -- see the
+  // comment on `const sb = supabase.createClient(...)` in this file's CONFIG
+  // section for why that specific knob is left alone.)
   if (!session) {
-    // This app normally loads inside the dc-acc shell's iframe, which only
-    // points the iframe here after ITS OWN login succeeds -- so a session
-    // should already be in the shared localStorage by the time this runs.
-    // If this first check still comes up empty, it's likely a one-off race
-    // (this iframe's script started running a beat before that write landed)
-    // rather than a real "not logged in" -- wait briefly and check once more
-    // before falling back to this app's own login screen.
-    await new Promise(r => setTimeout(r, 1200));
-    ({ data: { session } } = await sb.auth.getSession());
+    const retryDelaysMs = [500, 1000, 1500, 2000];
+    for (const delay of retryDelaysMs) {
+      await new Promise(r => setTimeout(r, delay));
+      ({ data: { session } } = await sb.auth.getSession());
+      if (session) break;
+    }
   }
   if (!session) {
     document.getElementById('loading').classList.add('hidden');
