@@ -388,7 +388,6 @@
           <div class="settings-menu-item" onclick="navigate('settings')">ตั้งค่าข้อมูลส่วนตัว</div>
         </div>
       </div>
-      <button onclick="signOut()" class="text-xs text-[var(--ink-muted)] hover:text-red-500 transition-colors">ออก</button>
     </div>
   </header>
 
@@ -5991,8 +5990,6 @@ function closeModal() { document.getElementById('modal-area').innerHTML = ''; }
 // ─────────────────────────────────────────────────────────────
 // AUTH
 // ─────────────────────────────────────────────────────────────
-async function signOut() { await sb.auth.signOut(); location.reload(); }
-
 async function renderOwnProfile() {
   document.getElementById('prof-name').value = profile?.display_name || '';
   document.getElementById('prof-nickname').value = profile?.nickname || '';
