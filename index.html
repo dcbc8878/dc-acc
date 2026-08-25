@@ -9,44 +9,50 @@
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
-  /* palette matches the CRM reference (เด็กชายบัญชี ตอนนี้): slate neutrals + blue accent */
+  /* palette: warm cream + forest green — matches the "ธีม" reference the user sent (a
+     Claude Design .dc.html artboard) whose applyTheme() derives every token from one
+     accent hex via color-mix(in oklab, ...); ported that exact formula here rather than
+     hardcoding flat hexes, so the relationship between tokens stays intact if the accent
+     ever changes (the reference exposes 5 accent options; #2F5D50 is the one shown/picked) */
   :root {
-    --bg: #F8FAFC;
-    --surface: #FFFFFF;
-    --surface-2: #F1F5F9;
-    --ink: #0F172A;
-    --ink-muted: #64748B;
-    --border: #E2E8F0;
-    --accent: #2563EB;
-    --accent-soft: #3B82F6;
+    --bg: color-mix(in oklab, #2F5D50 6%, #EDEAE3);
+    --surface: color-mix(in oklab, #2F5D50 4%, #FBFAF7);
+    --surface-2: color-mix(in oklab, #2F5D50 8%, #F4F2EC);
+    --ink: #1D1B17;
+    --ink-muted: #7C766B;
+    --border: #DFDACF;
+    --accent: #2F5D50;
+    --accent-soft: color-mix(in oklab, #2F5D50 55%, white);
     --accent-contrast: #FFFFFF;
-    --ring: rgba(37,99,235,0.35);
-    --shadow: 0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -12px rgba(15,23,42,0.12);
-    --shadow-lg: 0 4px 8px rgba(15,23,42,0.06), 0 20px 40px -16px rgba(15,23,42,0.22);
+    --ring: color-mix(in oklab, #2F5D50 35%, transparent);
+    --shadow: 0 1px 2px rgba(29,27,23,0.05), 0 8px 24px -12px rgba(29,27,23,0.14);
+    --shadow-lg: 0 4px 8px rgba(29,27,23,0.07), 0 20px 40px -16px rgba(29,27,23,0.24);
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --bg: #0F172A;
-      --surface: #1E293B;
-      --surface-2: #334155;
-      --ink: #F1F5F9;
-      --ink-muted: #94A3B8;
-      --border: #334155;
-      --accent: #3B82F6;
-      --accent-soft: #2563EB;
+      --bg: color-mix(in oklab, #2F5D50 10%, #171614);
+      --surface: color-mix(in oklab, #2F5D50 8%, #1F1E1B);
+      --surface-2: color-mix(in oklab, #2F5D50 14%, #262420);
+      --ink: #EFECE5;
+      --ink-muted: #9C958C;
+      --border: #35322C;
+      --accent: #2F5D50;
+      --accent-soft: color-mix(in oklab, #2F5D50 45%, white);
       --accent-contrast: #FFFFFF;
-      --ring: rgba(59,130,246,0.4);
-      --shadow: 0 1px 2px rgba(0,0,0,0.2), 0 8px 24px -12px rgba(0,0,0,0.5);
-      --shadow-lg: 0 4px 8px rgba(0,0,0,0.3), 0 20px 40px -16px rgba(0,0,0,0.6);
+      --ring: color-mix(in oklab, #2F5D50 45%, transparent);
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.55);
+      --shadow-lg: 0 4px 8px rgba(0,0,0,0.35), 0 20px 40px -16px rgba(0,0,0,0.65);
     }
   }
   :root[data-theme="dark"] {
-    --bg: #0F172A; --surface: #1E293B; --surface-2: #334155;
-    --ink: #F1F5F9; --ink-muted: #94A3B8; --border: #334155;
-    --accent: #3B82F6; --accent-soft: #2563EB; --accent-contrast: #FFFFFF;
-    --ring: rgba(59,130,246,0.4);
-    --shadow: 0 1px 2px rgba(0,0,0,0.2), 0 8px 24px -12px rgba(0,0,0,0.5);
-    --shadow-lg: 0 4px 8px rgba(0,0,0,0.3), 0 20px 40px -16px rgba(0,0,0,0.6);
+    --bg: color-mix(in oklab, #2F5D50 10%, #171614);
+    --surface: color-mix(in oklab, #2F5D50 8%, #1F1E1B);
+    --surface-2: color-mix(in oklab, #2F5D50 14%, #262420);
+    --ink: #EFECE5; --ink-muted: #9C958C; --border: #35322C;
+    --accent: #2F5D50; --accent-soft: color-mix(in oklab, #2F5D50 45%, white); --accent-contrast: #FFFFFF;
+    --ring: color-mix(in oklab, #2F5D50 45%, transparent);
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.55);
+    --shadow-lg: 0 4px 8px rgba(0,0,0,0.35), 0 20px 40px -16px rgba(0,0,0,0.65);
   }
 
   * { box-sizing: border-box; }
