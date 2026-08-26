@@ -473,12 +473,29 @@
       staffNameLoaded = true;
     }
   }
-  function showApp() { loginScreen.style.display = 'none'; appEl.style.display = 'grid'; loadIframes(); loadStaffName(); }
-  function showLogin() { appEl.style.display = 'none'; loginScreen.style.display = 'flex'; staffNameLoaded = false; shellStaffName.textContent = ''; }
+  let signedIn = false;
+  function showApp() { signedIn = true; loginScreen.style.display = 'none'; appEl.style.display = 'grid'; loadIframes(); loadStaffName(); }
+  function showLogin() {
+    signedIn = false;
+    appEl.style.display = 'none'; loginScreen.style.display = 'flex';
+    staffNameLoaded = false; shellStaffName.textContent = '';
+    // The iframes are only *hidden* here, never unloaded -- their documents keep
+    // running with the previous user's session/role already rendered (the
+    // sub-apps deliberately have no onAuthStateChange listener of their own).
+    // An empty src navigates each one to about:blank, so the next showApp() has
+    // loadIframes() fetch them fresh against whoever signs in next, instead of
+    // leaving the previous user's fully-rendered data on screen.
+    iframesLoaded = false;
+    document.querySelectorAll('#app iframe[data-src]').forEach(f => { f.src = ''; });
+  }
 
   async function checkSession() {
     const { data: { session } } = await sb.auth.getSession();
-    if (session) showApp(); else showLogin();
+    // This await can stay pending for seconds (expired token being refreshed,
+    // supabase-js retrying a flaky request). If the user signed in through the
+    // form in the meantime, a stale {session:null} landing here must NOT tear
+    // down the app they're already using -- same guard onAuthStateChange got.
+    if (session) showApp(); else if (!signedIn) showLogin();
   }
   checkSession();
 
@@ -499,9 +516,24 @@
     const password = document.getElementById('loginPass').value;
     loginBtn.disabled = true;
     loginBtn.textContent = 'กำลังเข้าสู่ระบบ...';
-    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    // signInWithPassword can *reject* (offline, blocked request, a "Failed to
+    // fetch" that never becomes an AuthError) -- unguarded, that skipped both
+    // the re-enable below and the error message, leaving the button stuck on
+    // "กำลังเข้าสู่ระบบ..." forever with nothing on screen to explain it.
+    let res = null, thrown = null;
+    try {
+      res = await sb.auth.signInWithPassword({ email, password });
+    } catch (err) {
+      thrown = err;
+    }
     loginBtn.disabled = false;
     loginBtn.textContent = 'เข้าสู่ระบบ';
+    if (thrown) {
+      loginError.textContent = 'เชื่อมต่อไม่ได้ กรุณาลองใหม่อีกครั้ง';
+      loginError.classList.add('show');
+      return;
+    }
+    const { data, error } = res || {};
     if (error) {
       loginError.textContent = 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง';
       loginError.classList.add('show');

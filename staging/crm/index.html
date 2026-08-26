@@ -374,6 +374,7 @@
             <div class="settings-menu-item" onclick="navigate('appsettings')">ตั้งค่าโปรแกรม</div>
             <div class="border-t border-[var(--border)] my-1.5"></div>
           </div>
+          <div id="settings-menu-employees" class="settings-menu-item" onclick="navigate('employees')">พนักงาน</div>
           <div id="settings-menu-teamgrid" class="settings-menu-item" onclick="navigate('teamgrid')">จัดการทีม</div>
           <div class="border-t border-[var(--border)] my-1.5"></div>
           <div class="settings-menu-item" onclick="navigate('settings')">ตั้งค่าข้อมูลส่วนตัว</div>
@@ -1363,6 +1364,14 @@ const CHANGE_TYPES = [
   { key:'vat_off',    label:'จดทะเบียนยกเลิกภาษีมูลค่าเพิ่ม',  need:null },
   { key:'sso_off',    label:'ยกเลิกการเป็นนายจ้าง',            need:null },
 ];
+// ประเภทที่ "ระบบสร้างให้เอง" จากฟอร์มเปลี่ยนค่าบริการ/เปลี่ยนประเภทลูกค้าในหน้าค่าบริการ (applyFeeChangeCore_/
+// applyTypeChangeCore_) — ไม่อยู่ใน CHANGE_TYPES โดยเจตนา จึงเลือกสร้างด้วยมือจากฟอร์ม "เพิ่มการเปลี่ยนแปลง"
+// ไม่ได้ เพราะการสร้างด้วยมือจะข้ามการปิด/เปิดแถวประวัติสัญญาใน crm_billing_contracts (ทำให้ราคาย้อนหลังเพี้ยน)
+// แต่ต้องมีป้ายกำกับให้อ่านออก และต้องคงประเภทเดิมไว้ได้ตอนกด "แก้ไข" รายการเดิม (ดู editChangeLog)
+const DERIVED_CHANGE_TYPE_LABEL = {
+  fee:  'เปลี่ยนค่าบริการ',
+  type: 'เปลี่ยนประเภทลูกค้า',
+};
 
 // ─────────────────────────────────────────────────────────────
 // STATE
@@ -1632,6 +1641,11 @@ async function init() {
   if (canSeeAuditLog()) document.getElementById('activity-log-section').classList.remove('hidden');
   if (canManageOwnCompany()) document.getElementById('add-owncompany-btn').classList.remove('hidden');
   if (!canManageOwnCompany()) document.getElementById('settings-menu-company-group').classList.add('hidden');
+  // เมนู "พนักงาน" ใช้เกณฑ์เดียวกับ "จัดการทีม" (canManageTeams, LV1-3) เพราะหน้านี้เป็นทางเดียวในระบบที่
+  // สร้าง/แก้ไขทีมได้จริง (ปุ่ม "+ สร้างทีม" อยู่ในแท็บย่อย "ทีม" ของหน้านี้) — LV3 มีสิทธิ์จัดการทีมอยู่แล้ว
+  // ตามนิยามเดิม จึงต้องเปิดหน้านี้ให้ถึงได้ ส่วนสิทธิ์ที่แคบกว่านั้นยังกันไว้ในหน้าเองเหมือนเดิมทุกจุด
+  // (แท็บ "คำขอ" = canApproveRequest LV1-2, ปุ่มรีเซ็ทรหัสผ่าน = canManageStaffAuth LV1-2)
+  if (!canManageTeams()) document.getElementById('settings-menu-employees').classList.add('hidden');
   if (!canManageTeams()) document.getElementById('settings-menu-teamgrid').classList.add('hidden');
   if (canManageTeams()) document.getElementById('add-team-btn').classList.remove('hidden');
   if (canEdit()) document.getElementById('fin-create-invoices-btn').classList.remove('hidden');
@@ -3413,8 +3427,7 @@ async function renderPanelChanges() {
 
   const CHANGE_TYPE_LABEL = {};
   CHANGE_TYPES.forEach(t => { CHANGE_TYPE_LABEL[t.key] = t.label; });
-  CHANGE_TYPE_LABEL.fee  = 'เปลี่ยนค่าบริการ';
-  CHANGE_TYPE_LABEL.type = 'เปลี่ยนประเภทลูกค้า';
+  Object.assign(CHANGE_TYPE_LABEL, DERIVED_CHANGE_TYPE_LABEL);
 
   const changeTypeOpts = CHANGE_TYPES.map(ct =>
     `<option value="${e(ct.key)}">${e(ct.label)}</option>`).join('');
@@ -3491,7 +3504,14 @@ function editChangeLog(logId) {
   if (!canEdit()) return;
   const ch = panelChangesCache.find(x => x.id === logId);
   if (!ch) return;
-  const typeOpts = CHANGE_TYPES.map(t => `<option value="${e(t.key)}" ${t.key===ch.change_type?'selected':''}>${e(t.label)}</option>`).join('');
+  // แถวที่ระบบสร้างเอง (change_type = 'fee'/'type') ไม่มีอยู่ใน CHANGE_TYPES — ถ้าไม่ใส่ option ให้ตรงกับค่าเดิม
+  // <select> จะตกไปเลือกตัวแรกในลิสต์ (vat_on) เงียบๆ แล้วกดบันทึกทีเดียวประวัติค่าบริการก็เปลี่ยนชนิดทิ้งทันที
+  // ใส่เป็น option เฉพาะของแถวนี้แถวเดียว (ไม่ได้เพิ่มเข้า CHANGE_TYPES) — แก้ไขรายการเดิมได้โดยคงประเภทไว้
+  // แต่ยังสร้างรายการ fee/type ใหม่ด้วยมือไม่ได้ ตามเหตุผลที่ DERIVED_CHANGE_TYPE_LABEL อธิบายไว้
+  const isKnownType = CHANGE_TYPES.some(t => t.key === ch.change_type);
+  const derivedOpt = isKnownType ? ''
+    : `<option value="${e(ch.change_type)}" selected>${e(DERIVED_CHANGE_TYPE_LABEL[ch.change_type] || ch.change_type)}</option>`;
+  const typeOpts = derivedOpt + CHANGE_TYPES.map(t => `<option value="${e(t.key)}" ${t.key===ch.change_type?'selected':''}>${e(t.label)}</option>`).join('');
   openModal(`
     <h3 class="text-base font-bold text-[var(--ink)] mb-4">แก้ไขรายการเปลี่ยนแปลง</h3>
     <div class="space-y-3">
@@ -3656,7 +3676,9 @@ function openEditFee(clientId) {
   if (!c) return;
   const today = new Date();
   const resolved = resolveEffectiveFee(c, today.getFullYear(), today.getMonth() + 1, billingContractsByClient[c.id]);
-  const todayIso = today.toISOString().slice(0, 10);
+  // วันที่ตามเวลาเครื่อง (yeYmdStr) ไม่ใช่ toISOString() ที่แปลงเป็น UTC ก่อน — ไทยเป็น UTC+7 ช่วง 00:00-06:59
+  // ตามเวลาไทย toISOString() จะได้ "เมื่อวาน" ทำให้ค่าบริการใหม่ย้อนไปมีผลตั้งแต่เดือนก่อนหน้าโดยไม่ตั้งใจ
+  const todayIso = yeYmdStr(today.getFullYear(), today.getMonth() + 1, today.getDate());
   openModal(`
     <h3 class="text-base font-bold text-[var(--ink)] mb-1">เปลี่ยนค่าบริการ</h3>
     <p class="text-xs text-[var(--ink-muted)] mb-4">${e(c.thai_name)} · ปัจจุบัน ${fmtMoney(resolved.fee_amount)}/เดือน</p>
@@ -3710,7 +3732,10 @@ function openEditType(clientId) {
   if (!canEdit()) return;
   const c = clients.find(x => x.id === clientId);
   if (!c) return;
-  const todayIso = new Date().toISOString().slice(0, 10);
+  // วันที่ตามเวลาเครื่อง ไม่ใช่ UTC — เหตุผลเดียวกับ openEditFee ด้านบน (ก่อน 07:00 น. ตามเวลาไทย
+  // toISOString() จะได้เมื่อวาน ทำให้ประเภทใหม่ย้อนไปมีผลตั้งแต่เดือนก่อนหน้า)
+  const today = new Date();
+  const todayIso = yeYmdStr(today.getFullYear(), today.getMonth() + 1, today.getDate());
   openModal(`
     <h3 class="text-base font-bold text-[var(--ink)] mb-1">เปลี่ยนประเภทลูกค้า</h3>
     <p class="text-xs text-[var(--ink-muted)] mb-4">${e(c.thai_name)} · ปัจจุบัน ${e(computeClientNo(c.billing_type, c.seq_num))} (${BILLING_TYPE_LABEL[c.billing_type] || '—'})</p>
@@ -4029,11 +4054,14 @@ function faSyncLine(clientId, inv) {
 async function createSingleInvoice(clientId) {
   const c = clients.find(x => x.id === clientId);
   if (!c) return;
-  const fee = c.monthly_fee || 0;
-  const wht = c.has_wht !== false ? Math.round(fee * 0.03 * 100) / 100 : 0;
+  // เหมือน createBatchInvoices/toggleFinCollected: ยอด/ประเภทมาจากสัญญาที่มีผลจริง ณ เดือนที่ออกใบ
+  // (curYear/curMonth ของหน้ารายเดือน) ไม่ใช่ค่าปัจจุบันบน crm_clients
+  const resolved = resolveEffectiveFee(c, curYear, curMonth, billingContractsByClient[clientId]);
+  const fee = resolved.fee_amount || 0;
+  const wht = resolved.has_wht ? Math.round(fee * 0.03 * 100) / 100 : 0;
   const payload = {
     client_id: clientId, year: curYear, month: curMonth,
-    billing_type: c.billing_type || 'monthly',
+    billing_type: resolved.billing_type || 'monthly',
     fee_amount: fee, wht_amount: wht, expected_payment: fee - wht,
     status: 'draft'
   };
@@ -4778,8 +4806,13 @@ function openBatchInvoice(year, month) {
   const rows = clients.filter(c => (c.is_active || c.end_date) && !c.is_own_company)
     .filter(c => (!c.start_date || c.start_date <= biMonthLastStr) && (!c.end_date || c.end_date >= biMonthFirstStr))
     .map(c => {
-    const fee = c.monthly_fee || 0;
-    const wht = c.has_wht !== false ? Math.round(fee * 0.03 * 100) / 100 : 0;
+    // ค่าบริการ/ประเภทที่ "มีผลจริง ณ เดือนที่กำลังออกใบแจ้งหนี้" (ไม่ใช่ค่าปัจจุบันบน crm_clients) — เดือนที่
+    // ออกใบอาจเป็นเดือนย้อนหลังที่ลูกค้ายังใช้สัญญาเก่าอยู่ ตัวเลขในตารางพรีวิวนี้ต้องตรงกับทั้งแถวในหน้า
+    // การเก็บเงิน (financeCollectionRowHtml) และยอดที่ createBatchInvoices จะเขียนจริง — ตัว resolve
+    // เดียวกันทั้งสามจุด
+    const resolved = resolveEffectiveFee(c, year, month, billingContractsByClient[c.id]);
+    const fee = resolved.fee_amount || 0;
+    const wht = resolved.has_wht ? Math.round(fee * 0.03 * 100) / 100 : 0;
     const expected = fee - wht;
     const inv = monthInvMap[c.id];
     const alreadyExists = !!inv;
@@ -4830,9 +4863,12 @@ async function createBatchInvoices(year, month) {
   }
   const payloads = selected.map(cid => {
     const c = clients.find(x => x.id === cid);
-    const fee = c?.monthly_fee || 0;
-    const wht = c?.has_wht !== false ? Math.round(fee * 0.03 * 100) / 100 : 0;
-    return { client_id: cid, year, month, billing_type: c?.billing_type || 'monthly', fee_amount: fee, wht_amount: wht, expected_payment: fee - wht, status: 'draft' };
+    // ยอด/ประเภทที่เขียนจริงต้อง resolve ตามประวัติสัญญา ณ เดือนที่ออกใบ ให้ตรงกับตัวเลขที่พรีวิวไว้ใน
+    // openBatchInvoice เป๊ะ (ใบนี้ถูกส่งต่อไป FlowAccount เป็นใบกำกับภาษีจริง ตัวเลขผิดเดือน = เก็บเงินผิด)
+    const resolved = resolveEffectiveFee(c, year, month, billingContractsByClient[cid]);
+    const fee = resolved.fee_amount || 0;
+    const wht = resolved.has_wht ? Math.round(fee * 0.03 * 100) / 100 : 0;
+    return { client_id: cid, year, month, billing_type: resolved.billing_type || 'monthly', fee_amount: fee, wht_amount: wht, expected_payment: fee - wht, status: 'draft' };
   });
   const { data, error } = await sb.from('crm_invoices')
     .upsert(payloads, { onConflict: 'client_id,year,month' }).select();

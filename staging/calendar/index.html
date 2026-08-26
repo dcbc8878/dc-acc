@@ -283,7 +283,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
           <div class="period-label" id="daPeriodLabel"></div>
         </div>
       </div>
-      <div class="desc" style="margin:-10px 0 16px;">ใครทำอะไรเสร็จในวันนี้ (ข้อมูลจริงจากระบบ CRM) — แสดงเฉพาะกรรมการและ Manager/Admin เท่านั้น เพราะมีการจำกัดสิทธิ์ไว้ที่ฐานข้อมูลด้วย ไม่ใช่แค่ซ่อนในหน้าเว็บ</div>
+      <div class="desc" style="margin:-10px 0 16px;">ใครทำอะไรเสร็จในวันนี้ (ข้อมูลจริงจากระบบ CRM) — แสดงเฉพาะเจ้าของ (LV1) และผู้จัดการ (LV2) เท่านั้น เพราะมีการจำกัดสิทธิ์ไว้ที่ฐานข้อมูลด้วย ไม่ใช่แค่ซ่อนในหน้าเว็บ</div>
       <div id="dailyActivityBody"><div class="agenda-empty">กำลังโหลด…</div></div>
     </section>
 
@@ -486,21 +486,37 @@ const CATEGORIES = {
 const PRIORITY = {high:{label:'สูง',color:'#dc2626'}, medium:{label:'กลาง',color:'#F59E0B'}, low:{label:'ต่ำ',color:'#16a34a'}};
 const TASK_CATEGORY = {work:'งาน', personal:'ส่วนตัว', health:'สุขภาพ', other:'อื่นๆ'};
 const TASK_STATUS_LABEL = {todo:'รอ', in_progress:'กำลังทำ', done:'เสร็จ'};
+// 5 ระดับ ตรงกับ role จริงในฐานข้อมูล (org_staff.role: owner/manager/senior/junior/parttime) และใช้ป้ายชื่อ
+// ชุดเดียวกับ CRM — `key` คือค่าที่ฐานข้อมูลเก็บจริง ส่วน `label` เป็นข้อความสำหรับแสดงผลเท่านั้น
+// (ระดับ "Customer" ที่เคยมีในลิสต์นี้ถูกตัดออก เพราะไม่มีอยู่จริงในฐานข้อมูล)
 const ROLES = [
-  {label:'กรรมการ',               desc:'สิทธิ์สูงสุด เห็นและจัดการได้ทุกอย่างในระบบ'},
-  {label:'Manager / Admin',       desc:'บริหารจัดการงานประจำวัน ดูแลพนักงานและลูกค้า'},
-  {label:'Senior',                desc:'พนักงานอาวุโส ดูแลทีม/ลูกค้าที่รับผิดชอบ มอบหมายและตรวจงานของ Junior กับ Staff'},
-  {label:'Junior',                desc:'พนักงานระดับกลาง ทำงานตามที่ได้รับมอบหมาย'},
-  {label:'Staff / Trainee / Student', desc:'พนักงานใหม่ ฝึกงาน นักศึกษาฝึกงาน เห็นเฉพาะงานของตัวเอง'},
-  {label:'Customer',              desc:'ลูกค้าของสำนักงานบัญชี เข้าถึงได้เฉพาะข้อมูล/งานของตัวเอง'}
+  {key:'owner',    label:'เจ้าของ (LV1)',        desc:'สิทธิ์สูงสุด เห็นและจัดการได้ทุกอย่างในระบบ'},
+  {key:'manager',  label:'ผู้จัดการ (LV2)',      desc:'บริหารจัดการงานประจำวัน ดูแลพนักงานและลูกค้า'},
+  {key:'senior',   label:'พนักงานอาวุโส (LV3)',  desc:'ดูแลทีม/ลูกค้าที่รับผิดชอบ มอบหมายและตรวจงานของระดับรองลงมา'},
+  {key:'junior',   label:'พนักงาน (LV4)',        desc:'ทำงานตามที่ได้รับมอบหมาย'},
+  {key:'parttime', label:'นักศึกษาฝึกงาน (LV5)', desc:'พนักงานพาร์ทไทม์/นักศึกษาฝึกงาน เห็นเฉพาะงานของตัวเอง'}
 ];
-// Supabase project เดียวกับระบบ CRM (บัญชีเดียวกัน login ได้ทั้ง 2 แอพ) — anon/publishable key ปลอดภัยที่จะฝังในโค้ดฝั่ง client
+// Supabase project เดียวกับระบบ CRM (บัญชีเดียวกัน login ได้ทั้ง 2 แอพ) — publishable key ปลอดภัยที่จะฝังในโค้ดฝั่ง client
+// ใช้คีย์ตัวเดียวกับหน้ารวม (index.html) และ CRM เป๊ะๆ กันกรณีคีย์แบบเก่าถูกปิด/หมุนเวียนแล้วเหลือแอพนี้แอพเดียวที่พัง
 const SUPABASE_URL = 'https://dqegkyobclqqichhnxfm.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxZWdreW9iY2xxcWljaGhueGZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4ODM3NzUsImV4cCI6MjEwMDQ1OTc3NX0.n_QDzWhI7yVmF1mKsk4AgcJhY0agKvYnSagS5OQwsuA';
-// แปลง role จาก crm_staff/cal_profiles (owner/admin/manager/senior/junior/parttime/member) เป็น label ไทย 6 ระดับที่ใช้แสดงผลในแอพนี้
+const SUPABASE_ANON_KEY = 'sb_publishable_4U_v9BIrQjKppfchaevA6Q_zWj3zkxE';
+// แปลง role จาก org_staff/cal_profiles (owner/admin/manager/senior/junior/parttime/member) เป็น label ไทย 5 ระดับที่ใช้แสดงผลในแอพนี้
+// (admin/member เป็นค่าเก่าที่ยังอาจค้างอยู่ใน cal_profiles จาก trigger handle_new_user() — แมปเข้าระดับที่ใกล้ที่สุด)
 function mapRoleToLabel(role){
   const m = {owner:ROLES[0].label, admin:ROLES[1].label, manager:ROLES[1].label, senior:ROLES[2].label, junior:ROLES[3].label, parttime:ROLES[4].label, member:ROLES[4].label};
   return m[role] || ROLES[4].label;
+}
+// dcbc_profile.role ใน localStorage เก็บเป็น "ป้ายชื่อ" ไม่ใช่ key — โปรไฟล์ที่บันทึกไว้ก่อนเปลี่ยนป้ายชื่อจึงต้อง
+// แปลงเป็นชุดปัจจุบันตอนโหลด ไม่งั้นเทียบกับ ROLES ไม่ตรงเลย (isTopRole() เพี้ยน + ดรอปดาวน์บทบาทว่าง)
+const LEGACY_ROLE_LABELS = {
+  'กรรมการ':'owner', 'Manager / Admin':'manager', 'Senior':'senior', 'Junior':'junior',
+  'Staff / Trainee / Student':'parttime', 'Customer':'parttime'
+};
+function normalizeRoleLabel(label){
+  if(!label) return ROLES[4].label;
+  if(ROLES.some(r=>r.label===label)) return label;
+  const key = LEGACY_ROLE_LABELS[label];
+  return key ? mapRoleToLabel(key) : ROLES[4].label;
 }
 const TH_MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
 const TH_DAYS = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
@@ -580,6 +596,8 @@ const HOLIDAYS = [
 ];
 
 /* ========================= STORAGE HELPERS ========================= */
+const CAL_FILTER_KEY = 'cal_default_filter';        // ตัวกรองปฏิทินเริ่มต้นที่ผู้ใช้ตั้งไว้ในหน้าตั้งค่า
+const LOCAL_PROFILE_BACKUP_KEY = 'dcbc_profile_local'; // โปรไฟล์โหมด Local เดิม เก็บไว้ระหว่างล็อกอิน CRM เพื่อคืนค่าตอนออกจากระบบ
 function lsGet(k, def){ try{ const v = JSON.parse(localStorage.getItem(k)); return (v===null||v===undefined) ? def : v; }catch(e){ return def; } }
 function lsSet(k, v){ localStorage.setItem(k, JSON.stringify(v)); }
 function lsId(){ return 'id_' + Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
@@ -589,7 +607,17 @@ function pad(n){ return String(n).padStart(2,'0'); }
 function toISODate(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
 function parseISODate(s){ const p = s.split('-').map(Number); return new Date(p[0], p[1]-1, p[2]); }
 function addDays(d, n){ const r = new Date(d); r.setDate(r.getDate()+n); return r; }
-function addMonths(d, n){ const r = new Date(d); r.setMonth(r.getMonth()+n); return r; }
+// setMonth() ล้วนๆ จะ "ล้น" ไปเดือนถัดไปถ้าวันที่ปัจจุบันเกินจำนวนวันของเดือนปลายทาง (เช่น 31 ส.ค. +1 เดือน
+// → 1 ต.ค. ทำให้กดลูกศรแล้วข้ามเดือนกันยายนไปเลย) — ย้ายไปวันที่ 1 ก่อนเลื่อนเดือน แล้วค่อยหนีบวันที่กลับ
+function addMonths(d, n){
+  const r = new Date(d);
+  const day = r.getDate();
+  r.setDate(1);
+  r.setMonth(r.getMonth()+n);
+  const lastDay = new Date(r.getFullYear(), r.getMonth()+1, 0).getDate();
+  r.setDate(Math.min(day, lastDay));
+  return r;
+}
 function startOfWeek(d){ const r = new Date(d); r.setDate(r.getDate()-r.getDay()); r.setHours(0,0,0,0); return r; }
 function isSameDay(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
 function beYear(y){ return y+543; }
@@ -659,15 +687,22 @@ let staffNameMap = {};     // org_staff id -> display_name, lazy-loaded for the 
 let staffCodeMap = {};     // org_staff id -> staff_code, for the compact grid tag ("CODE - item - status - staff_code")
 let clientCodeMap = {};    // crm_clients id -> code, same purpose
 let calActivityByDate = {};   // iso date -> array of {code, item, status, staffCode}, for tags shown right on the calendar grid
-let calActivityRangeKey = ''; // which visible range calActivityByDate currently holds (month/week key), to avoid refetching every render
+let calActivityRangeKey = ''; // which visible range calActivityByDate currently holds (month/week key) — set only after a fetch actually succeeds
+let calActivityRequestKey = '';// which range is being fetched right now, so out-of-order/stale responses can be dropped
 
 if(events === null){ events = seedEvents(); lsSet('dcbc_events', events); }
 if(tasks === null){ tasks = seedTasks(); lsSet('dcbc_tasks', tasks); }
-if(profile === null){ profile = {name:'ผู้ใช้งาน', role:'Staff / Trainee / Student'}; lsSet('dcbc_profile', profile); }
+if(profile === null){ profile = {name:'ผู้ใช้งาน', role: ROLES[4].label}; lsSet('dcbc_profile', profile); }
+else { const normRole = normalizeRoleLabel(profile.role); if(normRole !== profile.role){ profile.role = normRole; lsSet('dcbc_profile', profile); } }
 
 let view = 'month';           // 'month' | 'week' | 'agenda'
 let curDate = new Date();
-let calFilter = 'personal';   // 'personal' | 'team' | 'all'
+// ตัวกรองปฏิทินเริ่มต้น เก็บไว้ใน localStorage เหมือนค่าตั้งค่าอื่นๆ ของแอพนี้ (calTheme/g_client_id ฯลฯ)
+// ค่าที่กู้คืนมายังต้องผ่าน enforceFilterAccess() ตอน render อยู่ดี ('all' จะถูกลดเป็น 'personal' เองถ้าสิทธิ์ไม่ถึง)
+let calFilter = (function(){
+  const saved = localStorage.getItem(CAL_FILTER_KEY);
+  return (saved==='personal' || saved==='team' || saved==='all') ? saved : 'personal';
+})();
 let activeMenu = 'calendar';
 let dragTaskId = null;
 
@@ -733,9 +768,9 @@ function getFilteredEvents(){
 }
 function eventsOn(iso){ return getFilteredEvents().filter(e=>e.date===iso).sort((a,b)=> (a.time||'').localeCompare(b.time||'')); }
 
-// "ทั้งหมด" (all) รวมทุกกิจกรรมส่วนตัว+ทีม — ให้เห็นได้เฉพาะบทบาทสูงสุด (กรรมการ) ตามที่เจ้าของโปรเจกต์กำหนด
+// "ทั้งหมด" (all) รวมทุกกิจกรรมส่วนตัว+ทีม — ให้เห็นได้เฉพาะบทบาทสูงสุด (เจ้าของ LV1) ตามที่เจ้าของโปรเจกต์กำหนด
 function isTopRole(){ return profile && profile.role === ROLES[0].label; }
-// เกณฑ์เดียวกับฝั่ง CRM (canSeeAuditLog(): LV1-2 กรรมการ/Manager) ที่ใช้กับ crm_activity_log อยู่แล้ว —
+// เกณฑ์เดียวกับฝั่ง CRM (canSeeAuditLog(): LV1-2 เจ้าของ/ผู้จัดการ) ที่ใช้กับ crm_activity_log อยู่แล้ว —
 // ใช้ระดับเดียวกันตรงนี้เพื่อให้แท็บ "กิจกรรมประจำวัน" กับหน้าประวัติการแก้ไขของ CRM มองเห็นข้อมูลชุดเดียวกันเสมอ
 // (ไม่ใช่ isTopRole() ด้านบน — อันนั้นคือ LV1 อย่างเดียว ใช้กับฟีเจอร์อื่นคือมุมมอง "ทั้งหมด" ของปฏิทิน)
 function isOwnerOrManager(){ return !!profile && (profile.role === ROLES[0].label || profile.role === ROLES[1].label); }
@@ -755,7 +790,7 @@ function applyFilterLock(selectEl){
   const allOpt = selectEl.querySelector('option[value="all"]');
   if(!allOpt) return;
   allOpt.disabled = !isTopRole();
-  allOpt.textContent = isTopRole() ? 'ทั้งหมด' : 'ทั้งหมด (เฉพาะกรรมการ)';
+  allOpt.textContent = isTopRole() ? 'ทั้งหมด' : 'ทั้งหมด (เฉพาะเจ้าของ LV1)';
 }
 
 function renderCalendar(){
@@ -860,7 +895,9 @@ function renderWeekGrid(){
       }
       let heightPx = Math.max(20, durMin/60*HOUR_H);
       if(top<0) top=0;
-      html += `<div class="week-event" style="top:${top}px;height:${heightPx}px;background:${CATEGORIES[ev.category].color}" data-action="edit-event" data-id="${ev.id}" onclick="event.stopPropagation()">${ev.time} ${escapeHtml(ev.title)}</div>`;
+      // ไม่ต้องมี onclick="event.stopPropagation()" — ตัวจัดการคลิกกลางที่ #calBody เช็ค data-action="edit-event"
+      // ก่อน add-on-date อยู่แล้ว การหยุด event ไว้ตรงนี้ทำให้กดกิจกรรมในมุมมองสัปดาห์แล้วไม่มีอะไรเกิดขึ้นเลย
+      html += `<div class="week-event" style="top:${top}px;height:${heightPx}px;background:${CATEGORIES[ev.category].color}" data-action="edit-event" data-id="${ev.id}">${ev.time} ${escapeHtml(ev.title)}</div>`;
     });
     html += '</div>';
   });
@@ -920,6 +957,7 @@ function calNavNext(){
 function calNavToday(){ curDate = new Date(); renderCalendar(); }
 
 /* ---- Event modal ---- */
+const DEFAULT_EVENT_CATEGORY = 'client';
 function fillCategorySelect(sel){
   sel.innerHTML = Object.keys(CATEGORIES).map(k=>`<option value="${k}">${CATEGORIES[k].emoji} ${CATEGORIES[k].label}</option>`).join('');
 }
@@ -933,11 +971,18 @@ function openEventModal(id, presetDate){
   document.getElementById('ev_title').value = ev ? ev.title : '';
   populateClientDatalist();
   document.getElementById('ev_client').value = ev ? (ev.client||'') : '';
-  document.getElementById('ev_client_id').value = ev ? (ev.client_id||'') : '';
+  const clientIdInput = document.getElementById('ev_client_id');
+  clientIdInput.value = ev ? (ev.client_id||'') : '';
+  // จำไว้ว่า client_id ที่เก็บไว้เป็นของ "ชื่อลูกค้า" ไหน — ใช้ตอนบันทึกเพื่อไม่ให้ id เดิมหายไปเฉยๆ
+  // (ดู resolveEventClientId) และไม่ให้ id เดิมติดไปกับลูกค้าคนใหม่ถ้าผู้ใช้พิมพ์ชื่ออื่นแทน
+  clientIdInput.dataset.forName = ev ? (ev.client||'') : '';
   document.getElementById('ev_date').value = ev ? ev.date : (presetDate || toISODate(curDate));
   document.getElementById('ev_allday').checked = ev ? !!ev.all_day : false;
   document.getElementById('ev_time').value = ev ? (ev.time||'') : '';
   document.getElementById('ev_endtime').value = ev ? (ev.end_time||'') : '';
+  // ต้องเซ็ตประเภทด้วยทุกครั้ง ไม่งั้นดรอปดาวน์จะค้างค่าที่เปิดไว้ครั้งก่อน — แก้กิจกรรมเดิมแล้วกดบันทึก
+  // จะกลายเป็นเปลี่ยนประเภททิ้งแบบเงียบๆ และเปิดฟอร์มใหม่ก็จะได้ประเภทของกิจกรรมที่เพิ่งดูไปแทนค่าเริ่มต้น
+  document.getElementById('ev_category').value = (ev && CATEGORIES[ev.category]) ? ev.category : DEFAULT_EVENT_CATEGORY;
   document.getElementById('ev_team').checked = ev ? !!ev.is_team : (calFilter==='team');
   document.getElementById('ev_note').value = ev ? (ev.note||'') : '';
   toggleEventTimeRow();
@@ -949,6 +994,17 @@ function toggleEventTimeRow(){
 }
 function closeEventModal(){ document.getElementById('eventModal').classList.remove('open'); }
 
+// หา client_id ที่จะบันทึก: ถ้าเทียบชื่อกับรายชื่อลูกค้าจริง (cloudClients) ได้ ใช้ค่านั้น — ถ้าเทียบไม่ได้
+// (โหมด Local ที่ cloudClients ว่างเสมอ หรือลูกค้ารายนั้นไม่อยู่ในลิสต์แล้ว) ให้คง id เดิมของกิจกรรมไว้
+// ตราบใดที่ชื่อลูกค้ายังเป็นชื่อเดิม แทนที่จะล้างทิ้งทุกครั้งที่กดบันทึกเหมือนก่อนหน้านี้
+function resolveEventClientId(clientName){
+  if(!clientName) return null;
+  const resolved = resolveClientId(clientName);
+  if(resolved) return resolved;
+  const hidden = document.getElementById('ev_client_id');
+  const keptFor = hidden.dataset.forName || '';
+  return (keptFor === clientName && hidden.value) ? hidden.value : null;
+}
 function saveEventForm(e){
   e.preventDefault();
   const id = document.getElementById('ev_id').value;
@@ -956,7 +1012,7 @@ function saveEventForm(e){
   const data = {
     title: document.getElementById('ev_title').value.trim(),
     client: clientName,
-    client_id: resolveClientId(clientName),
+    client_id: resolveEventClientId(clientName),
     date: document.getElementById('ev_date').value,
     all_day: document.getElementById('ev_allday').checked,
     time: document.getElementById('ev_allday').checked ? '' : document.getElementById('ev_time').value,
@@ -1143,6 +1199,10 @@ const ACTIVITY_ACTION_LABEL_TH = {
   client_change_edit: 'แก้ไขการเปลี่ยนแปลง',
   client_change_delete: 'ลบการเปลี่ยนแปลง',
   client_creds_update: 'แก้ไขรหัสผ่านเข้าระบบ',
+  client_cred_item_add: 'เพิ่มรหัสผ่านลูกค้า',
+  client_cred_item_edit: 'แก้ไขรหัสผ่านลูกค้า',
+  client_cred_item_delete: 'ลบรหัสผ่านลูกค้า',
+  client_docs_update: 'อัปเดตเอกสารลูกค้า',
   client_deactivate: 'ปิดใช้งานลูกค้า',
   client_delete: 'ลบลูกค้าถาวร',
   staff_update: 'แก้ไขพนักงาน',
@@ -1204,7 +1264,8 @@ async function loadCalendarActivityRange(rangeStart, rangeEnd, rangeKey){
       .gte('created_at', rangeStart.toISOString())
       .lt('created_at', rangeEnd.toISOString())
       .order('created_at', { ascending:true });
-    if(error || !data) return;
+    // โหลดไม่สำเร็จ — ปล่อยให้ช่วงนี้ถูกลองใหม่ได้ในการ render ครั้งถัดไป (ไม่ mark ว่าโหลดแล้ว)
+    if(error || !data){ if(calActivityRequestKey===rangeKey) calActivityRequestKey = ''; return; }
     const byDate = {};
     data.forEach(a=>{
       const parsed = parseActivitySummary(a.summary);
@@ -1217,9 +1278,16 @@ async function loadCalendarActivityRange(rangeStart, rangeEnd, rangeKey){
       };
       (byDate[iso] = byDate[iso] || []).push(tag);
     });
+    // ถ้าผู้ใช้เปลี่ยนเดือน/สัปดาห์ไปแล้วระหว่างรอผลลัพธ์ ให้ทิ้งผลของช่วงเก่าไปเลย ไม่งั้นข้อมูลของช่วงเก่า
+    // จะทับข้อมูลช่วงใหม่ทั้งก้อน แล้วค้างอยู่แบบนั้นตลอด (เพราะช่วงใหม่ถูก mark ว่าโหลดแล้ว)
+    if(rangeKey !== calActivityRequestKey) return;
     calActivityByDate = byDate;
+    calActivityRangeKey = rangeKey;   // mark ว่าโหลดสำเร็จแล้วจริงๆ ตอนนี้เท่านั้น
     if(activeMenu==='calendar') renderCalendar();
-  }catch(e){ /* โหลดไม่สำเร็จ — ตารางจะไม่มี tag เพิ่มเติม ไม่รบกวนผู้ใช้ด้วย toast (ไม่ใช่ฟีเจอร์หลัก) */ }
+  }catch(e){
+    /* โหลดไม่สำเร็จ — ตารางจะไม่มี tag เพิ่มเติม ไม่รบกวนผู้ใช้ด้วย toast (ไม่ใช่ฟีเจอร์หลัก) แต่ต้องเปิดให้ลองใหม่ได้ */
+    if(calActivityRequestKey===rangeKey) calActivityRequestKey = '';
+  }
 }
 // เรียกจากต้น renderCalendar() ทุกครั้ง — ถ้าช่วงที่กำลังดูอยู่ (เดือน/สัปดาห์) ยังไม่เคยโหลด ให้เริ่มโหลด
 // เบื้องหลัง (ไม่ block การ render ครั้งนี้ ตารางจะโชว์แบบยังไม่มี tag ก่อน แล้วขึ้นเองเมื่อโหลดเสร็จ)
@@ -1230,12 +1298,21 @@ function ensureCalendarActivityLoaded(){
     rangeStart = startOfWeek(curDate); rangeEnd = addDays(rangeStart, 7);
     rangeKey = 'w:' + toISODate(rangeStart);
   } else {
-    rangeStart = new Date(curDate.getFullYear(), curDate.getMonth(), 1);
-    rangeEnd = new Date(curDate.getFullYear(), curDate.getMonth()+1, 1);
-    rangeKey = 'm:' + curDate.getFullYear() + '-' + curDate.getMonth();
+    // ช่วงที่โหลดต้องครอบ "ตารางที่วาดจริง" ทั้งกริด 5-6 สัปดาห์ ไม่ใช่แค่วันที่ 1 ถึงสิ้นเดือน — ไม่งั้นวันท้าย
+    // เดือนก่อน/ต้นเดือนถัดไปที่โผล่อยู่บนหน้าจอ (.outside) จะไม่มี tag ทั้งที่มองเห็นอยู่ (คำนวณแบบเดียวกับ renderMonthGrid)
+    const y = curDate.getFullYear(), m = curDate.getMonth();
+    const first = new Date(y, m, 1);
+    const startWeekday = first.getDay();
+    const daysInMonth = new Date(y, m+1, 0).getDate();
+    const totalCells = Math.ceil((startWeekday + daysInMonth)/7)*7;
+    rangeStart = addDays(first, -startWeekday);
+    rangeEnd = addDays(rangeStart, totalCells);
+    rangeKey = 'm:' + y + '-' + m;
   }
-  if(rangeKey === calActivityRangeKey) return;
-  calActivityRangeKey = rangeKey;
+  // ข้ามถ้าโหลดสำเร็จแล้ว (calActivityRangeKey) หรือกำลังโหลดอยู่ (calActivityRequestKey) — ช่วงที่โหลดพลาด
+  // จะถูกล้าง calActivityRequestKey ทิ้ง จึงกลับมาลองใหม่ได้เองในการ render ครั้งถัดไป
+  if(rangeKey === calActivityRangeKey || rangeKey === calActivityRequestKey) return;
+  calActivityRequestKey = rangeKey;
   loadCalendarActivityRange(rangeStart, rangeEnd, rangeKey);
 }
 // Tag เดียว: "CODE - รายการ - สถานะ - รหัสพนักงาน" (ตัดส่วนที่ไม่มีค่าออก) — ใช้ร่วมกันทั้ง month grid/
@@ -1259,7 +1336,7 @@ async function renderDailyActivity(){
   const selIso = toISODate(dailyActivityDate);
   document.getElementById('daPeriodLabel').textContent = thaiDateLong(dailyActivityDate) + (selIso===todayIso ? ' · วันนี้' : '');
   if(!authUser || !isOwnerOrManager()){
-    body.innerHTML = '<div class="agenda-empty">ต้องเข้าสู่ระบบด้วยบัญชี CRM และมีสิทธิ์ระดับกรรมการ/Manager จึงจะดูหน้านี้ได้</div>';
+    body.innerHTML = '<div class="agenda-empty">ต้องเข้าสู่ระบบด้วยบัญชี CRM และมีสิทธิ์ระดับเจ้าของ (LV1)/ผู้จัดการ (LV2) จึงจะดูหน้านี้ได้</div>';
     return;
   }
   body.innerHTML = '<div class="agenda-empty">กำลังโหลด…</div>';
@@ -1457,7 +1534,11 @@ async function initAuthOnLoad(){
       await loadCrmClients();
     }
   }catch(e){ /* ออฟไลน์ หรือโหลด SDK ไม่ได้ — ใช้โหมด Local ต่อได้ตามปกติ ไม่ต้องแจ้งเตือน */ }
+  // ต้อง re-render หน้าที่เปิดอยู่ ไม่ใช่แค่หน้าตั้งค่า — ตอน init() เรียก switchMenu('calendar') ครั้งแรก
+  // authUser ยังเป็น null อยู่ ทำให้ ensureCalendarActivityLoaded() ไม่ยิง query เลย และตัวกรอง/สิทธิ์
+  // (enforceFilterAccess/applyFilterLock) ยังเป็นค่าก่อนรู้ว่าใครล็อกอินอยู่
   if(activeMenu==='settings') renderSettings();
+  else if(activeMenu==='calendar') renderCalendar();
 }
 async function loginWithCrmAccount(){
   const email = (document.getElementById('authEmail').value||'').trim();
@@ -1477,9 +1558,22 @@ async function loginWithCrmAccount(){
 async function logoutCrmAccount(){
   try{ const client = await getSupabaseClient(); await client.auth.signOut(); }catch(e){}
   authUser = null; cloudProfile = null; cloudClients = []; staffNameMap = {};
+  // ข้อมูลกิจกรรมข้ามพนักงานที่ดึงมาแล้วต้องล้างทิ้งด้วย ไม่งั้นคนถัดไปที่ใช้เครื่องเดียวกัน (หรือโหมด Local)
+  // ยังเห็น tag ของคนก่อนหน้าค้างบนตาราง — RLS ฝั่งเซิร์ฟเวอร์ช่วยไม่ได้เพราะข้อมูลอยู่ในหน่วยความจำแล้ว
+  staffCodeMap = {}; clientCodeMap = {};
+  calActivityByDate = {}; calActivityRangeKey = ''; calActivityRequestKey = '';
+  // ชื่อ/บทบาทที่ค้างอยู่ในโปรไฟล์ Local ตอนนี้เป็นของบัญชี CRM ที่เพิ่งออกจากระบบ — คืนโปรไฟล์ Local เดิม
+  // (หรือค่าเริ่มต้นสิทธิ์ต่ำสุดถ้าไม่มีสำรองไว้) ไม่งั้นสิทธิ์ของคนก่อนหน้าจะยังใช้ได้ต่อในโหมด Local
+  const localBackup = lsGet(LOCAL_PROFILE_BACKUP_KEY, null);
+  profile = (localBackup && localBackup.name) ? {name:localBackup.name, role:normalizeRoleLabel(localBackup.role)}
+                                             : {name:'ผู้ใช้งาน', role: ROLES[4].label};
+  lsSet('dcbc_profile', profile);
+  localStorage.removeItem(LOCAL_PROFILE_BACKUP_KEY);
+  enforceFilterAccess();
   toast('ออกจากระบบแล้ว กลับสู่โหมด Local');
   refreshDailyActivityAccess();
   renderSettings();
+  if(activeMenu==='calendar') renderCalendar();   // ให้ tag ที่ค้างอยู่หายไปจากหน้าจอจริงๆ ไม่ใช่แค่ล้างในหน่วยความจำ
 }
 async function loadCloudProfile(){
   if(!authUser) return;
@@ -1509,6 +1603,9 @@ async function loadCloudProfile(){
       }
     }catch(e){ /* sync ไม่สำเร็จ — ใช้ค่าที่มีอยู่เดิมต่อไป ไม่ block การโหลดโปรไฟล์ */ }
     cloudProfile = prof;
+    // สำรองโปรไฟล์โหมด Local ไว้ก่อนเขียนทับด้วยชื่อ/บทบาทจากบัญชี CRM (เก็บครั้งแรกครั้งเดียว —
+    // ถ้ารีโหลดหน้าทั้งที่ยังล็อกอินอยู่ ค่าใน dcbc_profile จะเป็นของ CRM ไปแล้ว ห้ามทับตัวสำรอง)
+    if(localStorage.getItem(LOCAL_PROFILE_BACKUP_KEY) === null) lsSet(LOCAL_PROFILE_BACKUP_KEY, {name:profile.name, role:profile.role});
     profile.name = prof.display_name || prof.full_name || authUser.email;
     profile.role = mapRoleToLabel(prof.role);
     lsSet('dcbc_profile', profile);
@@ -1627,7 +1724,7 @@ function init(){
   });
   document.getElementById('calFilterSelect').addEventListener('change', e=>{
     calFilter = e.target.value;
-    if(enforceFilterAccess()) toast('มุมมอง "ทั้งหมด" ดูได้เฉพาะกรรมการ');
+    if(enforceFilterAccess()) toast('มุมมอง "ทั้งหมด" ดูได้เฉพาะเจ้าของ (LV1)');
     renderCalendar();
   });
   document.getElementById('addEventBtn').addEventListener('click', ()=>openEventModal(null));
@@ -1691,7 +1788,10 @@ function init(){
   document.getElementById('darkModeSwitch').addEventListener('change', toggleTheme);
   document.getElementById('defaultFilterSelect').addEventListener('change', e=>{
     calFilter = e.target.value;
-    if(enforceFilterAccess()){ toast('มุมมอง "ทั้งหมด" ดูได้เฉพาะกรรมการ'); renderSettings(); }
+    const wasReset = enforceFilterAccess();
+    // เก็บค่า "หลัง" ผ่านการเช็คสิทธิ์แล้วเสมอ — จะได้ไม่บันทึกค่าที่บทบาทนี้ใช้ไม่ได้ค้างไว้ในเครื่อง
+    localStorage.setItem(CAL_FILTER_KEY, calFilter);
+    if(wasReset){ toast('มุมมอง "ทั้งหมด" ดูได้เฉพาะเจ้าของ (LV1)'); renderSettings(); }
     else toast('บันทึกตัวกรองเริ่มต้นแล้ว');
   });
   document.getElementById('gConnectBtn').addEventListener('click', connectGoogle);

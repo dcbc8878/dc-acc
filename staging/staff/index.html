@@ -262,7 +262,25 @@ let EMPLOYEES = [
   {id:5, code:'E008', name:'ณัฐพล ทองดี', nickname:'พล', position:'staff', phone:'085-678-9012', email:'natthapon@dekchaibunchee.co.th', startDate:'2024-02-01', endDate:null},
   {id:12, code:'E009', name:'ปรีชา ทองสุข', nickname:'ชา', position:'staff', phone:'092-777-8888', email:'preecha@dekchaibunchee.co.th', startDate:'2024-07-15', endDate:null},
 ];
-let empNextId = 9;
+// id/รหัสพนักงานคำนวณจากข้อมูลจริงเสมอ (เลิกใช้ตัวนับแยก ซึ่งหลุดจากข้อมูลได้ทุกครั้งที่ข้อมูลตั้งต้นเปลี่ยน
+// แล้วไปทับ id/รหัสของคนที่มีอยู่แล้วแบบเงียบๆ)
+function nextEmployeeId(){
+  return EMPLOYEES.reduce((max, e) => Math.max(max, e.id), 0) + 1;
+}
+// รหัสที่ "ถูกใช้แล้ว" ต้องนับรวมรหัสที่จ่ายไปกับคำขอที่อนุมัติแล้วด้วย ไม่ใช่แค่ที่อยู่ในทะเบียนพนักงาน
+function isEmployeeCodeTaken(code){
+  return EMPLOYEES.some(e => e.code === code)
+      || EMPLOYEE_REQUESTS.some(r => r.status === 'approved' && r.empCode === code);
+}
+function nextFreeEmployeeCode(){
+  const used = [
+    ...EMPLOYEES.map(e => e.code),
+    ...EMPLOYEE_REQUESTS.filter(r => r.status === 'approved').map(r => r.empCode),
+  ].map(c => parseInt(String(c || '').replace(/\D/g, ''), 10)).filter(n => !isNaN(n));
+  let n = (used.length ? Math.max(...used) : 0) + 1;
+  while (isEmployeeCodeTaken('E' + String(n).padStart(3,'0'))) n++;
+  return 'E' + String(n).padStart(3,'0');
+}
 function isEmployeeActive(e){
   return !e.endDate || e.endDate >= new Date().toISOString().slice(0,10);
 }
@@ -302,14 +320,29 @@ function maxAssignablePositions(){
 function renderViewerSwitcher(){
   const sel = document.getElementById('viewerSwitch');
   if (!sel) return;
-  const cur = sel.value;
-  sel.innerHTML = EMPLOYEES.filter(isEmployeeActive).map(e =>
-    `<option value="${e.id}" ${e.id === currentViewerEmployeeId ? 'selected' : ''}>${e.name} (${POSITION_LABEL[e.position]})</option>`
-  ).join('');
+  // มุมมองปัจจุบันต้องเป็นคนที่ยังเลือกได้จริงเสมอ ไม่งั้นชื่อที่แสดงกับสิทธิ์ที่มีผลจริงจะไม่ตรงกัน
+  // (เช่น บันทึกวันที่ออกให้คนที่กำลังใช้มุมมองอยู่ — เขาหลุดจากรายชื่อ แต่สิทธิ์เดิมยังมีผลอยู่)
+  const actives = EMPLOYEES.filter(isEmployeeActive);
+  const moved = !actives.some(e => e.id === currentViewerEmployeeId);
+  if (moved) currentViewerEmployeeId = actives.length ? actives[0].id : null;
+  sel.innerHTML = actives.length
+    ? actives.map(e =>
+        `<option value="${e.id}" ${e.id === currentViewerEmployeeId ? 'selected' : ''}>${e.name} (${POSITION_LABEL[e.position]})</option>`
+      ).join('')
+    : '<option value="">— ไม่มีพนักงานที่ทำงานอยู่ —</option>';
+  if (moved) {
+    // สิทธิ์ที่มีผลเปลี่ยนไปด้วย เรนเดอร์ส่วนที่อิงสิทธิ์ใหม่ทันทีในจังหวะเดียวกัน
+    const nv = actives.find(e => e.id === currentViewerEmployeeId);
+    renderEmployeeRequests();
+    showToastMock(nv
+      ? 'สลับมุมมองเป็น ' + nv.name + ' (' + POSITION_LABEL[nv.position] + ') อัตโนมัติ'
+      : 'ไม่มีพนักงานที่ทำงานอยู่ — มุมมองปัจจุบันว่าง');
+  }
 }
 function switchViewer(id){
-  currentViewerEmployeeId = parseInt(id);
-  const viewer = EMPLOYEES.find(e => e.id === currentViewerEmployeeId);
+  const viewer = EMPLOYEES.find(e => e.id === parseInt(id));
+  if (!viewer) { renderViewerSwitcher(); return; }
+  currentViewerEmployeeId = viewer.id;
   showToastMock('สลับมุมมองเป็น ' + viewer.name + ' (' + POSITION_LABEL[viewer.position] + ')');
 }
 
@@ -332,7 +365,7 @@ function showToastMock(msg){
 function fmtServiceDate(iso){
   if (!iso) return '—';
   const d = new Date(iso);
-  return `${d.getDate()} ${SVC_MONTHS_SHORT[d.getMonth()]} ${d.getFullYear() + 543}`;
+  return `${d.getDate()} ${SVC_MONTHS_SHORT[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 // ── ทะเบียนพนักงาน: list + add/edit ──
@@ -413,8 +446,7 @@ function saveEmployee(employeeId){
     const e = EMPLOYEES.find(x => x.id === employeeId);
     Object.assign(e, { name, position, phone, email, startDate, endDate });
   } else {
-    empNextId++;
-    EMPLOYEES.push({ id: empNextId, code: 'E' + String(empNextId).padStart(3,'0'), name, position, phone, email, startDate: startDate || new Date().toISOString().slice(0,10), endDate });
+    EMPLOYEES.push({ id: nextEmployeeId(), code: nextFreeEmployeeCode(), name, position, phone, email, startDate: startDate || new Date().toISOString().slice(0,10), endDate });
   }
   closeGenModal();
   renderEmployees();
@@ -628,7 +660,7 @@ function openReviewRequestModal(reqId){
     </div>`;
 
   const viewer = EMPLOYEES.find(e => e.id === currentViewerEmployeeId);
-  const viewerLabel = `${viewer.name} · ${POSITION_LABEL[viewer.position]}`;
+  const viewerLabel = viewer ? `${viewer.name} · ${POSITION_LABEL[viewer.position]}` : 'ไม่มีพนักงานที่ทำงานอยู่';
 
   let actionHtml = '';
   if (r.status === 'pending') {
@@ -636,12 +668,12 @@ function openReviewRequestModal(reqId){
     const dis = allowed ? '' : 'disabled';
     const dimStyle = allowed ? '' : 'opacity:.4;cursor:not-allowed';
     const positionOptions = maxAssignablePositions().map(p => `<option value="${p}">${POSITION_LABEL[p]}</option>`).join('');
-    const suggestedCode = 'E' + String(empNextId + 1).padStart(3,'0');
+    const suggestedCode = nextFreeEmployeeCode();
     actionHtml = `
       <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--gray-100)">
         <div style="font-size:12px;font-weight:600;color:var(--gray-600);margin-bottom:8px">อนุมัติ — กำหนดรหัสพนักงาน ระดับผู้ใช้งาน และอีเมลบริษัท</div>
         ${!allowed ? `<div style="font-size:11.5px;color:#b91c1c;margin-bottom:8px">มุมมองปัจจุบัน (${viewerLabel}) ไม่มีสิทธิ์อนุมัติ — ต้องเป็นกรรมการหรือ Manager/Admin</div>` : ''}
-        <div style="font-size:11px;color:var(--gray-400);margin-bottom:6px">กำหนดระดับผู้ใช้งานได้สูงสุดเท่าตำแหน่งของตัวเอง (${POSITION_LABEL[viewer.position]})</div>
+        <div style="font-size:11px;color:var(--gray-400);margin-bottom:6px">กำหนดระดับผู้ใช้งานได้สูงสุดเท่าตำแหน่งของตัวเอง (${viewer ? POSITION_LABEL[viewer.position] : '—'})</div>
         <div style="display:flex;flex-direction:column;gap:8px">
           <input id="req-empcode" class="search-input" style="width:100%;text-transform:uppercase" value="${suggestedCode}" placeholder="รหัสพนักงาน เช่น E007" ${dis}>
           <select id="req-position" class="search-input" style="width:100%" ${dis}>${positionOptions}</select>
@@ -687,7 +719,7 @@ function approveRequest(reqId){
   const companyEmail = document.getElementById('req-companyemail').value.trim();
   const errEl = document.getElementById('req-approve-err');
   if (!empCode) { errEl.textContent = 'กรุณากำหนดรหัสพนักงาน'; errEl.style.display = 'block'; return; }
-  if (EMPLOYEES.some(e => e.code === empCode)) { errEl.textContent = 'รหัสพนักงานนี้ถูกใช้แล้ว กรุณาใช้รหัสอื่น'; errEl.style.display = 'block'; return; }
+  if (isEmployeeCodeTaken(empCode)) { errEl.textContent = 'รหัสพนักงานนี้ถูกใช้แล้ว กรุณาใช้รหัสอื่น'; errEl.style.display = 'block'; return; }
   if (!companyEmail) { errEl.textContent = 'กรุณากรอกอีเมลบริษัท'; errEl.style.display = 'block'; return; }
   if (!maxAssignablePositions().includes(position)) { errEl.textContent = 'กำหนดระดับผู้ใช้งานสูงกว่าตำแหน่งตัวเองไม่ได้'; errEl.style.display = 'block'; return; }
   const viewer = EMPLOYEES.find(e => e.id === currentViewerEmployeeId);
@@ -696,9 +728,8 @@ function approveRequest(reqId){
   r.companyEmail = companyEmail;
   r.empCode = empCode;
   r.approvedBy = { id: viewer.id, name: viewer.name, position: viewer.position, date: new Date().toISOString().slice(0,10) };
-  empNextId++;
   EMPLOYEES.push({
-    id: empNextId, code: empCode,
+    id: nextEmployeeId(), code: empCode,
     name: `${r.prefix}${r.firstName} ${r.lastName}`, nickname: r.nickname, position,
     phone: '', email: companyEmail, startDate: new Date().toISOString().slice(0,10), endDate: null,
     taxId: r.taxId, birthDate: r.birthDate, idCardAddress: r.idCardAddress, personalEmail: r.personalEmail,
