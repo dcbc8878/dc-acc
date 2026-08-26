@@ -108,11 +108,6 @@
   .app{ display:flex; flex-direction:column; height:100vh; width:100%; overflow:hidden; }
 
   header{ flex-shrink:0; display:flex; align-items:center; gap:8px; background:var(--white); border-bottom:1px solid var(--gray-200); padding:0 16px; height:52px; }
-  .logo{ display:flex; align-items:center; gap:8px; margin-right:12px; flex-shrink:0; }
-  .logo .box{ width:32px; height:32px; background:var(--blue-600); border-radius:8px; display:flex; align-items:center; justify-content:center; color:var(--accent-contrast); font-size:12px; font-weight:700; }
-  .logo .t1{ font-size:14px; font-weight:700; color:var(--gray-900); line-height:1.2; }
-  .logo .t2{ font-size:10px; color:var(--gray-400); line-height:1.2; }
-  .divider{ width:1px; height:24px; background:var(--gray-200); margin-right:4px; flex-shrink:0; }
   .hdr-note{ flex:1; font-size:11px; color:var(--gray-400); }
   .hdr-viewer-label{ font-size:11px; color:var(--gray-400); flex-shrink:0; }
 
@@ -150,14 +145,13 @@
 
 <div class="app">
   <header>
-    <div class="logo">
-      <div class="box">พก</div>
-      <div><div class="t1">พนักงาน</div><div class="t2">โมดูลกลาง — ใช้ร่วมกันได้ทุกระบบ</div></div>
-    </div>
-    <div class="divider"></div>
+    <!-- ไม่มีโลโก้/ชื่อโมดูลซ้ำตรงนี้: แถบบนสุดของหน้ารวม (shell) แสดงโลโก้ DC + "เด็กชายบัญชี" อยู่แล้ว
+         และเมนูข้างของ shell ก็ระบุว่าเป็นแท็บ "พนักงาน/ทีม" อยู่แล้ว — เหลือหัวข้อหน้าเดียวที่ <h2> ด้านล่าง -->
     <div class="hdr-note">สลับมุมมองเพื่อทดสอบสิทธิ์อนุมัติคำขอสมัคร (โมดูลนี้ทำงานเป็นอิสระ ยังไม่ผูกกับระบบล็อกอินจริง)</div>
     <span class="hdr-viewer-label">มุมมองปัจจุบัน:</span>
-    <select id="viewerSwitch" class="search-input" style="width:230px" onchange="switchViewer(this.value)"></select>
+    <!-- 300px = ความกว้างที่ตัวเลือกยาวที่สุดต้องการจริง (วัดจาก intrinsic width ของ select เอง 298px)
+         หลังเปลี่ยนป้ายตำแหน่งมาใช้ชุดเดียวกับ CRM ซึ่งยาวกว่าเดิม — ของเดิม 230px ตัดข้อความทิ้ง -->
+    <select id="viewerSwitch" class="search-input" style="width:300px" onchange="switchViewer(this.value)"></select>
   </header>
   <main>
     <div class="page-head" style="padding-bottom:0;border-bottom:none">
@@ -215,7 +209,7 @@
 
     <div id="emp-sub-requests" style="display:none">
       <div class="page-head">
-        <p style="font-size:11px;color:var(--gray-400);margin:0">พนักงานสมัครเข้าใช้งานเอง แล้วส่งอนุมัติ — กรรมการหรือ Manager/Admin คนใดคนหนึ่งอนุมัติได้ ก่อนสร้างบัญชีพนักงานจริง (สลับมุมมองทดสอบได้ที่มุมขวาบน)</p>
+        <p style="font-size:11px;color:var(--gray-400);margin:0">พนักงานสมัครเข้าใช้งานเอง แล้วส่งอนุมัติ — เจ้าของ (LV1) หรือผู้จัดการ (LV2) คนใดคนหนึ่งอนุมัติได้ ก่อนสร้างบัญชีพนักงานจริง (สลับมุมมองทดสอบได้ที่มุมขวาบน)</p>
         <div style="display:flex;gap:8px;align-items:center">
           <button class="btn-blue" onclick="openEmployeeRequestForm()">+ สมัครพนักงานใหม่</button>
         </div>
@@ -246,8 +240,12 @@
 // มีข้อมูลจำลอง (mock data) และตัวสลับมุมมอง (viewer switcher) เป็นของตัวเอง
 // ══════════════════════════════════════════════════════════════════════════
 
-// ── ทะเบียนพนักงาน — ตำแหน่งอ้างอิงโครงสร้าง 6 ระดับมาตรฐานขององค์กร (ยกเว้น Customer ซึ่งไม่ใช่พนักงาน) ──
-const POSITION_LABEL = { director:'กรรมการ', manager:'Manager/Admin', senior:'Senior', junior:'Junior', staff:'Staff/Trainee' };
+// ── ทะเบียนพนักงาน — ตำแหน่ง 5 ระดับ เรียงจากสูงสุด (LV1) ลงมาต่ำสุด (LV5) ──
+// ป้ายที่ "แสดงผล" ใช้ชุดเดียวกับ ROLE_LABEL ของ CRM เป๊ะ (และปฏิทินที่ย้ายมาใช้ชุดนี้แล้ว)
+// เพื่อให้คนคนเดียวกันอ่านได้ชื่อระดับเดียวกันทุกแอพ ส่วน "คีย์" ยังเป็นของโมดูลนี้เอง
+// (director/staff แทน owner/parttime ของ CRM) — ห้ามแก้คีย์ เพราะ mock data/ตัวเทียบสิทธิ์
+// ทั้งไฟล์อ้างอิงคีย์ชุดนี้อยู่ (โมดูลนี้ยังไม่ผูกกับฐานข้อมูลจริงตามที่ตั้งใจไว้)
+const POSITION_LABEL = { director:'เจ้าของ (LV1)', manager:'ผู้จัดการ (LV2)', senior:'พนักงานอาวุโส (LV3)', junior:'พนักงาน (LV4)', staff:'นักศึกษาฝึกงาน (LV5)' };
 const POSITION_ORDER = ['director','manager','senior','junior','staff'];
 const SVC_MONTHS_SHORT = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 
@@ -292,7 +290,7 @@ let TEAMS = [
 ];
 let teamNextId = 2;
 
-// ── คำขอสมัครพนักงานใหม่: พนักงานกรอกเอง → กรรมการหรือ Manager/Admin คนใดคนหนึ่งอนุมัติ (กำหนดระดับผู้ใช้งาน+อีเมลบริษัท) → สร้างพนักงานจริง ──
+// ── คำขอสมัครพนักงานใหม่: พนักงานกรอกเอง → เจ้าของ (LV1) หรือผู้จัดการ (LV2) คนใดคนหนึ่งอนุมัติ (กำหนดระดับผู้ใช้งาน+อีเมลบริษัท) → สร้างพนักงานจริง ──
 const PREFIX_OPTIONS = ['นาย','นาง','นางสาว'];
 let EMPLOYEE_REQUESTS = [
   {id:1, taxId:'1-2345-00123-45-6', prefix:'นาย', firstName:'วีระ', lastName:'สุขเจริญ', birthDate:'1998-04-12', idCardAddress:'123 หมู่ 4 ต.บางรัก อ.เมือง จ.นนทบุรี 11000', personalEmail:'weera.personal@gmail.com', status:'pending', submittedAt:'2026-08-14', position:null, companyEmail:null},
@@ -302,7 +300,7 @@ let EMPLOYEE_REQUESTS = [
   {id:5, taxId:'1-2345-01122-56-7', prefix:'นาย', firstName:'ณรงค์ศักดิ์', lastName:'แข็งขัน', nickname:'ณรงค์', birthDate:'2002-01-30', idCardAddress:'56 ถ.พระราม 4 แขวงคลองเตย เขตคลองเตย กรุงเทพฯ 10110', personalEmail:'narongsak.k@gmail.com', status:'rejected', submittedAt:'2026-08-11', position:null, companyEmail:null, rejectedBy:{id:2, name:'วิภา ศรีสุข', position:'manager', date:'2026-08-12'}},
 ];
 let empReqNextId = 5;
-// ผู้อนุมัติต้องเป็นกรรมการ หรือ Manager/Admin คนใดคนหนึ่ง (ไม่มีลำดับขั้น ใครอนุมัติก่อนก็เสร็จเลย)
+// ผู้อนุมัติต้องเป็นเจ้าของ (LV1) หรือผู้จัดการ (LV2) คนใดคนหนึ่ง (ไม่มีลำดับขั้น ใครอนุมัติก่อนก็เสร็จเลย)
 // โมดูลนี้เป็นอิสระจากระบบล็อกอินของแอปอื่น จึงมี "มุมมองปัจจุบัน" ของตัวเอง สลับได้จากมุมขวาบน (ไว้ทดสอบสิทธิ์)
 let currentViewerEmployeeId = 1;
 function canApproveRequest(){
@@ -310,7 +308,7 @@ function canApproveRequest(){
   if (!viewer) return false;
   return viewer.position === 'director' || viewer.position === 'manager';
 }
-// ผู้อนุมัติกำหนดระดับผู้ใช้งานให้คนอื่นได้สูงสุดเท่าระดับตัวเอง เช่น Manager (ระดับ 2) กำหนดให้ใครเป็นกรรมการ (ระดับ 1) ไม่ได้
+// ผู้อนุมัติกำหนดระดับผู้ใช้งานให้คนอื่นได้สูงสุดเท่าระดับตัวเอง เช่น ผู้จัดการ (LV2) กำหนดให้ใครเป็นเจ้าของ (LV1) ไม่ได้
 function maxAssignablePositions(){
   const viewer = EMPLOYEES.find(e => e.id === currentViewerEmployeeId);
   if (!viewer) return [];
@@ -327,7 +325,7 @@ function renderViewerSwitcher(){
   if (moved) currentViewerEmployeeId = actives.length ? actives[0].id : null;
   sel.innerHTML = actives.length
     ? actives.map(e =>
-        `<option value="${e.id}" ${e.id === currentViewerEmployeeId ? 'selected' : ''}>${e.name} (${POSITION_LABEL[e.position]})</option>`
+        `<option value="${e.id}" ${e.id === currentViewerEmployeeId ? 'selected' : ''}>${e.name} · ${POSITION_LABEL[e.position]}</option>`
       ).join('')
     : '<option value="">— ไม่มีพนักงานที่ทำงานอยู่ —</option>';
   if (moved) {
@@ -462,7 +460,7 @@ function teamRowHtml(t, idx){
   return `<div class="lrow" onclick="openTeamModal(${t.id})">
       <span class="col-num">${idx + 1}</span>
       <span style="width:180px;flex-shrink:0;font-weight:700;font-size:12.5px;color:var(--gray-900);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.name}</span>
-      <span style="width:180px;flex-shrink:0;font-size:12.5px;color:var(--gray-600);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${lead ? lead.name : '—'}${lead ? ` <span style="font-size:10px;color:var(--blue-600)">(${POSITION_LABEL[lead.position]})</span>` : ''}</span>
+      <span style="width:180px;flex-shrink:0;font-size:12.5px;color:var(--gray-600);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${lead ? lead.name : '—'}${lead ? ` <span style="font-size:10px;color:var(--blue-600)">· ${POSITION_LABEL[lead.position]}</span>` : ''}</span>
       <span style="flex:1;min-width:0;font-size:12.5px;color:var(--gray-600);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${memberNames}">${memberNames}${members.length ? ` <span style="color:var(--gray-400)">(${members.length})</span>` : ''}</span>
     </div>`;
 }
@@ -474,12 +472,12 @@ function openTeamModal(teamId){
   const t = teamId ? TEAMS.find(x => x.id === teamId) : null;
   const activeEmps = EMPLOYEES.filter(isEmployeeActive);
   const leadOptions = activeEmps.map(e =>
-    `<option value="${e.id}" ${t && t.leadId === e.id ? 'selected' : ''}>${e.name} (${POSITION_LABEL[e.position]})</option>`
+    `<option value="${e.id}" ${t && t.leadId === e.id ? 'selected' : ''}>${e.name} · ${POSITION_LABEL[e.position]}</option>`
   ).join('');
   const memberCheckboxes = activeEmps.map(e => `
     <label style="display:flex;align-items:center;gap:8px;padding:6px 4px;font-size:13px;cursor:pointer">
       <input type="checkbox" class="team-member-chk" value="${e.id}" ${t && t.memberIds.includes(e.id) ? 'checked' : ''}>
-      ${e.name} <span style="color:var(--gray-400);font-size:11px">(${POSITION_LABEL[e.position]})</span>
+      ${e.name} <span style="color:var(--gray-400);font-size:11px">· ${POSITION_LABEL[e.position]}</span>
     </label>`).join('');
   openGenModal(`
     <div style="padding:16px">
@@ -672,7 +670,7 @@ function openReviewRequestModal(reqId){
     actionHtml = `
       <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--gray-100)">
         <div style="font-size:12px;font-weight:600;color:var(--gray-600);margin-bottom:8px">อนุมัติ — กำหนดรหัสพนักงาน ระดับผู้ใช้งาน และอีเมลบริษัท</div>
-        ${!allowed ? `<div style="font-size:11.5px;color:#b91c1c;margin-bottom:8px">มุมมองปัจจุบัน (${viewerLabel}) ไม่มีสิทธิ์อนุมัติ — ต้องเป็นกรรมการหรือ Manager/Admin</div>` : ''}
+        ${!allowed ? `<div style="font-size:11.5px;color:#b91c1c;margin-bottom:8px">มุมมองปัจจุบัน (${viewerLabel}) ไม่มีสิทธิ์อนุมัติ — ต้องเป็นเจ้าของ (LV1) หรือผู้จัดการ (LV2)</div>` : ''}
         <div style="font-size:11px;color:var(--gray-400);margin-bottom:6px">กำหนดระดับผู้ใช้งานได้สูงสุดเท่าตำแหน่งของตัวเอง (${viewer ? POSITION_LABEL[viewer.position] : '—'})</div>
         <div style="display:flex;flex-direction:column;gap:8px">
           <input id="req-empcode" class="search-input" style="width:100%;text-transform:uppercase" value="${suggestedCode}" placeholder="รหัสพนักงาน เช่น E007" ${dis}>
@@ -711,7 +709,7 @@ function openReviewRequestModal(reqId){
     </div>`, {maxWidth:'440px'});
 }
 function approveRequest(reqId){
-  if (!canApproveRequest()) { showToastMock('มุมมองปัจจุบันไม่มีสิทธิ์อนุมัติ — ต้องเป็นกรรมการหรือ Manager/Admin'); return; }
+  if (!canApproveRequest()) { showToastMock('มุมมองปัจจุบันไม่มีสิทธิ์อนุมัติ — ต้องเป็นเจ้าของ (LV1) หรือผู้จัดการ (LV2)'); return; }
   const r = EMPLOYEE_REQUESTS.find(x => x.id === reqId);
   if (!r) return;
   const empCode = document.getElementById('req-empcode').value.trim().toUpperCase();

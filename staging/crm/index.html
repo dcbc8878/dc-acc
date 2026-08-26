@@ -330,17 +330,9 @@
 
   <!-- Top Navigation -->
   <header class="flex-shrink-0 flex items-center gap-2 bg-[var(--surface)] border-b border-[var(--border)] px-4 h-13" style="height:52px">
-    <!-- Logo -->
-    <div class="flex items-center gap-2 mr-3 flex-shrink-0">
-      <div class="w-8 h-8 bg-[var(--accent)] rounded-lg flex items-center justify-center flex-shrink-0">
-        <span class="text-white text-xs font-bold">ดช</span>
-      </div>
-      <div class="hidden sm:block leading-tight">
-        <div class="text-sm font-bold text-[var(--ink)]">เด็กชายบัญชี</div>
-        <div class="text-[10px] text-[var(--ink-muted)] leading-none">CRM Portal</div>
-      </div>
-    </div>
-    <div class="w-px h-6 bg-[var(--surface-2)] mr-1 flex-shrink-0"></div>
+    <!-- ไม่มีโลโก้/ชื่อบริษัทที่นี่: หน้ารวม (shell) แสดงตรา "DC" + "เด็กชายบัญชี" อยู่แล้วตลอดเวลาเหนือ iframe
+         นี้ ถ้าใส่ซ้ำจะเห็นโลโก้ 2 อันและชื่อบริษัท 2 ที่พร้อมกันในจอเดียว (เหตุผลเดียวกับที่เอาปุ่มออกจาก
+         ระบบและชื่อพนักงานที่ซ้ำกับ shell ออกไปก่อนหน้านี้) — ส่วนนำทาง/เมนูตั้งค่าด้านล่างยังอยู่ครบเหมือนเดิม -->
     <!-- Nav -->
     <nav class="flex items-center gap-0.5 flex-1 min-w-0 overflow-x-auto" style="scrollbar-width:none">
       <div class="nav-item active" data-page="tracking" onclick="navigate('tracking')">
@@ -1469,6 +1461,15 @@ async function logActivity(action, entityType, entityId, summary) {
     action, entity_type: entityType, entity_id: String(entityId), summary,
   });
 }
+// ข้อความสรุป "งานภาษีรายเดือน" (crm_tax_tasks) ที่เขียนลง crm_activity_log — ต้องเป็นรูปแบบเดียวกันเป๊ะทั้ง
+// 3 จุดที่เขียนตารางนี้ (toggleField / saveGroupItemField / cycleGroupFromModal) จึงรวมไว้ที่เดียวกัน
+// ตัวเดียวกันหมด ไม่ให้แต่ละจุดเพี้ยนออกจากกันได้อีก (แพทเทิร์นเดียวกับ markInvoicePaidCore_ ฯลฯ):
+// ปฏิทินแกะข้อความนี้กลับเป็น tag "CODE - รายการ - สถานะ - รหัสพนักงาน" โดยตัดที่ "→" แล้วตัดวงเล็บท้าย
+// ทิ้งทั้งสองฝั่ง (ดู parseActivitySummary ใน calendar/index.html) — รูปแบบอื่นจะเรนเดอร์เพี้ยนที่นั่น
+function taxTaskSummary_(clientId, itemLabel, statusLabel, groupLabel) {
+  const c = clients.find(x => x.id === clientId);
+  return `${c?.thai_name || ''}: ${itemLabel}${groupLabel ? ` (${groupLabel})` : ''} → ${statusLabel} (${curMonth}/${curYear})`;
+}
 function statusDot(v) {
   if (v === 'done') return '<span class="dot done">✓</span>';
   if (v === 'na')   return '<span class="dot na">—</span>';
@@ -1494,15 +1495,21 @@ function calcRowPct(t, hasVat, hasSso) {
 }
 function noteCell(clientId, note, prevNote) {
   if (note) {
-    return `<div class="text-xs text-[var(--ink)] leading-tight cursor-pointer hover:text-[var(--accent)] truncate" title="${e(note)}" onclick="editNote(${clientId},'${e(note).replace(/'/g,'&#39;')}')">${e(note)}</div>`;
+    // ห้ามฝังตัวโน๊ตลงใน onclick: โน๊ตพิมพ์จาก <textarea> จึงมีขึ้นบรรทัดใหม่/แบ็กสแลชได้ตามปกติ ซึ่ง e()
+    // ไม่ได้ escape ให้ — พอหลุดเข้าไปใน string literal ของ JS จะกลายเป็น syntax error ทั้งบรรทัด กดแก้ไม่ได้
+    // อีกเลยตลอดไป (ปุ่ม "+ โน๊ต" ขึ้นเฉพาะตอนโน๊ตว่าง) ส่ง id อย่างเดียวแล้วให้ editNote ไปอ่านค่าจาก
+    // taskMap เอง (แหล่งเดียวกับที่ renderTracking ใช้ส่งเข้ามาอยู่แล้ว)
+    return `<div class="text-xs text-[var(--ink)] leading-tight cursor-pointer hover:text-[var(--accent)] truncate" title="${e(note)}" onclick="editNote(${clientId})">${e(note)}</div>`;
   }
   if (!canEdit()) {
     return prevNote ? `<div class="text-xs text-[var(--ink-muted)] italic leading-tight truncate" title="โน๊ตเดือนก่อน: ${e(prevNote)}">${e(prevNote)}</div>` : '';
   }
-  return `<button onclick="editNote(${clientId},'')" class="text-xs text-[var(--ink-muted)] hover:text-[var(--accent)] border border-dashed border-[var(--border)] hover:border-[var(--accent-soft)] px-1.5 py-0.5 rounded transition-colors whitespace-nowrap">+ โน๊ต</button>`;
+  return `<button onclick="editNote(${clientId})" class="text-xs text-[var(--ink-muted)] hover:text-[var(--accent)] border border-dashed border-[var(--border)] hover:border-[var(--accent-soft)] px-1.5 py-0.5 rounded transition-colors whitespace-nowrap">+ โน๊ต</button>`;
 }
-function editNote(clientId, current) {
+function editNote(clientId) {
   if (!canEdit()) return;
+  // อ่านโน๊ตปัจจุบันจาก state ในหน่วยความจำ ไม่ใช่รับมาทาง argument (ดูเหตุผลใน noteCell ด้านบน)
+  const current = taskMap[clientId]?.notes || '';
   const TM = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
   const history = prevTaskMap[clientId] || [];
   const histHTML = history.length
@@ -2090,9 +2097,8 @@ async function toggleField(clientId, field, cell) {
     showToast('บันทึกไม่สำเร็จ: ' + error.message, 'error');
   } else if (data) {
     taskMap[clientId] = data;
-    const c = clients.find(x => x.id === clientId);
     await logActivity('tax_task_toggle', 'client', clientId,
-      `${c?.thai_name || ''}: ${RD_FIELD_LABEL[field] || field} → ${TASK_STATUS_LABEL_TH[next] || next} (${curMonth}/${curYear})`);
+      taxTaskSummary_(clientId, RD_FIELD_LABEL[field] || field, TASK_STATUS_LABEL_TH[next] || next));
   }
   renderTrackingSummary();
 }
@@ -2200,10 +2206,9 @@ async function saveGroupItemField(clientId, field, value, group) {
     showToast('บันทึกไม่สำเร็จ: ' + (error.message || error.code || JSON.stringify(error)), 'error');
   } else if (data) {
     taskMap[clientId] = data;
-    const c = clients.find(x => x.id === clientId);
     const itemLabel = GROUP_ITEMS[group]?.items.find(i => i.field === field)?.label || field;
     await logActivity('tax_task_item_update', 'client', clientId,
-      `${c?.thai_name || ''}: ${itemLabel} (${GROUP_ITEMS[group]?.label || group}) → ${TASK_STATUS_LABEL_TH[value] || value} (${curMonth}/${curYear})`);
+      taxTaskSummary_(clientId, itemLabel, TASK_STATUS_LABEL_TH[value] || value, GROUP_ITEMS[group]?.label || group));
   }
 }
 
@@ -2231,7 +2236,18 @@ async function cycleGroupFromModal(clientId, group, action) {
     renderTracking();
     openGroupModal(clientId, group);
     showToast('บันทึกไม่สำเร็จ', 'error');
-  } else if (data) { taskMap[clientId] = data; renderTrackingSummary(); }
+  } else if (data) {
+    taskMap[clientId] = data;
+    renderTrackingSummary();
+    // เดิมจุดนี้ไม่ log เลย (ต่างจาก toggleField/saveGroupItemField ที่เขียน crm_tax_tasks เหมือนกัน) การกด
+    // SENT/PAID จึงหายไปทั้งจาก "ประวัติการแก้ไข" ของ CRM และจาก tag กิจกรรมบนปฏิทิน — ปุ่มเดียวเปลี่ยนได้
+    // ถึง 2 ค่าพร้อมกัน (กด PAID จะตั้ง SENT ให้ด้วย / ยกเลิก SENT จะล้าง PAID ด้วย) จึงบันทึกเฉพาะค่าที่
+    // เปลี่ยนจริง ค่าละ 1 แถว ไม่งั้นประวัติจะบอกไม่ครบว่าอะไรเปลี่ยนไปบ้าง
+    if (newSent !== sent) await logActivity('tax_task_toggle', 'client', clientId,
+      taxTaskSummary_(clientId, 'ส่งแบบ', TASK_STATUS_LABEL_TH[newSent ? 'done' : 'todo'], conf.label));
+    if (newPaid !== paid) await logActivity('tax_task_toggle', 'client', clientId,
+      taxTaskSummary_(clientId, 'จ่ายเงิน', TASK_STATUS_LABEL_TH[newPaid ? 'done' : 'todo'], conf.label));
+  }
 }
 
 function renderTrackingSummary() {
@@ -3016,14 +3032,11 @@ function showClientsSubTab(tab) {
 // ─────────────────────────────────────────────────────────────
 // CLIENT PANEL
 // ─────────────────────────────────────────────────────────────
-function nextClientCode(type) {
-  const prefix = { monthly: 'M', annual: 'Y', filing: 'T' }[type] || 'M';
-  const nums = clients
-    .map(c => c.code || '')
-    .filter(code => new RegExp(`^${prefix}\\d{3}$`).test(code))
-    .map(code => parseInt(code.slice(1)));
-  return `${prefix}${String(nums.length ? Math.max(...nums) + 1 : 1).padStart(3, '0')}`;
-}
+// หมายเหตุ: เคยมี nextClientCode()/suggestCode() + ปุ่ม "แนะนำ" ข้างช่อง CODE ตรงนี้ — ลบออกแล้วเพราะ
+// ตั้งอยู่บนความเข้าใจผิด: CODE คือ "อักษรย่อชื่อกิจการ 4 ตัว" (เช่น DCBC, EPED) ต่อท้ายด้วยเลขสาขา 2 หลัก
+// ได้ ไม่ได้มาจากประเภทลูกค้า/เลขลำดับเลย จึงไม่มีสูตรคำนวณให้อัตโนมัติได้ ต้องให้คนพิมพ์เอง (ของเดิมเดา
+// เป็น M001/Y001 ซึ่งผิดรูปแบบ) — แถมตัวปุ่มเองก็ไม่เคยทำงานเลยสักครั้ง เพราะไปหา element
+// [data-key="billing_type"] ที่ไม่มีอยู่จริงในหน้านี้ กดแล้วเงียบทุกครั้ง
 // เลขลำดับ (#) เรียงตามลำดับการรับลูกค้าทั้งหมด นับรวมกันข้ามทุกประเภท ไม่แยกนับตามประเภท —
 // ยืนยันจากผู้ใช้แล้ว (เช่น ลูกค้าคนที่ 3 อาจได้ Y003 แม้ 2 คนก่อนหน้าเป็นรายเดือนก็ตาม) ตัวอักษรนำหน้า
 // บอกแค่ประเภทปัจจุบันเท่านั้น ตัวเลขจะไม่ซ้ำกันเองโดยธรรมชาติเพราะมาจากลำดับเดียวกันทั้งหมด
@@ -3032,12 +3045,6 @@ function nextClientNo(type) {
   const nums = clients.filter(c => c.seq_num).map(c => c.seq_num);
   return prefix + String(nums.length ? Math.max(...nums) + 1 : 1).padStart(3,'0');
 }
-function suggestCode() {
-  const typeEl = document.querySelector('#panel-info-fields [data-key="billing_type"]');
-  const codeEl = document.querySelector('#panel-info-fields [data-key="code"]');
-  if (typeEl && codeEl) { codeEl.value = nextClientCode(typeEl.value); markDirty(); }
-}
-
 const BILLING_TYPE_PREFIX = { monthly: 'M', annual: 'Y', filing: 'T', dissolved: 'Z' };
 // บริษัทภายใน (is_own_company) ไม่มีเลขลำดับ (seq_num เป็น null เสมอ — ไม่นับรวมอยู่ในลำดับการรับ
 // ลูกค้าเพราะไม่ใช่ลูกค้าจริง) ให้ปล่อยว่างเปล่า ไม่ใช่ขีด "—" (ยืนยันจากผู้ใช้)
@@ -3285,7 +3292,6 @@ function renderPanelInfo() {
           <div class="flex gap-1.5 items-center">
             <input type="text" value="${e(c.code)}" ${ro ? 'readonly' : ''} data-key="code"
               class="editable-field flex-1 text-sm text-[var(--ink)]" ${ro ? '' : 'oninput="markDirty()"'}>
-            ${ro ? '' : `<button onclick="suggestCode()" class="text-[11px] px-2 py-1 rounded border border-[var(--border)] text-[var(--ink-muted)] hover:bg-[var(--surface-2)] flex-shrink-0">แนะนำ</button>`}
           </div>
         </div>
         <div>
@@ -3355,6 +3361,24 @@ function toggleTaxPill(checkbox, onLabel, offLabel) {
   markDirty();
 }
 
+// รีเฟรชหน้าที่ผู้ใช้กำลังดูอยู่ หลังบันทึกข้อมูลลูกค้าจากในแผง/ฟอร์มการเปลี่ยนแปลง — เดิมทั้ง savePanelInfo()
+// และ applyClientChange() อัปเดตแค่ฐานข้อมูลกับ clients[] แล้วจบ ไม่ re-render อะไรเลย ปิดแผงออกมาจึงยังเห็น
+// ชื่อ/สถานะ VAT เดิมค้างอยู่ทั้งในแถวและในการ์ดสรุป จนพนักงานเข้าใจว่าบันทึกไม่ติดแล้วกดซ้ำ (saveEditFee/
+// saveEditType ที่ทำถูกอยู่แล้ว dispatch ตาม curPage แบบนี้เหมือนกัน) — แท็บย่อยของ "ลูกค้า"/"การเงิน" ไม่มี
+// ตัวแปรจำสถานะไว้ ดูจากคลาส .hidden ของกล่องแท็บตรงๆ ว่าตอนนี้กำลังดูอันไหนอยู่
+function refreshPageAfterClientSave_() {
+  if (curPage === 'tracking') { renderTracking(); renderTrackingSummary(); }
+  else if (curPage === 'yearend') renderYearEnd();
+  else if (curPage === 'clients') {
+    if (document.getElementById('clients-sub-old')?.classList.contains('hidden') === false) renderOldClients();
+    else renderClientList();
+  }
+  else if (curPage === 'finance') {
+    if (document.getElementById('fin-sub-fee')?.classList.contains('hidden') === false) renderFinanceFees();
+    else renderFinanceCollection();
+  }
+}
+
 async function savePanelInfo() {
   const fields = {};
   document.querySelectorAll('#panel-info-fields [data-key]').forEach(el => {
@@ -3393,6 +3417,7 @@ async function savePanelInfo() {
     saveBtn.classList.remove('bg-amber-600', 'hover:bg-amber-700');
     saveBtn.classList.add('bg-[var(--accent)]', 'hover:bg-[color-mix(in_oklab,var(--accent)_85%,black)]');
   }
+  refreshPageAfterClientSave_();
   showToast('บันทึกสำเร็จ');
 }
 
@@ -3597,6 +3622,7 @@ async function applyClientChange() {
   if (ct === 'fee') {
     const ok = await applyFeeChangeCore_(panelClientId, parseFloat(newValue) || 0, cd, note);
     if (!ok) return;
+    refreshPageAfterClientSave_();   // เหมือน saveEditFee ที่เรียกแกนกลางตัวเดียวกันนี้แล้วรีเฟรชหน้าค่าบริการ
     showToast('บันทึกการเปลี่ยนแปลงสำเร็จ');
     openClientChanges(panelClientId);
     return;
@@ -3625,6 +3651,7 @@ async function applyClientChange() {
 
   await logActivity('client_change_add', 'client', panelClientId, `บันทึกการเปลี่ยนแปลง: ${CHANGE_TYPES.find(t=>t.key===ct)?.label||ct}${newValue?` → ${newValue}`:''}`);
 
+  refreshPageAfterClientSave_();
   showToast('บันทึกการเปลี่ยนแปลงสำเร็จ');
   openClientChanges(panelClientId);
 }
@@ -4653,6 +4680,17 @@ function dateFieldAutoSlash(el) {
   el.value = out;
 }
 
+// ช่องวันที่ถูกใช้ทั้งในแผงลูกค้า (ต้อง markDirty เพื่อให้แถบ "บันทึก" โผล่) และใน modal อีกหลายจุดที่ไม่
+// เกี่ยวกับแผงลูกค้าเลย (เปลี่ยนค่าบริการ/เปลี่ยนประเภท/รับเอกสาร/เพิ่มลูกค้า/บันทึกการเปลี่ยนแปลง/วันที่เลิก
+// กิจการ) — เดิม fallback ไป markDirty() หมดทุกจุด ทำให้เลือกวันที่ใน modal แล้วกด "ยกเลิก" ก็ยังทิ้ง
+// panelDirty=true ค้างไว้ทั้งที่ไม่มีแผงเปิดอยู่ คลิกลูกค้ารายถัดไปเลยเจอ confirm() "มีข้อมูลที่ยังไม่ได้
+// บันทึก" แล้วเปิดแผงไม่ได้เลย — เช็คขอบเขตจากที่อยู่จริงของ element แทน (เกณฑ์เดียวกับที่ savePanelInfo
+// ใช้เลือกช่องที่จะบันทึก: #panel-info-fields [data-key]) จึงครอบคลุมช่องวันที่ที่เพิ่มใหม่ในอนาคตเองอัตโนมัติ
+function dateFieldDefaultOnChange_(hiddenId) {
+  const hidden = document.getElementById(hiddenId);
+  if (hidden && hidden.closest('#panel-info-fields')) markDirty();
+}
+
 function onDateTextInput(textId, hiddenId, onChangeExtra) {
   const textEl = document.getElementById(textId);
   dateFieldAutoSlash(textEl);
@@ -4660,7 +4698,7 @@ function onDateTextInput(textId, hiddenId, onChangeExtra) {
   if (iso !== null) {
     document.getElementById(hiddenId).value = iso;
     if (onChangeExtra && typeof window[onChangeExtra] === 'function') window[onChangeExtra]();
-    else markDirty();
+    else dateFieldDefaultOnChange_(hiddenId);
   }
 }
 
@@ -4767,9 +4805,10 @@ function dpApplyValue(iso) {
   document.getElementById(dpHiddenId).value = iso;
   document.getElementById(dpTextId).value = fmtDDMMYYYY(iso);
   const extra = dpOnChangeExtra;
+  const hiddenId = dpHiddenId;
   closeDatePicker();
   if (extra && typeof window[extra] === 'function') window[extra]();
-  else markDirty();
+  else dateFieldDefaultOnChange_(hiddenId);   // เฉพาะช่องในแผงลูกค้าเท่านั้น — ดูเหตุผลที่ตัวฟังก์ชัน
 }
 
 function dpSelectDay(d) {
@@ -5045,7 +5084,7 @@ function finStatusCellHtml(c, inv) {
   const handler = editable ? ` onclick="event.stopPropagation();toggleFinCollected(${c.id})"` : '';
   return `<span id="fin-status-${c.id}" class="${cls}"${handler}>${label}</span>`;
 }
-function financeCollectionRowHtml(c, idx) {
+function financeCollectionRowHtml(c) {
   const inv = finInvoiceMap[c.id];
   // มีใบแจ้งหนี้แล้ว → ใช้ยอดที่บันทึกไว้จริงบนใบนั้น (ค่าที่ถูกต้องที่สุดเพราะเป็นยอดที่ตัดสินใจ ณ ตอนออก
   // ใบจริง) ยังไม่มี → resolve ย้อนหลังจากประวัติสัญญา (ยอดเดียวกับที่ toggleFinCollected จะใช้ถ้ากด "เก็บเงิน")
@@ -5057,7 +5096,7 @@ function financeCollectionRowHtml(c, idx) {
       <button onclick="event.stopPropagation();toggleFavorite(${c.id})" title="${isFav ? 'เอาออกจากรายการโปรด' : 'เพิ่มในรายการโปรด'}" class="w-6 flex-shrink-0 flex items-center justify-center ${isFav ? 'text-amber-500' : 'text-[var(--ink-muted)] hover:text-amber-500'}">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
       </button>
-      <span class="w-12 flex-shrink-0 text-xs text-[var(--ink-muted)]">${idx + 1}</span>
+      <span class="w-12 flex-shrink-0 text-xs text-[var(--ink-muted)]">${e(computeClientNo(c.billing_type, c.seq_num))}</span>
       <span class="flex-shrink-0 inline-block bg-[var(--surface-2)] text-[var(--accent)] text-xs font-bold px-1.5 py-0.5 rounded text-center overflow-hidden text-ellipsis whitespace-nowrap" style="width:72px">${e(c.code)}</span>
       <span class="flex-1 min-w-0 text-sm font-semibold text-[var(--ink)] overflow-hidden text-ellipsis whitespace-nowrap">${e(c.thai_name)}</span>
       <span class="w-24 flex-shrink-0 text-right text-xs font-mono text-[var(--ink)]">${fmtMoney(amount)}</span>
@@ -5084,7 +5123,7 @@ function renderFinanceCollection() {
   const container = document.getElementById('fin-collection-list');
   if (!container) return;
   container.innerHTML = visible.length
-    ? visible.map((c, idx) => financeCollectionRowHtml(c, idx)).join('')
+    ? visible.map(c => financeCollectionRowHtml(c)).join('')
     : '<div class="text-[var(--ink-muted)] text-sm py-8 text-center">ไม่มีลูกค้าในเดือนนี้</div>';
 }
 
@@ -5189,7 +5228,7 @@ async function undoFinCollected_(clientId, inv, cell) {
 
 // ── ค่าบริการ: ตารางค่าบริการของลูกค้าที่ใช้งานอยู่ "ณ วันนี้" — resolve ผ่านประวัติสัญญาเหมือนการเก็บเงิน
 // (ไม่ใช่แค่อ่าน crm_clients.monthly_fee ตรงๆ เหมือนก่อนหน้านี้ ดูคอมเมนต์บนสุดของ PAGE: FINANCE) ──
-function financeFeeRowHtml(c, idx) {
+function financeFeeRowHtml(c) {
   const today = new Date();
   const resolved = resolveEffectiveFee(c, today.getFullYear(), today.getMonth() + 1, billingContractsByClient[c.id]);
   const fee = resolved.fee_amount;
@@ -5201,7 +5240,7 @@ function financeFeeRowHtml(c, idx) {
       <button onclick="event.stopPropagation();toggleFavorite(${c.id})" title="${isFav ? 'เอาออกจากรายการโปรด' : 'เพิ่มในรายการโปรด'}" class="w-6 flex-shrink-0 flex items-center justify-center ${isFav ? 'text-amber-500' : 'text-[var(--ink-muted)] hover:text-amber-500'}">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
       </button>
-      <span class="w-12 flex-shrink-0 text-xs text-[var(--ink-muted)]">${idx + 1}</span>
+      <span class="w-12 flex-shrink-0 text-xs text-[var(--ink-muted)]">${e(computeClientNo(c.billing_type, c.seq_num))}</span>
       <span class="flex-shrink-0 inline-block bg-[var(--surface-2)] text-[var(--accent)] text-xs font-bold px-1.5 py-0.5 rounded text-center overflow-hidden text-ellipsis whitespace-nowrap" style="width:72px">${e(c.code)}</span>
       <span class="flex-1 min-w-0 text-sm font-semibold text-[var(--ink)] overflow-hidden text-ellipsis whitespace-nowrap">${e(c.thai_name)}</span>
       <span class="w-20 flex-shrink-0 text-center text-[11px] text-[var(--ink-muted)] ${canEdit() ? 'cursor-pointer hover:text-[var(--accent)]' : ''}"${canEdit() ? ` onclick="event.stopPropagation();openEditType(${c.id})" title="เปลี่ยนประเภท"` : ''}>${BILLING_TYPE_LABEL[c.billing_type] || '—'}${canEdit() ? ' <span class="text-[var(--ink-muted)]">✎</span>' : ''}</span>
@@ -5226,7 +5265,7 @@ function renderFinanceFees() {
   const container = document.getElementById('fin-fee-list');
   if (!container) return;
   container.innerHTML = filtered.length
-    ? filtered.map((c, idx) => financeFeeRowHtml(c, idx)).join('')
+    ? filtered.map(c => financeFeeRowHtml(c)).join('')
     : '<div class="text-[var(--ink-muted)] text-sm py-8 text-center">ไม่พบลูกค้า</div>';
 
   // Same resolution financeFeeRowHtml() uses per-row (ค่าบริการ "ที่มีผลจริง ณ วันนี้" ผ่าน
@@ -5868,6 +5907,10 @@ const ACTIVITY_ACTION_LABEL = {
   client_change_edit: 'แก้ไขการเปลี่ยนแปลง',
   client_change_delete: 'ลบการเปลี่ยนแปลง',
   client_creds_update: 'แก้ไขรหัสผ่านเข้าระบบ',
+  client_cred_item_add: 'เพิ่มรหัสผ่านลูกค้า',
+  client_cred_item_edit: 'แก้ไขรหัสผ่านลูกค้า',
+  client_cred_item_delete: 'ลบรหัสผ่านลูกค้า',
+  client_docs_update: 'อัปเดตเอกสารลูกค้า',
   client_deactivate: 'ปิดใช้งานลูกค้า',
   client_delete: 'ลบลูกค้าถาวร',
   staff_update: 'แก้ไขพนักงาน',
@@ -5968,7 +6011,11 @@ async function openAddOwnCompany() {
 }
 
 async function saveOwnCompany() {
-  if (!isOwner()) return;
+  // ต้องเป็นเกณฑ์เดียวกับปุ่ม "+ เพิ่มบริษัทภายใน" (canManageOwnCompany) และ openAddOwnCompany() ไม่งั้น
+  // Manager จะเปิดฟอร์มได้แต่กด "เพิ่ม" แล้วเงียบสนิท ไม่มีทั้ง error ทั้ง toast — ฝั่งฐานข้อมูลอนุญาต
+  // INSERT/UPDATE crm_clients ให้ owner/manager/senior อยู่แล้ว (RLS crm_cli_ins/crm_cli_upd) จึงไม่ใช่
+  // กรณีที่ DB จะปฏิเสธ Manager แล้วต้องปิด UI แทน
+  if (!canManageOwnCompany()) return;
   const thai = (document.getElementById('oc-thai')?.value || '').trim();
   const code = (document.getElementById('oc-code')?.value || '').trim().toUpperCase();
   const visibleTo = [...document.querySelectorAll('.oc-vis-chk:checked')].map(el => el.value);
