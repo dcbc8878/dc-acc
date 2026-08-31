@@ -597,6 +597,10 @@ async function saveEmployee(employeeId) {
   }
 }
 async function resetStaffPassword(staffId) {
+  // เช็คสิทธิ์ซ้ำฝั่ง client (ปุ่มถูกซ่อนอยู่แล้วสำหรับ LV3-5 ปกติเข้าทางนี้ไม่ได้ — กันเรียกตรงจาก
+  // console/ทางอ้อม ให้เหมือนกับ write handler อื่นทุกตัวในไฟล์นี้ที่เช็คซ้ำก่อนเขียนเสมอ) เซิร์ฟเวอร์
+  // (Edge Function action "reset") เช็คสิทธิ์ซ้ำอีกชั้นอยู่แล้วเช่นกัน จุดนี้แค่เสริมให้สม่ำเสมอ
+  if (!canManageStaffAuth()) { showToast('ไม่มีสิทธิ์รีเซ็ทรหัสผ่าน', 'error'); return; }
   if (!confirm('รีเซ็ทรหัสผ่านพนักงานคนนี้กลับเป็นค่าเริ่มต้นหรือไม่? (พนักงานต้องตั้งรหัสผ่านใหม่ตอนเข้าสู่ระบบครั้งถัดไป)')) return;
   const { data, error } = await sb.functions.invoke(ADMIN_STAFF_FN, { body: { action: 'reset', staff_id: staffId } });
   if (error || data?.error) { showToast(data?.error || await invokeErrorMessage(error) || 'รีเซ็ทไม่สำเร็จ', 'error'); return; }
@@ -654,7 +658,14 @@ function openTeamModal(teamId) {
     const known = byId(t.lead_id);
     leadPool = leadPool.concat([known ? Object.assign({}, known, { _departed: true }) : { id: t.lead_id, display_name: 'พนักงานเดิม (ไม่พบข้อมูล)', role: null, _departed: true, _unknown: true }]);
   }
-  const leadOptions = leadPool.map(s => {
+  // ── ต้องมีตัวเลือก "ไม่มีหัวหน้าทีม" ให้เลือกได้จริง — org_teams.lead_id เป็นคอลัมน์ที่ปล่อยว่างได้
+  // (NULL, ยืนยันจาก schema จริง) ถ้าไม่มี <option value=""> เลย พอไม่มีตัวไหนถูก selected (กรณีสร้าง
+  // ทีมใหม่ หรือแก้ทีมเดิมที่ lead_id เป็น NULL อยู่แล้ว) เบราว์เซอร์จะเลือก option แรกในลิสต์ให้เองแบบ
+  // เงียบๆ (คนที่ชื่อเรียงก่อนตามตัวอักษร) ทำให้กดบันทึกแล้วดันไปตั้งหัวหน้าทีมเป็นคนที่ไม่ได้ตั้งใจเลือก
+  // เลย (แม้แค่เปิดมาแก้สมาชิกแล้วกดบันทึกโดยไม่ได้แตะช่องนี้ก็ตาม) — saveTeam() ด้านล่างมี `|| null`
+  // รออยู่แล้วสำหรับกรณีนี้โดยเฉพาะ (เขียนไว้ก่อนแล้วแต่ไม่เคยมีทางทำให้ value เป็น "" ได้จริงมาก่อน)
+  const noLeadSelected = !(t && t.lead_id);
+  const leadOptions = `<option value="" ${noLeadSelected ? 'selected' : ''}>— ไม่มีหัวหน้าทีม —</option>` + leadPool.map(s => {
     const label = s._unknown ? s.display_name : `${s.display_name}${s._departed ? ' (ออกแล้ว)' : ''} · ${ROLE_LABEL[s.role] || s.role}`;
     return `<option value="${s.id}" ${t && t.lead_id === s.id ? 'selected' : ''}>${e(label)}</option>`;
   }).join('');
@@ -722,11 +733,21 @@ async function saveTeam(teamId) {
     savedTeamId = data.id;
   }
 
-  const { error: delErr } = await sb.from('org_team_members').delete().eq('team_id', savedTeamId);
-  if (delErr) { errEl.textContent = delErr.message; errEl.style.display = 'block'; return; }
-  if (memberIds.length) {
-    const { error: insErr } = await sb.from('org_team_members').insert(memberIds.map(staff_id => ({ team_id: savedTeamId, staff_id })));
+  // ── sync สมาชิกทีม: เทียบ diff แล้ว "เพิ่มก่อน-ลบทีหลัง" (ไม่ใช่ลบทั้งหมดแล้วค่อยเพิ่มใหม่ทั้งหมดแบบ
+  // เดิม) — ของเดิมถ้าขั้น "เพิ่มใหม่" ล้มเหลวหลังขั้น "ลบทั้งหมด" สำเร็จไปแล้ว (เน็ตหลุด/session หมดอายุ
+  // พอดีระหว่าง 2 คำสั่ง) ทีมจะเหลือสมาชิก 0 คนจริงใน DB ทันที ทั้งที่ผู้ใช้เห็นแค่ข้อความ error เฉยๆ ไม่รู้ว่า
+  // สมาชิกเดิมหายไปหมดแล้ว — แบบใหม่นี้ถ้าขั้น "เพิ่ม" ล้มเหลว สมาชิกเดิมยังอยู่ครบ (ยังไม่ทันลบอะไรเลย)
+  // ถ้าขั้น "ลบ" ล้มเหลว อย่างแย่ที่สุดคือมีสมาชิกเกินมา (คนที่ควรถูกถอดยังค้างอยู่) ไม่ใช่หายไปทั้งทีม
+  const oldMemberIds = teamId ? (teamMembersMap[teamId] || []) : [];
+  const toAddIds = memberIds.filter(id => !oldMemberIds.includes(id));
+  const toRemoveIds = oldMemberIds.filter(id => !memberIds.includes(id));
+  if (toAddIds.length) {
+    const { error: insErr } = await sb.from('org_team_members').insert(toAddIds.map(staff_id => ({ team_id: savedTeamId, staff_id })));
     if (insErr) { errEl.textContent = insErr.message; errEl.style.display = 'block'; return; }
+  }
+  if (toRemoveIds.length) {
+    const { error: delErr } = await sb.from('org_team_members').delete().eq('team_id', savedTeamId).in('staff_id', toRemoveIds);
+    if (delErr) { errEl.textContent = delErr.message; errEl.style.display = 'block'; return; }
   }
 
   await loadTeams();
