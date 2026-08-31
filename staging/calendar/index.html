@@ -262,8 +262,11 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
     </section>
 
     <!-- DAILY ACTIVITY VIEW (real cross-staff "who did what", from Supabase crm_activity_log) -->
-    <!-- Visible only to owner/manager (isOwnerOrManager()) — that's UX only; the real access control
-         is the Supabase RLS SELECT policy on crm_activity_log (supabase-activity-log-visibility-migration.sql). -->
+    <!-- เปิดให้พนักงานทุกระดับที่ล็อกอินอยู่เห็นได้ (เดิมจำกัดแค่ owner/manager ผ่าน isOwnerOrManager() — ผู้ใช้ยืนยัน
+         ให้เปิดกว้างขึ้นแล้ว) สิทธิ์จริงบังคับที่ฐานข้อมูล: RLS SELECT ของ crm_activity_log อนุญาตพนักงานที่ยัง
+         ทำงานอยู่ทุกคนเห็นแถวทั่วไป ยกเว้นแถว action IN ('client_fee_change','client_type_change') ที่จำกัดให้เห็น
+         เฉพาะ LV1-3 อยู่แล้วในฐานข้อมูล — ฝั่ง JS ไม่ต้องกรองซ้ำ (isOwnerOrManager() ด้านล่างตอนนี้ใช้คุมสิทธิ์
+         "เขียน" ปฏิทินทีม (cal_events.is_team) แทน ไม่ใช่คุมหน้านี้แล้ว). -->
     <section id="view-daily-activity" class="view">
       <div class="view-header">
         <div class="cal-nav">
@@ -273,7 +276,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
           <div class="period-label" id="daPeriodLabel"></div>
         </div>
       </div>
-      <div class="desc" style="margin:-10px 0 16px;">ใครทำอะไรเสร็จในวันนี้ (ข้อมูลจริงจากระบบ CRM) — แสดงเฉพาะเจ้าของ (LV1) และผู้จัดการ (LV2) เท่านั้น เพราะมีการจำกัดสิทธิ์ไว้ที่ฐานข้อมูลด้วย ไม่ใช่แค่ซ่อนในหน้าเว็บ</div>
+      <div class="desc" style="margin:-10px 0 16px;">ใครทำอะไรเสร็จในวันนี้ (ข้อมูลจริงจากระบบ CRM) — พนักงานทุกระดับที่ล็อกอินด้วยบัญชี CRM เห็นได้ (การเปลี่ยนค่าบริการ/ประเภทลูกค้าเห็นเฉพาะ LV1-3 เพราะฐานข้อมูลจำกัดไว้)</div>
       <div id="dailyActivityBody"><div class="agenda-empty">กำลังโหลด…</div></div>
     </section>
 
@@ -402,7 +405,8 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
       <div class="field"><label>ประเภท</label>
         <select id="ev_category"></select>
       </div>
-      <div class="chk-row" style="margin-bottom:12px;"><input type="checkbox" id="ev_team"><label for="ev_team">ปฏิทินทีม (ให้ทีมเห็นด้วย)</label></div>
+      <div class="chk-row" id="ev_team_row" style="margin-bottom:12px;"><input type="checkbox" id="ev_team"><label for="ev_team">ปฏิทินทีม (ให้ทีมเห็นด้วย)</label></div>
+      <div class="desc hidden" id="ev_team_hint" style="margin:-8px 0 12px;color:var(--danger);">เฉพาะเจ้าของ (LV1) และผู้จัดการ (LV2) เท่านั้นที่สร้าง/แก้ไข "ปฏิทินทีม" ได้ (กำหนดไว้ที่ฐานข้อมูล)</div>
       <div class="field"><label>โน้ต</label><textarea id="ev_note"></textarea></div>
       <div class="modal-actions">
         <button type="button" class="btn danger sm hidden" id="ev_delete">ลบกิจกรรม</button>
@@ -475,6 +479,10 @@ const CATEGORIES = {
   other:    {label:'อื่นๆ',            emoji:'⭐', color:'#F97316'}
 };
 const PRIORITY = {high:{label:'สูง',color:'#dc2626'}, medium:{label:'กลาง',color:'#F59E0B'}, low:{label:'ต่ำ',color:'#16a34a'}};
+// มุมมองสัปดาห์: ครอบทั้งวัน 00:00–24:00 (เดิม 06:00–21:00 ทำให้นัดก่อน 06:00 ทับกับแถว 06:00 พอดี และนัดหลัง
+// 21:00 คำนวณตำแหน่งหลุดออกนอกกรอบมองไม่เห็นเลย) .week-body มีกล่องเลื่อนแนวตั้ง (overflow-y:auto) อยู่แล้วใน
+// สไตล์ชีต — ใช้ WEEK_DEFAULT_SCROLL_HOUR เลื่อนไปช่วงเช้าเป็นค่าเริ่มต้นแทนการตัดชั่วโมงทิ้ง
+const WEEK_DAY_START_HOUR = 0, WEEK_DAY_END_HOUR = 24, WEEK_HOUR_H = 48, WEEK_DEFAULT_SCROLL_HOUR = 7;
 // ค่า category/priority ที่ไม่รู้จัก (ข้อมูลเก่าใน localStorage, ไฟล์สำรองที่นำเข้ามา, หรือหมวดที่ถูกตัดออกภายหลัง)
 // เคยทำให้ CATEGORIES[...]/PRIORITY[...] เป็น undefined แล้ว .color/.emoji โยน error กลาง template literal —
 // innerHTML จึงไม่ถูกเซ็ตเลยและ "ทั้งหน้า" ว่างเปล่า (ปฏิทินทุกมุมมอง/บอร์ดงาน) จากข้อมูลผิดเพียงแถวเดียว
@@ -491,7 +499,7 @@ const ROLES = [
   {key:'manager',  label:'ผู้จัดการ (LV2)',      desc:'บริหารจัดการงานประจำวัน ดูแลพนักงานและลูกค้า'},
   {key:'senior',   label:'พนักงานอาวุโส (LV3)',  desc:'ดูแลทีม/ลูกค้าที่รับผิดชอบ มอบหมายและตรวจงานของระดับรองลงมา'},
   {key:'junior',   label:'พนักงาน (LV4)',        desc:'ทำงานตามที่ได้รับมอบหมาย'},
-  {key:'parttime', label:'นักศึกษาฝึกงาน (LV5)', desc:'พนักงานพาร์ทไทม์/นักศึกษาฝึกงาน เห็นเฉพาะงานของตัวเอง'}
+  {key:'parttime', label:'นักศึกษาฝึกงาน / ทดลองงาน (LV5)', desc:'พนักงานพาร์ทไทม์/นักศึกษาฝึกงาน เห็นเฉพาะงานของตัวเอง'}
 ];
 // Supabase project เดียวกับระบบ CRM (บัญชีเดียวกัน login ได้ทั้ง 2 แอพ) — publishable key ปลอดภัยที่จะฝังในโค้ดฝั่ง client
 // ใช้คีย์ตัวเดียวกับหน้ารวม (index.html) และ CRM เป๊ะๆ กันกรณีคีย์แบบเก่าถูกปิด/หมุนเวียนแล้วเหลือแอพนี้แอพเดียวที่พัง
@@ -507,7 +515,8 @@ function mapRoleToLabel(role){
 // แปลงเป็นชุดปัจจุบันตอนโหลด ไม่งั้นเทียบกับ ROLES ไม่ตรงเลย (isTopRole() เพี้ยน + ดรอปดาวน์บทบาทว่าง)
 const LEGACY_ROLE_LABELS = {
   'กรรมการ':'owner', 'Manager / Admin':'manager', 'Senior':'senior', 'Junior':'junior',
-  'Staff / Trainee / Student':'parttime', 'Customer':'parttime'
+  'Staff / Trainee / Student':'parttime', 'Customer':'parttime',
+  'นักศึกษาฝึกงาน (LV5)':'parttime'   // ป้าย LV5 รุ่นก่อนหน้า (ก่อนเพิ่ม "/ ทดลองงาน") — กันคนที่เคยล็อกอินไว้ได้บทบาทว่าง
 };
 function normalizeRoleLabel(label){
   if(!label) return ROLES[4].label;
@@ -617,7 +626,9 @@ function addMonths(d, n){
 }
 function startOfWeek(d){ const r = new Date(d); r.setDate(r.getDate()-r.getDay()); r.setHours(0,0,0,0); return r; }
 function isSameDay(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
-function beYear(y){ return y+543; }
+// เดิมแปลง ค.ศ.→พ.ศ. (+543) — ผู้ใช้ยืนยันให้เลิกใช้ พ.ศ. ทั้งแอป (CRM เปลี่ยนไปแล้วก่อนหน้านี้)
+// คงชื่อฟังก์ชันเดิมไว้ (เรียกอยู่ 7 จุดทั่วไฟล์) แต่คืนปีที่ได้รับมาตรงๆ ไม่แปลงอีกต่อไป
+function beYear(y){ return y; }
 function thaiDateLong(d){ return d.getDate()+' '+TH_MONTHS[d.getMonth()]+' '+beYear(d.getFullYear()); }
 function holidayOn(iso){ return HOLIDAYS.find(h=>h.date===iso); }
 function timeLabel(ev){ return ev.all_day ? 'ทั้งวัน' : (ev.time||'--:--'); }
@@ -667,8 +678,7 @@ function taxDeadlineOn(iso){
 }
 
 /* ========================= STATE ========================= */
-let events  = lsGet('dcbc_events', null);
-let tasks   = lsGet('dcbc_tasks', null);
+let events, tasks;   // ตั้งค่าโดย loadLocalEventsAndTasksIntoState() ด้านล่าง (เรียกซ้ำตอนออกจากระบบด้วย เพื่อคืนโหมด Local)
 let profile = lsGet('dcbc_profile', null);
 let calTheme = localStorage.getItem('calTheme') || ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light');
 let gClientId = localStorage.getItem('g_client_id') || '';
@@ -679,6 +689,10 @@ let sb = null;             // supabase client, lazy-created on first use
 let authUser = null;       // supabase auth user once logged in (shared account with CRM)
 let cloudProfile = null;   // matching row from cal_profiles
 let cloudClients = [];     // crm_clients loaded live once logged in, for the event client picker
+// 'local' = events/tasks อ่าน-เขียนผ่าน localStorage เหมือนเดิมทุกอย่าง (ยังไม่ได้ล็อกอิน CRM)
+// 'cloud' = events/tasks อ่าน-เขียนผ่าน Supabase (cal_events/cal_tasks) แทน — สลับเป็น cloud หลัง enterCloudMode()
+// ทำงานเสร็จเท่านั้น (ไม่ใช่ทันทีที่ authUser!=null เฉยๆ เพราะต้องรอขั้นตอนย้ายข้อมูล/โหลดข้อมูลคลาวด์ก่อน)
+let dataMode = 'local';
 let dailyActivityDate = new Date();  // selected day for the "กิจกรรมประจำวัน" view
 let dailyActivityReqId = 0;// bumped per render; a response whose id no longer matches is stale and must be dropped
 let staffNameMap = {};     // org_staff id -> display_name, lazy-loaded for the daily activity view
@@ -688,8 +702,16 @@ let calActivityByDate = {};   // iso date -> array of {code, item, status, staff
 let calActivityRangeKey = ''; // which visible range calActivityByDate currently holds (month/week key) — set only after a fetch actually succeeds
 let calActivityRequestKey = '';// which range is being fetched right now, so out-of-order/stale responses can be dropped
 
-if(events === null){ events = seedEvents(); lsSet('dcbc_events', events); }
-if(tasks === null){ tasks = seedTasks(); lsSet('dcbc_tasks', tasks); }
+// โหลด events/tasks จาก localStorage เข้าตัวแปรที่ใช้งานจริงเสมอตอนเปิดหน้า (โหมด Local เริ่มต้นก่อนทุกครั้ง
+// ไม่ว่าจะเคยล็อกอิน CRM ไว้ก่อนหน้านี้หรือไม่ — enterCloudMode() จะสลับเป็นคลาวด์ให้เองถ้ามี session อยู่จริง)
+// แยกเป็นฟังก์ชันเพราะต้องเรียกซ้ำตอนออกจากระบบด้วย (คืนข้อมูลโหมด Local เดิมที่ไม่เคยถูกแตะเลยกลับมาใช้งาน)
+function loadLocalEventsAndTasksIntoState(){
+  events = lsGet('dcbc_events', null);
+  if(events === null){ events = seedEvents(); lsSet('dcbc_events', events); }
+  tasks = lsGet('dcbc_tasks', null);
+  if(tasks === null){ tasks = seedTasks(); lsSet('dcbc_tasks', tasks); }
+}
+loadLocalEventsAndTasksIntoState();
 if(profile === null){ profile = {name:'ผู้ใช้งาน', role: ROLES[4].label}; lsSet('dcbc_profile', profile); }
 else { const normRole = normalizeRoleLabel(profile.role); if(normRole !== profile.role){ profile.role = normRole; lsSet('dcbc_profile', profile); } }
 
@@ -767,20 +789,24 @@ function getFilteredEvents(){
 function eventsOn(iso){ return getFilteredEvents().filter(e=>e.date===iso).sort((a,b)=> (a.time||'').localeCompare(b.time||'')); }
 
 // "ทั้งหมด" (all) รวมทุกกิจกรรมส่วนตัว+ทีม — ให้เห็นได้เฉพาะบทบาทสูงสุด (เจ้าของ LV1) ตามที่เจ้าของโปรเจกต์กำหนด
+// (ไม่เกี่ยวกับ isOwnerOrManager() ด้านล่าง — คนละฟีเจอร์กัน ห้ามเปลี่ยนจุดนี้)
 function isTopRole(){ return profile && profile.role === ROLES[0].label; }
-// เกณฑ์เดียวกับฝั่ง CRM (canSeeAuditLog(): LV1-2 เจ้าของ/ผู้จัดการ) ที่ใช้กับ crm_activity_log อยู่แล้ว —
-// ใช้ระดับเดียวกันตรงนี้เพื่อให้แท็บ "กิจกรรมประจำวัน" กับหน้าประวัติการแก้ไขของ CRM มองเห็นข้อมูลชุดเดียวกันเสมอ
-// (ไม่ใช่ isTopRole() ด้านบน — อันนั้นคือ LV1 อย่างเดียว ใช้กับฟีเจอร์อื่นคือมุมมอง "ทั้งหมด" ของปฏิทิน)
+// เดิมใช้คุมสิทธิ์ดูแท็บ "กิจกรรมประจำวัน"/แท็กกิจกรรมบนตารางปฏิทิน (จำกัดแค่ LV1-2) — ผู้ใช้ยืนยันให้เปิดกว้างขึ้น
+// เป็นพนักงานทุกระดับที่ล็อกอินอยู่แล้ว (ดู refreshDailyActivityAccess/ensureCalendarActivityLoaded/renderDailyActivity
+// ด้านล่าง ที่เปลี่ยนไปเช็คแค่ !!authUser แทนแล้ว) จึงไม่ได้ใช้คุมจุดนั้นอีกต่อไป — แต่ยังใช้งานอยู่จริงอีกจุดหนึ่งคือ
+// คุม UI hint ตอนสร้าง/แก้ "ปฏิทินทีม" (ev_team checkbox ใน openEventModal) ให้ตรงกับ RLS จริงของ cal_events ที่
+// อนุญาตแค่ owner/manager เขียนแถว is_team=true ได้ — เก็บฟังก์ชันนี้ไว้ตามเดิม (ไม่ได้ลบ) แค่เปลี่ยนจุดที่เรียกใช้
 function isOwnerOrManager(){ return !!profile && (profile.role === ROLES[0].label || profile.role === ROLES[1].label); }
 function enforceFilterAccess(){
   if(calFilter==='all' && !isTopRole()){ calFilter = 'personal'; return true; }
   return false;
 }
-// เกณฑ์จริงที่บังคับใช้คือ RLS ฝั่ง Supabase (ดู supabase-activity-log-visibility-migration.sql) —
-// ฟังก์ชันนี้แค่ซ่อน/แสดงแท็บในหน้าเว็บให้ตรงกับสิทธิ์ ไม่ใช่การป้องกันข้อมูลจริง
+// เกณฑ์การเห็นหน้านี้ตอนนี้คือ "ล็อกอินอยู่" เท่านั้น (ไม่กรองตาม role ในหน้าเว็บอีกแล้ว) — เกณฑ์จริงที่บังคับใช้คือ
+// RLS ฝั่ง Supabase (crm_activity_log: พนักงานที่ยังทำงานอยู่เห็นได้ทุกคน ยกเว้นแถวเปลี่ยนค่าบริการ/ประเภทลูกค้าที่
+// จำกัด LV1-3 — ฐานข้อมูลกรองเองอยู่แล้ว ไม่ต้องกรองซ้ำที่นี่)
 function refreshDailyActivityAccess(){
   const btn = document.getElementById('menu-daily-activity');
-  const allowed = !!authUser && isOwnerOrManager();
+  const allowed = !!authUser;
   btn.classList.toggle('hidden', !allowed);
   if(!allowed && activeMenu==='daily-activity') switchMenu('calendar');
 }
@@ -806,6 +832,10 @@ function renderCalendar(){
     const s = startOfWeek(curDate), e = addDays(s,6);
     label.textContent = s.getDate()+' '+TH_MONTHS[s.getMonth()]+' - '+e.getDate()+' '+TH_MONTHS[e.getMonth()]+' '+beYear(e.getFullYear());
     body.innerHTML = renderWeekGrid();
+    // ตารางครอบทั้งวัน (00:00–24:00) แล้ว — เลื่อนกล่อง .week-body ไปช่วงเช้าเป็นค่าเริ่มต้นทุกครั้งที่ render
+    // (ไม่ตัดชั่วโมงทิ้ง แค่ไม่ต้องเลื่อนเองตอนเปิดหน้า ยังเลื่อนขึ้น/ลงไปดูช่วงอื่นได้ตามปกติ)
+    const wb = body.querySelector('.week-body');
+    if(wb) wb.scrollTop = (WEEK_DEFAULT_SCROLL_HOUR - WEEK_DAY_START_HOUR) * WEEK_HOUR_H;
   } else {
     label.textContent = TH_MONTHS[curDate.getMonth()] + ' ' + beYear(curDate.getFullYear());
     body.innerHTML = renderAgendaList();
@@ -850,7 +880,6 @@ function renderWeekGrid(){
   const start = startOfWeek(curDate);
   const days = [...Array(7)].map((_,i)=>addDays(start,i));
   const today = new Date();
-  const START_HOUR=6, END_HOUR=21, HOUR_H=48;
   let html = '<div class="week-wrap">';
 
   html += '<div class="week-head"><div class="cell"></div>';
@@ -877,22 +906,26 @@ function renderWeekGrid(){
 
   html += '<div class="week-body">';
   html += '<div class="week-hours">';
-  for(let h=START_HOUR; h<END_HOUR; h++){ html += `<div class="hr">${pad(h)}:00</div>`; }
+  for(let h=WEEK_DAY_START_HOUR; h<WEEK_DAY_END_HOUR; h++){ html += `<div class="hr">${pad(h)}:00</div>`; }
   html += '</div>';
+  const colHeight = (WEEK_DAY_END_HOUR-WEEK_DAY_START_HOUR)*WEEK_HOUR_H;
   days.forEach(d=>{
     const iso = toISODate(d);
     const timed = eventsOn(iso).filter(e=>!e.all_day && e.time);
-    html += `<div class="week-day-col" style="height:${(END_HOUR-START_HOUR)*HOUR_H}px" data-action="add-on-date" data-date="${iso}">`;
+    html += `<div class="week-day-col" style="height:${colHeight}px" data-action="add-on-date" data-date="${iso}">`;
     timed.forEach(ev=>{
       const [sh,sm] = ev.time.split(':').map(Number);
-      let top = (sh - START_HOUR)*HOUR_H + (sm/60)*HOUR_H;
+      let top = (sh - WEEK_DAY_START_HOUR)*WEEK_HOUR_H + (sm/60)*WEEK_HOUR_H;
       let durMin = 60;
       if(ev.end_time){
         const [eh,em] = ev.end_time.split(':').map(Number);
         durMin = Math.max(20, (eh*60+em) - (sh*60+sm));
       }
-      let heightPx = Math.max(20, durMin/60*HOUR_H);
+      let heightPx = Math.max(20, durMin/60*WEEK_HOUR_H);
       if(top<0) top=0;
+      // กันแถบล้นออกนอกกรอบล่างของคอลัมน์ (เช่นนัด 23:30 ที่ไม่ได้ระบุเวลาสิ้นสุด — ค่าเริ่มต้น 60 นาทีจะพ้นเที่ยงคืน)
+      // เหมือนกับที่กันล้นออกนอกกรอบบนไว้แล้วด้วย top<0
+      if(top+heightPx > colHeight) heightPx = Math.max(20, colHeight-top);
       // ไม่ต้องมี onclick="event.stopPropagation()" — ตัวจัดการคลิกกลางที่ #calBody เช็ค data-action="edit-event"
       // ก่อน add-on-date อยู่แล้ว การหยุด event ไว้ตรงนี้ทำให้กดกิจกรรมในมุมมองสัปดาห์แล้วไม่มีอะไรเกิดขึ้นเลย
       html += `<div class="week-event" style="top:${top}px;height:${heightPx}px;background:${catOf(ev.category).color}" data-action="edit-event" data-id="${ev.id}">${ev.time} ${escapeHtml(ev.title)}</div>`;
@@ -981,7 +1014,14 @@ function openEventModal(id, presetDate){
   // ต้องเซ็ตประเภทด้วยทุกครั้ง ไม่งั้นดรอปดาวน์จะค้างค่าที่เปิดไว้ครั้งก่อน — แก้กิจกรรมเดิมแล้วกดบันทึก
   // จะกลายเป็นเปลี่ยนประเภททิ้งแบบเงียบๆ และเปิดฟอร์มใหม่ก็จะได้ประเภทของกิจกรรมที่เพิ่งดูไปแทนค่าเริ่มต้น
   document.getElementById('ev_category').value = (ev && CATEGORIES[ev.category]) ? ev.category : DEFAULT_EVENT_CATEGORY;
-  document.getElementById('ev_team').checked = ev ? !!ev.is_team : (calFilter==='team');
+  // เขียนแถว is_team=true ได้แค่ owner/manager จริงๆ (RLS ของ cal_events) — โหมด Local ไม่มี RLS จึงไม่จำกัด
+  // ปิดช่องติ๊กไว้ล่วงหน้าให้คนที่กดไปก็จะเจอแค่ error ตอนบันทึกอยู่ดี (กันสร้างความคาดหวังผิดๆ) และไม่ติ๊กให้
+  // อัตโนมัติตอนเพิ่มกิจกรรมใหม่จากมุมมองตัวกรอง "ทีม" ถ้าคนนี้สร้าง team event ไม่ได้อยู่ดี
+  const canTeam = dataMode!=='cloud' || isOwnerOrManager();
+  const teamChk = document.getElementById('ev_team');
+  teamChk.checked = ev ? !!ev.is_team : (calFilter==='team' && canTeam);
+  teamChk.disabled = !canTeam;
+  document.getElementById('ev_team_hint').classList.toggle('hidden', canTeam);
   document.getElementById('ev_note').value = ev ? (ev.note||'') : '';
   toggleEventTimeRow();
   modal.classList.add('open');
@@ -1003,7 +1043,7 @@ function resolveEventClientId(clientName){
   const keptFor = hidden.dataset.forName || '';
   return (keptFor === clientName && hidden.value) ? hidden.value : null;
 }
-function saveEventForm(e){
+async function saveEventForm(e){
   e.preventDefault();
   const id = document.getElementById('ev_id').value;
   const clientName = document.getElementById('ev_client').value.trim();
@@ -1020,22 +1060,78 @@ function saveEventForm(e){
     note: document.getElementById('ev_note').value.trim()
   };
   if(!data.title || !data.date){ toast('กรุณากรอกชื่อกิจกรรมและวันที่'); return; }
-  if(id){
-    const ev = events.find(x=>x.id===id);
-    Object.assign(ev, data, {updated_at:new Date().toISOString()});
+  if(dataMode==='cloud'){
+    const saveBtn = document.querySelector('#eventForm button[type="submit"]');
+    if(saveBtn) saveBtn.disabled = true;
+    try{
+      const client = await getSupabaseClient();
+      if(id){
+        // .select() (array) หลังเขียน ไม่ใช่ .select().single() — RLS อาจปฏิเสธการแก้ (เช่นไม่ใช่เจ้าของ/ไม่ใช่
+        // owner-manager ที่แก้ team event ได้) โดยไม่คืน error แต่คืนแถวว่างเปล่าแทน (เป็น "no-op เงียบๆ" ไม่ใช่
+        // ข้อยกเว้นแบบ .single() ที่ต้องระวัง) เช็ค data.length ควบคู่ error เสมอ ไม่งั้นจะขึ้นว่าสำเร็จทั้งที่ไม่ได้แก้จริง
+        const { data: updData, error } = await client.from('cal_events').update({
+          title: data.title, client_id: data.client_id, date: data.date,
+          all_day: data.all_day, time: data.time || null, end_time: data.end_time || null,
+          category: data.category, is_team: data.is_team, note: data.note || null,
+          updated_at: new Date().toISOString()
+        }).eq('id', id).select();
+        if(error){ toast(cloudEventErrorMessage(error, data.is_team)); return; }
+        if(!updData || !updData.length){
+          toast(data.is_team
+            ? 'บันทึกไม่สำเร็จ: เฉพาะเจ้าของ (LV1) และผู้จัดการ (LV2) เท่านั้นที่แก้ไข "ปฏิทินทีม" ได้'
+            : 'บันทึกไม่สำเร็จ: ไม่มีสิทธิ์แก้ไขรายการนี้ (ไม่ใช่กิจกรรมของคุณ)');
+          return;
+        }
+        const ev = events.find(x=>x.id===id);
+        if(ev) Object.assign(ev, data, {updated_at:new Date().toISOString()});
+      } else {
+        const nowIso = new Date().toISOString();
+        const row = {
+          user_id: authUser.id, title: data.title, client_id: data.client_id, date: data.date,
+          all_day: data.all_day, time: data.time || null, end_time: data.end_time || null,
+          category: data.category, is_team: data.is_team, note: data.note || null, source:'local',
+          created_at: nowIso, updated_at: nowIso
+        };
+        const { data: inserted, error } = await client.from('cal_events').insert(row).select();
+        if(error){ toast(cloudEventErrorMessage(error, data.is_team)); return; }
+        const newRow = inserted && inserted[0];
+        if(newRow) events.push(cloudEventToLocal(newRow));
+        else { toast('บันทึกสำเร็จ แต่โหลดข้อมูลกลับไม่ได้ ลองรีเฟรชหน้า'); }
+      }
+    }catch(err){ toast('บันทึกไม่สำเร็จ (เชื่อมต่อคลาวด์ไม่ได้)'); return; }
+    finally{ if(saveBtn) saveBtn.disabled = false; }
   } else {
-    events.push(Object.assign({id:lsId(), user_id:'local', source:'local', external_id:null, created_at:new Date().toISOString(), updated_at:new Date().toISOString()}, data));
+    if(id){
+      const ev = events.find(x=>x.id===id);
+      Object.assign(ev, data, {updated_at:new Date().toISOString()});
+    } else {
+      events.push(Object.assign({id:lsId(), user_id:'local', source:'local', external_id:null, created_at:new Date().toISOString(), updated_at:new Date().toISOString()}, data));
+    }
+    lsSet('dcbc_events', events);
   }
-  lsSet('dcbc_events', events);
   closeEventModal();
   renderCalendar();
   toast('บันทึกกิจกรรมแล้ว');
 }
-function deleteEvent(){
+async function deleteEvent(){
   const id = document.getElementById('ev_id').value;
   if(!id) return;
-  events = events.filter(e=>e.id!==id);
-  lsSet('dcbc_events', events);
+  if(dataMode==='cloud'){
+    const delBtn = document.getElementById('ev_delete');
+    if(delBtn) delBtn.disabled = true;
+    try{
+      const client = await getSupabaseClient();
+      // .select() หลัง delete() ด้วยเหตุผลเดียวกับ update ด้านบน — ลบไม่ติด (0 แถว) ก็ไม่คืน error เสมอไป
+      const { data, error } = await client.from('cal_events').delete().eq('id', id).select();
+      if(error){ toast('ลบไม่สำเร็จ: ' + (error.message || 'เกิดข้อผิดพลาด')); return; }
+      if(!data || !data.length){ toast('ลบไม่สำเร็จ: ไม่มีสิทธิ์ลบรายการนี้ (กิจกรรมทีมลบได้เฉพาะคนที่สร้างไว้เท่านั้น)'); return; }
+      events = events.filter(e=>e.id!==id);
+    }catch(err){ toast('ลบไม่สำเร็จ (เชื่อมต่อคลาวด์ไม่ได้)'); return; }
+    finally{ if(delBtn) delBtn.disabled = false; }
+  } else {
+    events = events.filter(e=>e.id!==id);
+    lsSet('dcbc_events', events);
+  }
   closeEventModal();
   renderCalendar();
   toast('ลบกิจกรรมแล้ว');
@@ -1070,12 +1166,20 @@ function renderTasks(){
     </div>`;
   }).join('');
 }
-function moveTask(id, toStatus){
+async function moveTask(id, toStatus){
   const t = tasks.find(x=>x.id===id);
   if(!t) return;
   const wasDone = t.status === 'done';
+  if(dataMode==='cloud'){
+    try{
+      const client = await getSupabaseClient();
+      const { data, error } = await client.from('cal_tasks').update({status:toStatus, updated_at:new Date().toISOString()}).eq('id', id).select();
+      if(error){ toast('ย้ายสถานะไม่สำเร็จ: ' + (error.message||'เกิดข้อผิดพลาด')); return; }
+      if(!data || !data.length){ toast('ย้ายสถานะไม่สำเร็จ: ไม่มีสิทธิ์แก้ไขงานนี้'); return; }
+    }catch(err){ toast('ย้ายสถานะไม่สำเร็จ (เชื่อมต่อคลาวด์ไม่ได้)'); return; }
+  }
   t.status = toStatus; t.updated_at = new Date().toISOString();
-  lsSet('dcbc_tasks', tasks);
+  if(dataMode!=='cloud') lsSet('dcbc_tasks', tasks);
   if(toStatus==='done' && !wasDone) logTaskCompletion(t);
   renderTasks();
 }
@@ -1098,7 +1202,7 @@ function openTaskModal(id){
   document.getElementById('tk_title').focus();
 }
 function closeTaskModal(){ document.getElementById('taskModal').classList.remove('open'); }
-function saveTaskForm(e){
+async function saveTaskForm(e){
   e.preventDefault();
   const id = document.getElementById('tk_id').value;
   const data = {
@@ -1111,26 +1215,73 @@ function saveTaskForm(e){
     status: document.getElementById('tk_status').value
   };
   if(!data.title){ toast('กรุณากรอกชื่องาน'); return; }
-  if(id){
-    const t = tasks.find(x=>x.id===id);
-    const wasDone = t.status === 'done';
-    Object.assign(t, data, {updated_at:new Date().toISOString()});
-    if(t.status==='done' && !wasDone) logTaskCompletion(t);
+  if(dataMode==='cloud'){
+    const saveBtn = document.querySelector('#taskForm button[type="submit"]');
+    if(saveBtn) saveBtn.disabled = true;
+    try{
+      const client = await getSupabaseClient();
+      const payload = {
+        title: data.title, description: data.description||null, due_date: data.due_date||null,
+        due_time: data.due_time||null, priority: data.priority, category: data.category, status: data.status
+      };
+      if(id){
+        const t = tasks.find(x=>x.id===id);
+        const wasDone = t && t.status==='done';
+        const { data: upd, error } = await client.from('cal_tasks')
+          .update(Object.assign({}, payload, {updated_at:new Date().toISOString()})).eq('id', id).select();
+        if(error){ toast('บันทึกไม่สำเร็จ: ' + (error.message||'เกิดข้อผิดพลาด')); return; }
+        if(!upd || !upd.length){ toast('บันทึกไม่สำเร็จ: ไม่พบงานนี้ หรือไม่มีสิทธิ์แก้ไข'); return; }
+        Object.assign(t, data, {updated_at:new Date().toISOString()});
+        if(t.status==='done' && !wasDone) logTaskCompletion(t);
+      } else {
+        const nowIso = new Date().toISOString();
+        const { data: ins, error } = await client.from('cal_tasks')
+          .insert(Object.assign({user_id:authUser.id, created_at:nowIso, updated_at:nowIso}, payload)).select();
+        if(error){ toast('บันทึกไม่สำเร็จ: ' + (error.message||'เกิดข้อผิดพลาด')); return; }
+        const row = ins && ins[0];
+        if(!row){ toast('บันทึกสำเร็จ แต่โหลดข้อมูลกลับไม่ได้ ลองรีเฟรชหน้า'); }
+        else{
+          tasks.push(row);
+          if(row.status==='done') logTaskCompletion(row);
+        }
+      }
+    }catch(err){ toast('บันทึกไม่สำเร็จ (เชื่อมต่อคลาวด์ไม่ได้)'); return; }
+    finally{ if(saveBtn) saveBtn.disabled = false; }
   } else {
-    const t = Object.assign({id:lsId(), user_id:'local', created_at:new Date().toISOString(), updated_at:new Date().toISOString()}, data);
-    tasks.push(t);
-    if(t.status==='done') logTaskCompletion(t);
+    if(id){
+      const t = tasks.find(x=>x.id===id);
+      const wasDone = t.status === 'done';
+      Object.assign(t, data, {updated_at:new Date().toISOString()});
+      if(t.status==='done' && !wasDone) logTaskCompletion(t);
+    } else {
+      const t = Object.assign({id:lsId(), user_id:'local', created_at:new Date().toISOString(), updated_at:new Date().toISOString()}, data);
+      tasks.push(t);
+      if(t.status==='done') logTaskCompletion(t);
+    }
+    lsSet('dcbc_tasks', tasks);
   }
-  lsSet('dcbc_tasks', tasks);
   closeTaskModal();
   renderTasks();
   toast('บันทึกงานแล้ว');
 }
-function deleteTask(){
+async function deleteTask(){
   const id = document.getElementById('tk_id').value;
   if(!id) return;
-  tasks = tasks.filter(t=>t.id!==id);
-  lsSet('dcbc_tasks', tasks);
+  if(dataMode==='cloud'){
+    const delBtn = document.getElementById('tk_delete');
+    if(delBtn) delBtn.disabled = true;
+    try{
+      const client = await getSupabaseClient();
+      const { data, error } = await client.from('cal_tasks').delete().eq('id', id).select();
+      if(error){ toast('ลบไม่สำเร็จ: ' + (error.message||'เกิดข้อผิดพลาด')); return; }
+      if(!data || !data.length){ toast('ลบไม่สำเร็จ: ไม่พบงานนี้ หรือไม่มีสิทธิ์ลบ'); return; }
+      tasks = tasks.filter(t=>t.id!==id);
+    }catch(err){ toast('ลบไม่สำเร็จ (เชื่อมต่อคลาวด์ไม่ได้)'); return; }
+    finally{ if(delBtn) delBtn.disabled = false; }
+  } else {
+    tasks = tasks.filter(t=>t.id!==id);
+    lsSet('dcbc_tasks', tasks);
+  }
   closeTaskModal();
   renderTasks();
   toast('ลบงานแล้ว');
@@ -1191,8 +1342,9 @@ function renderActivityLog(){
    Different from the local-only "ประวัติการทำงาน" view above: that one only ever knows about this browser's
    own self-declared profile.name. This view reads real rows written by CRM's logActivity() (see
    toggleField/saveGroupItemField/toggleYearEndField in crm/index.html), joined client-side against org_staff
-   for display names. UI-gated by isOwnerOrManager(); real enforcement is the RLS SELECT policy in
-   supabase-activity-log-visibility-migration.sql. */
+   for display names. UI-gated by !!authUser only now (any logged-in staff, any role — see refreshDailyActivityAccess);
+   real enforcement is the RLS SELECT policy on crm_activity_log, which lets every active staff member see
+   general rows and restricts client_fee_change/client_type_change rows to LV1-3 at the database level. */
 const ACTIVITY_ACTION_LABEL_TH = {
   client_info_update: 'แก้ไขข้อมูลทั่วไป',
   client_change_add: 'เพิ่มการเปลี่ยนแปลง',
@@ -1215,6 +1367,8 @@ const ACTIVITY_ACTION_LABEL_TH = {
   tax_task_toggle: 'อัปเดตงานภาษีรายเดือน',
   tax_task_item_update: 'อัปเดตงานย่อยภาษี (TAX1/SSO/TAX2)',
   year_end_task_toggle: 'อัปเดตงานปลายปี',
+  client_fee_change: 'เปลี่ยนค่าบริการ',
+  client_type_change: 'เปลี่ยนประเภทลูกค้า',
 };
 async function loadActivityStaffNames(client){
   try{
@@ -1292,7 +1446,7 @@ async function loadCalendarActivityRange(rangeStart, rangeEnd, rangeKey){
 // เรียกจากต้น renderCalendar() ทุกครั้ง — ถ้าช่วงที่กำลังดูอยู่ (เดือน/สัปดาห์) ยังไม่เคยโหลด ให้เริ่มโหลด
 // เบื้องหลัง (ไม่ block การ render ครั้งนี้ ตารางจะโชว์แบบยังไม่มี tag ก่อน แล้วขึ้นเองเมื่อโหลดเสร็จ)
 function ensureCalendarActivityLoaded(){
-  if(!authUser || !isOwnerOrManager()) return;
+  if(!authUser) return;
   let rangeStart, rangeEnd, rangeKey;
   if(view==='week'){
     rangeStart = startOfWeek(curDate); rangeEnd = addDays(rangeStart, 7);
@@ -1338,8 +1492,8 @@ async function renderDailyActivity(){
   const todayIso = toISODate(new Date());
   const selIso = toISODate(dailyActivityDate);
   document.getElementById('daPeriodLabel').textContent = thaiDateLong(dailyActivityDate) + (selIso===todayIso ? ' · วันนี้' : '');
-  if(!authUser || !isOwnerOrManager()){
-    body.innerHTML = '<div class="agenda-empty">ต้องเข้าสู่ระบบด้วยบัญชี CRM และมีสิทธิ์ระดับเจ้าของ (LV1)/ผู้จัดการ (LV2) จึงจะดูหน้านี้ได้</div>';
+  if(!authUser){
+    body.innerHTML = '<div class="agenda-empty">ต้องเข้าสู่ระบบด้วยบัญชี CRM จึงจะดูหน้านี้ได้</div>';
     return;
   }
   body.innerHTML = '<div class="agenda-empty">กำลังโหลด…</div>';
@@ -1423,6 +1577,11 @@ function loadScript(src){
 }
 
 async function connectGoogle(){
+  // ฟีเจอร์นี้ยังเขียนเข้า events (ในหน่วยความจำ) แล้ว lsSet('dcbc_events',...) ตรงๆ เท่านั้น — ไม่เคยต่อกับ
+  // cal_events เลย ถ้าปล่อยให้ทำงานตอน dataMode='cloud' จะเขียนทับข้อมูลสำรอง Local เดิม (dcbc_events) ด้วยข้อมูล
+  // ผสมคลาวด์+Google ที่ไม่ตรงกับของจริงในคลาวด์ เสี่ยงข้อมูลเพี้ยนตอนออกจากระบบกลับไปโหมด Local — กันไว้ก่อน
+  // (ยังไม่อยู่ในขอบเขตงานที่ขอให้ทำรอบนี้ ต่อ Google/Outlook sync เข้า cal_events เป็นงานแยกในอนาคตได้)
+  if(dataMode==='cloud'){ toast('ฟีเจอร์นี้ยังใช้ได้เฉพาะโหมด Local (ยังไม่รองรับตอนล็อกอินบัญชี CRM)'); return; }
   const id = document.getElementById('gClientIdInput').value.trim();
   if(!id){ toast('กรุณากรอก Google Client ID ก่อน'); return; }
   gClientId = id; localStorage.setItem('g_client_id', gClientId);
@@ -1476,6 +1635,8 @@ function disconnectGoogle(){
 }
 
 async function connectMicrosoft(){
+  // เหตุผลเดียวกับ connectGoogle() — ยังเขียนเข้า localStorage ตรงๆ เท่านั้น ไม่ผ่าน cal_events
+  if(dataMode==='cloud'){ toast('ฟีเจอร์นี้ยังใช้ได้เฉพาะโหมด Local (ยังไม่รองรับตอนล็อกอินบัญชี CRM)'); return; }
   const id = document.getElementById('msClientIdInput').value.trim();
   if(!id){ toast('กรุณากรอก Microsoft Client ID ก่อน'); return; }
   msClientId = id; localStorage.setItem('ms_client_id', msClientId);
@@ -1539,6 +1700,7 @@ async function initAuthOnLoad(){
       authUser = data.session.user;
       await loadCloudProfile();
       await loadCrmClients();
+      await enterCloudMode();   // สลับ events/tasks เป็นคลาวด์ (ถามย้ายข้อมูล localStorage เดิมถ้ายังไม่เคยถาม)
     }
   }catch(e){ /* ออฟไลน์ หรือโหลด SDK ไม่ได้ — ใช้โหมด Local ต่อได้ตามปกติ ไม่ต้องแจ้งเตือน */ }
   // มีตัวสำรองโปรไฟล์ Local ค้างอยู่ทั้งที่ตอนนี้ไม่มี session = เคยล็อกอินบัญชี CRM แล้วออกจากระบบ "ที่อื่น"
@@ -1571,6 +1733,7 @@ async function loginWithCrmAccount(){
     toast('เข้าสู่ระบบสำเร็จ กำลังโหลดโปรไฟล์...');
     await loadCloudProfile();
     await loadCrmClients();
+    await enterCloudMode();   // สลับ events/tasks เป็นคลาวด์ (ถามย้ายข้อมูล localStorage เดิมถ้ายังไม่เคยถาม)
     renderSettings();
   }catch(e){ toast('เชื่อมต่อไม่สำเร็จ (ตรวจสอบอินเทอร์เน็ต)'); }
 }
@@ -1584,6 +1747,10 @@ async function logoutCrmAccount(){
   // ยังเห็น tag ของคนก่อนหน้าค้างบนตาราง — RLS ฝั่งเซิร์ฟเวอร์ช่วยไม่ได้เพราะข้อมูลอยู่ในหน่วยความจำแล้ว
   staffCodeMap = {}; clientCodeMap = {};
   calActivityByDate = {}; calActivityRangeKey = ''; calActivityRequestKey = '';
+  // คืน events/tasks กลับไปเป็นชุดที่เก็บใน localStorage เดิม (ไม่เคยถูกแตะเลยระหว่างอยู่ในโหมดคลาวด์) —
+  // ไม่งั้นตัวแปร events/tasks ในหน่วยความจำจะยังเป็นข้อมูลคลาวด์ของบัญชีที่เพิ่งออกจากระบบไปค้างอยู่
+  dataMode = 'local';
+  loadLocalEventsAndTasksIntoState();
   // ชื่อ/บทบาทที่ค้างอยู่ในโปรไฟล์ Local ตอนนี้เป็นของบัญชี CRM ที่เพิ่งออกจากระบบ — คืนโปรไฟล์ Local เดิม
   // (หรือค่าเริ่มต้นสิทธิ์ต่ำสุดถ้าไม่มีสำรองไว้) ไม่งั้นสิทธิ์ของคนก่อนหน้าจะยังใช้ได้ต่อในโหมด Local
   const localBackup = lsGet(LOCAL_PROFILE_BACKUP_KEY, null);
@@ -1596,6 +1763,7 @@ async function logoutCrmAccount(){
   refreshDailyActivityAccess();
   renderSettings();
   if(activeMenu==='calendar') renderCalendar();   // ให้ tag ที่ค้างอยู่หายไปจากหน้าจอจริงๆ ไม่ใช่แค่ล้างในหน่วยความจำ
+  if(activeMenu==='tasks') renderTasks();         // งาน (kanban) ก็ต้องกลับไปโชว์ชุด Local ด้วยเช่นกัน
 }
 async function loadCloudProfile(){
   if(!authUser) return;
@@ -1643,6 +1811,131 @@ async function loadCrmClients(){
     if(!error && data) cloudClients = data;
   }catch(e){ /* ดึงรายชื่อลูกค้าไม่สำเร็จ — ช่องลูกค้ายังพิมพ์เป็นข้อความอิสระได้ตามปกติ */ }
 }
+
+/* ========================= CLOUD EVENTS/TASKS (cal_events / cal_tasks — team calendar) =========================
+   นัดหมาย/งานถูกเก็บใน localStorage ล้วนๆ มาตลอด (ดู STATE ด้านบน) — ตั้งแต่ล็อกอิน CRM สำเร็จ ให้สลับไปอ่าน-เขียน
+   ผ่านตาราง cal_events/cal_tasks แทน (dataMode='cloud') เพื่อให้ "ปฏิทินทีม" ใช้งานได้จริง (ให้ทีมเห็นนัดหมายที่
+   ติ๊กไว้ได้จริงข้ามเครื่อง/ข้ามคน) events/tasks ในเครื่อง (localStorage) จะไม่ถูกแตะ/ลบเลยตราบใดที่ยังไม่ได้
+   ล็อกอิน หรือแม้ล็อกอินแล้วก็ตาม (ใช้เป็นแค่ "ต้นทาง" ตอนย้ายข้อมูลครั้งแรก แล้วก็ปล่อยค้างไว้เฉยๆ) — ดู
+   enterCloudMode()/migrateLocalDataToCloud() ด้านล่าง */
+
+// cal_events ไม่มีคอลัมน์ "client" (ชื่อลูกค้าเป็นข้อความ) มีแค่ client_id (FK ไป crm_clients) — โค้ด render/แบบฟอร์ม
+// เดิมทั้งไฟล์ใช้ ev.client เป็นชื่อที่แสดงผล จึงต้อง join กับ cloudClients (โหลดไว้แล้วจาก loadCrmClients) สร้าง
+// ฟิลด์นี้ขึ้นมาเองทุกครั้งที่โหลดแถวจาก cal_events เข้า state — ถ้าหา client_id ไม่เจอใน cloudClients (เช่น ลูกค้า
+// ถูกปิดใช้งานไปแล้ว) จะได้ช่องว่างแทน ไม่ error
+function clientNameForId(id){
+  if(id===null || id===undefined) return '';
+  const hit = cloudClients.find(c=>c.id===id);
+  return hit ? hit.thai_name : '';
+}
+function cloudEventToLocal(row){
+  return Object.assign({}, row, { client: clientNameForId(row.client_id) });
+}
+// แปล error จาก Supabase เป็นข้อความที่บอกสาเหตุจริงให้ผู้ใช้เข้าใจ (ห้ามล้มเหลวเงียบๆ) — เคสที่สำคัญที่สุดคือ
+// RLS ปฏิเสธเพราะพยายามเขียนแถว is_team=true (ปฏิทินทีม) ทั้งที่ role ไม่ใช่ owner/manager (cal_events RLS
+// "manager+ can write/update team events" อนุญาตแค่ owner/admin/manager) — ข้อความนี้ชี้เป้าให้ตรงจุดแทนข้อความกำกวม
+function cloudEventErrorMessage(error, isTeam){
+  const raw = (error && error.message) || '';
+  const isPermissionError = !!error && (error.code === '42501' || /row-level security|permission denied/i.test(raw));
+  if(isPermissionError && isTeam){
+    return 'บันทึกไม่สำเร็จ: เฉพาะเจ้าของ (LV1) และผู้จัดการ (LV2) เท่านั้นที่สร้าง/แก้ไข "ปฏิทินทีม" ได้ — ลองไม่ติ๊ก "ปฏิทินทีม" แล้วบันทึกเป็นนัดหมายส่วนตัวแทน';
+  }
+  if(isPermissionError) return 'บันทึกไม่สำเร็จ: ไม่มีสิทธิ์ทำรายการนี้';
+  return 'บันทึกไม่สำเร็จ: ' + (raw || 'เกิดข้อผิดพลาดไม่ทราบสาเหตุ');
+}
+// โหลด cal_events/cal_tasks ทั้งหมดที่ RLS อนุญาตให้ผู้ใช้คนนี้เห็น (นัดส่วนตัวของตัวเอง + นัดทีมที่ติ๊กไว้ +
+// ถ้าเป็น owner/manager จะเห็นของทุกคนด้วยตามนโยบาย "admin sees all") ไม่ต้องกรองเพิ่มฝั่ง JS เลย ปล่อยให้ RLS
+// ตัดสินใจว่าแถวไหนเห็นได้ — คืน true ถ้าโหลดสำเร็จและสลับ dataMode เป็น 'cloud' แล้ว, false ถ้าไม่สำเร็จ (จะไม่
+// สลับโหมด คงอยู่ในโหมด Local ต่อไปเป็นทางสำรอง พร้อมแจ้งผู้ใช้ ไม่ใช่ทำให้หน้าจอว่างเปล่าเงียบๆ)
+async function loadCloudEventsAndTasks(client){
+  try{
+    const [evRes, tkRes] = await Promise.all([
+      client.from('cal_events').select('*'),
+      client.from('cal_tasks').select('*')
+    ]);
+    if(evRes.error || tkRes.error){
+      toast('โหลดปฏิทิน/งานจากคลาวด์ไม่สำเร็จ — ใช้ข้อมูลในเครื่องแทนไปก่อน');
+      return false;
+    }
+    events = (evRes.data||[]).map(cloudEventToLocal);
+    tasks = tkRes.data||[];
+    dataMode = 'cloud';
+    return true;
+  }catch(e){
+    toast('โหลดปฏิทิน/งานจากคลาวด์ไม่สำเร็จ — ใช้ข้อมูลในเครื่องแทนไปก่อน');
+    return false;
+  }
+}
+// ย้ายข้อมูล localStorage เดิม (ก่อนล็อกอินครั้งนี้) ขึ้น Supabase — ถามยืนยันผู้ใช้ก่อนเสมอ (ห้ามย้ายเงียบๆ)
+// และไม่ลบของเดิมในเครื่องไม่ว่าผลจะเป็นอย่างไร (สำเร็จ/ล้มเหลวบางส่วน/ผู้ใช้ปฏิเสธ) — เช็ค error ทีละแถว นับ
+// จำนวนสำเร็จ/ไม่สำเร็จ แล้วสรุปให้ผู้ใช้ทราบเป็นก้อนเดียว (ไม่ toast ทีละแถวซึ่งจะรกเกินไปถ้ามีหลายสิบรายการ)
+async function migrateLocalDataToCloud(client, localEvents, localTasks){
+  const total = localEvents.length + localTasks.length;
+  const ok = confirm(
+    'พบข้อมูลในเครื่องนี้ ' + localEvents.length + ' กิจกรรม และ ' + localTasks.length + ' งาน (รวม ' + total + ' รายการ)\n' +
+    'ต้องการย้ายขึ้นระบบคลาวด์ (ผูกกับบัญชีนี้ ให้ทีมเห็นนัดหมายที่ติ๊ก "ปฏิทินทีม" ได้จริง) หรือไม่?\n\n' +
+    'กด "ตกลง" เพื่อย้ายขึ้นคลาวด์ — ข้อมูลเดิมในเครื่องจะยังอยู่ครบ ไม่ถูกลบ\n' +
+    'กด "ยกเลิก" เพื่อข้ามไปก่อน — จะถามอีกครั้งเมื่อเข้าสู่ระบบครั้งหน้า'
+  );
+  if(!ok) return { declined:true };
+  let okEvents=0, failEvents=0, okTasks=0, failTasks=0;
+  for(const ev of localEvents){
+    const nowIso = new Date().toISOString();
+    const row = {
+      user_id: authUser.id, title: ev.title, client_id: ev.client_id || null,
+      date: ev.date, time: ev.time || null, end_time: ev.end_time || null,
+      category: ev.category || 'other', all_day: !!ev.all_day, note: ev.note || null,
+      is_team: !!ev.is_team, source: ev.source || 'local', external_id: ev.external_id || null,
+      created_at: ev.created_at || nowIso, updated_at: nowIso
+    };
+    const { error } = await client.from('cal_events').insert(row);
+    if(error) failEvents++; else okEvents++;
+  }
+  for(const tk of localTasks){
+    const nowIso = new Date().toISOString();
+    const row = {
+      user_id: authUser.id, title: tk.title, description: tk.description || null,
+      due_date: tk.due_date || null, due_time: tk.due_time || null,
+      priority: tk.priority || 'medium', category: tk.category || 'work', status: tk.status || 'todo',
+      created_at: tk.created_at || nowIso, updated_at: nowIso
+    };
+    const { error } = await client.from('cal_tasks').insert(row);
+    if(error) failTasks++; else okTasks++;
+  }
+  return { declined:false, okEvents, failEvents, okTasks, failTasks };
+}
+// เรียกหลังล็อกอิน CRM สำเร็จเสมอ (ทั้งตอนเปิดหน้าเจอ session เดิม และตอนกดล็อกอินเอง) — ตัดสินใจว่าต้องถามย้าย
+// ข้อมูลไหม (ครั้งแรกที่ล็อกอินบัญชีนี้บนเครื่องนี้เท่านั้น ใช้ flag ต่อ-บัญชีกันถามซ้ำ) แล้วโหลดข้อมูลคลาวด์ + สลับ
+// dataMode เป็น 'cloud' เสมอไม่ว่าจะย้ายหรือไม่ก็ตาม (ผู้ใช้ปฏิเสธการย้าย ≠ ปฏิเสธการใช้ปฏิทินทีม)
+async function enterCloudMode(){
+  if(!authUser) return;
+  try{
+    const client = await getSupabaseClient();
+    const migKey = 'cal_cloud_migrated_' + authUser.id;
+    if(localStorage.getItem(migKey) === null){
+      const localEvents = lsGet('dcbc_events', []) || [];
+      const localTasks = lsGet('dcbc_tasks', []) || [];
+      if(localEvents.length || localTasks.length){
+        const result = await migrateLocalDataToCloud(client, localEvents, localTasks);
+        if(!result.declined){
+          localStorage.setItem(migKey, '1');
+          const summary = 'กิจกรรม ' + result.okEvents + '/' + (result.okEvents+result.failEvents) + ', งาน ' + result.okTasks + '/' + (result.okTasks+result.failTasks);
+          if(result.failEvents || result.failTasks) toast('ย้ายข้อมูลขึ้นคลาวด์บางส่วนไม่สำเร็จ (' + summary + ') — ที่เหลือยังอยู่ในเครื่องเดิม ลองย้ายอีกครั้งได้ตอนล็อกอินครั้งหน้า');
+          else toast('ย้ายข้อมูลขึ้นคลาวด์สำเร็จ (' + summary + ')');
+        }
+        // ผู้ใช้กด "ยกเลิก" — ไม่ตั้ง flag ว่าย้ายแล้ว จะถามใหม่อีกครั้งตอนล็อกอินครั้งหน้า (ข้อมูลเดิมยังอยู่ในเครื่องครบ)
+      } else {
+        localStorage.setItem(migKey, '1'); // ไม่มีอะไรให้ย้าย ไม่ต้องถามอีกบนเครื่องนี้
+      }
+    }
+    const ok = await loadCloudEventsAndTasks(client);
+    if(ok){
+      if(activeMenu==='calendar') renderCalendar();
+      if(activeMenu==='tasks') renderTasks();
+    }
+  }catch(e){ toast('เข้าสู่โหมดคลาวด์ไม่สำเร็จ ใช้ข้อมูลในเครื่องต่อไปก่อน'); }
+}
+
 function populateClientDatalist(){
   const dl = document.getElementById('ev_client_datalist');
   if(!dl) return;
@@ -1700,8 +1993,16 @@ function importBackupFile(file){
   reader.onload = ()=>{
     try{
       const data = JSON.parse(reader.result);
-      if(Array.isArray(data.events)) { events = data.events; lsSet('dcbc_events', events); }
-      if(Array.isArray(data.tasks)) { tasks = data.tasks; lsSet('dcbc_tasks', tasks); }
+      // เหมือนกับที่ข้าม profile ตอนล็อกอิน CRM อยู่ (ดู comment ด้านล่าง): ตอนอยู่โหมดคลาวด์ events/tasks ที่โหลด
+      // อยู่คือแถวจริงจาก cal_events/cal_tasks — การ Object.assign ทับ+lsSet ตรงๆ แบบเดิมจะข้ามการเขียนขึ้นคลาวด์ไปเลย
+      // (หน้าจอจะโชว์ข้อมูลที่นำเข้ามาแต่ไม่มีอยู่จริงในฐานข้อมูล งงตอนรีเฟรชหรือเข้าจากเครื่องอื่นทีหลัง) กันไว้ก่อน
+      let eventsTasksSkipped = false;
+      if(dataMode==='cloud'){
+        if(Array.isArray(data.events) || Array.isArray(data.tasks)) eventsTasksSkipped = true;
+      } else {
+        if(Array.isArray(data.events)) { events = data.events; lsSet('dcbc_events', events); }
+        if(Array.isArray(data.tasks)) { tasks = data.tasks; lsSet('dcbc_tasks', tasks); }
+      }
       // โปรไฟล์: (1) ต้องผ่าน normalizeRoleLabel() เหมือนตอนโหลดจาก localStorage ตอนเปิดแอพ ไม่งั้นไฟล์สำรอง
       // เก่าที่เก็บป้ายบทบาทชุดเดิม (เช่น 'กรรมการ') จะไม่ตรงกับ ROLES เลย → ดรอปดาวน์บทบาทว่าง และ
       // isTopRole()/isOwnerOrManager() คืน false ตลอด (2) ระหว่างล็อกอินบัญชี CRM ชื่อ-บทบาทมาจาก CRM และ
@@ -1713,13 +2014,20 @@ function importBackupFile(file){
       }
       if(Array.isArray(data.activity_log)) { lsSet('dcbc_activity_log', data.activity_log); }
       enforceFilterAccess();
-      toast(profileSkipped ? 'นำเข้าข้อมูลสำเร็จ (ชื่อ-บทบาทยังใช้ของบัญชี CRM ที่ล็อกอินอยู่)' : 'นำเข้าข้อมูลสำเร็จ');
+      const skippedMsgs = [];
+      if(eventsTasksSkipped) skippedMsgs.push('กิจกรรม/งาน (กำลังใช้ข้อมูลคลาวด์อยู่ นำเข้าทับตรงๆ ไม่ได้)');
+      if(profileSkipped) skippedMsgs.push('ชื่อ-บทบาท (ใช้ของบัญชี CRM ที่ล็อกอินอยู่)');
+      toast(skippedMsgs.length ? 'นำเข้าข้อมูลสำเร็จ (ข้าม: ' + skippedMsgs.join(', ') + ')' : 'นำเข้าข้อมูลสำเร็จ');
       switchMenu(activeMenu);
     }catch(err){ toast('ไฟล์ไม่ถูกต้อง ไม่สามารถนำเข้าได้'); }
   };
   reader.readAsText(file);
 }
 function clearAllData(){
+  // ตอนอยู่โหมดคลาวด์ ข้อมูลที่เห็นอยู่จริงๆ คือแถวใน cal_events/cal_tasks ไม่ใช่ localStorage — ปุ่มนี้ลบแค่
+  // localStorage (ซึ่งตอนนี้เป็นแค่ "สำรองโหมด Local เดิม" ที่ยังไม่ได้ใช้แสดงผลอยู่) จะดูเหมือนไม่มีอะไรเกิดขึ้น
+  // บนหน้าจอทั้งที่จริงๆ ลบสำรองไปแล้วเงียบๆ — ปฏิเสธไปเลยดีกว่า ให้ออกจากระบบก่อนถ้าต้องการล้างข้อมูลโหมด Local
+  if(dataMode==='cloud'){ toast('ฟีเจอร์นี้ใช้ได้เฉพาะโหมด Local — ออกจากระบบ CRM ก่อนถ้าต้องการล้างข้อมูลในเครื่อง (ข้อมูลบนคลาวด์จะไม่ถูกลบด้วยปุ่มนี้)'); return; }
   if(!confirm('ยืนยันล้างข้อมูลทั้งหมด (กิจกรรม, งาน, ประวัติการทำงาน, โปรไฟล์)? การกระทำนี้ไม่สามารถย้อนกลับได้')) return;
   localStorage.removeItem('dcbc_events');
   localStorage.removeItem('dcbc_tasks');
