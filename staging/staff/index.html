@@ -107,10 +107,6 @@
 
   .app{ display:flex; flex-direction:column; height:100vh; width:100%; overflow:hidden; }
 
-  header{ flex-shrink:0; display:flex; align-items:center; gap:8px; background:var(--white); border-bottom:1px solid var(--gray-200); padding:0 16px; height:52px; }
-  .hdr-note{ flex:1; font-size:11px; color:var(--gray-400); }
-  .hdr-viewer-label{ font-size:11px; color:var(--gray-400); flex-shrink:0; }
-
   main{ flex:1; overflow:auto; position:relative; }
   .page-head{ background:var(--white); border-bottom:1px solid var(--gray-200); padding:16px 24px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:5; }
   .page-head h2{ font-size:16px; font-weight:700; color:var(--gray-900); margin:0; }
@@ -143,16 +139,16 @@
   #genModalBox{ background:var(--white); border-radius:14px; max-width:480px; width:100%; max-height:88vh; overflow-y:auto; padding:0; }
 </style>
 
-<div class="app">
-  <header>
-    <!-- ไม่มีโลโก้/ชื่อโมดูลซ้ำตรงนี้: แถบบนสุดของหน้ารวม (shell) แสดงโลโก้ DC + "เด็กชายบัญชี" อยู่แล้ว
-         และเมนูข้างของ shell ก็ระบุว่าเป็นแท็บ "พนักงาน/ทีม" อยู่แล้ว — เหลือหัวข้อหน้าเดียวที่ <h2> ด้านล่าง -->
-    <div class="hdr-note">สลับมุมมองเพื่อทดสอบสิทธิ์อนุมัติคำขอสมัคร (โมดูลนี้ทำงานเป็นอิสระ ยังไม่ผูกกับระบบล็อกอินจริง)</div>
-    <span class="hdr-viewer-label">มุมมองปัจจุบัน:</span>
-    <!-- 300px = ความกว้างที่ตัวเลือกยาวที่สุดต้องการจริง (วัดจาก intrinsic width ของ select เอง 298px)
-         หลังเปลี่ยนป้ายตำแหน่งมาใช้ชุดเดียวกับ CRM ซึ่งยาวกว่าเดิม — ของเดิม 230px ตัดข้อความทิ้ง -->
-    <select id="viewerSwitch" class="search-input" style="width:300px" onchange="switchViewer(this.value)"></select>
-  </header>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+<div id="staffLoading" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);color:var(--ink-muted);font-size:13px;z-index:40">กำลังตรวจสอบสิทธิ์…</div>
+<div id="staffLoginRequired" style="display:none;position:fixed;inset:0;align-items:center;justify-content:center;background:var(--bg);z-index:40">
+  <div style="text-align:center;max-width:320px;padding:24px">
+    <div style="font-size:15px;font-weight:700;color:var(--ink)">ยังไม่ได้เข้าสู่ระบบ</div>
+    <div id="staffLoginRequiredMsg" style="font-size:12.5px;color:var(--ink-muted);margin-top:8px;line-height:1.6">กรุณาเข้าสู่ระบบที่หน้าหลักก่อนใช้งานหน้าพนักงาน/ทีม</div>
+  </div>
+</div>
+<div class="app" id="staffApp" style="display:none">
   <main>
     <div class="page-head" style="padding-bottom:0;border-bottom:none">
       <h2>พนักงาน</h2>
@@ -160,7 +156,7 @@
     <div style="padding:0 24px;display:flex;gap:22px;border-bottom:1px solid var(--gray-200);background:var(--white)">
       <button class="svc-subtab active" id="empTab-list" onclick="showEmployeeSubTab('list')">ทะเบียนพนักงาน</button>
       <button class="svc-subtab" id="empTab-teams" onclick="showEmployeeSubTab('teams')">ทีม</button>
-      <button class="svc-subtab" id="empTab-requests" onclick="showEmployeeSubTab('requests')">คำขอสมัคร<span id="empReqBadge" style="display:none;margin-left:5px;background:#ef4444;color:#fff;border-radius:9px;font-size:10px;padding:1px 6px;font-weight:700"></span></button>
+      <button class="svc-subtab" id="empTab-requests" style="display:none" onclick="showEmployeeSubTab('requests')">คำขอสมัคร<span id="empReqBadge" style="display:none;margin-left:5px;background:#ef4444;color:#fff;border-radius:9px;font-size:10px;padding:1px 6px;font-weight:700"></span></button>
     </div>
 
     <div id="emp-sub-list">
@@ -168,7 +164,7 @@
         <p style="font-size:11px;color:var(--gray-400);margin:0">ทะเบียนพนักงานและตำแหน่ง</p>
         <div style="display:flex;gap:8px;align-items:center">
           <input class="search-input" id="employeeSearch" oninput="renderEmployees()" placeholder="ค้นหา…">
-          <button class="btn-blue" onclick="openEmployeeModal()">+ เพิ่มพนักงาน</button>
+          <button id="addEmployeeBtn" class="btn-blue" style="display:none" onclick="openEmployeeModal()">+ เพิ่มพนักงาน</button>
         </div>
       </div>
       <div class="list-wrap">
@@ -177,10 +173,9 @@
             <span class="col-num">#</span>
             <span class="col-code">CODE</span>
             <span class="col-name" style="text-transform:none;font-weight:700">NAME</span>
-            <span style="width:130px;flex-shrink:0">ตำแหน่ง</span>
-            <span style="width:120px;flex-shrink:0">เบอร์โทร</span>
-            <span style="width:100px;flex-shrink:0;text-align:center">เริ่มงาน</span>
-            <span style="width:100px;flex-shrink:0;text-align:center">วันที่ออก</span>
+            <span style="width:190px;flex-shrink:0">ตำแหน่ง</span>
+            <span style="width:110px;flex-shrink:0;text-align:center">เริ่มงาน</span>
+            <span style="width:90px;flex-shrink:0;text-align:center">สถานะ</span>
           </div>
           <div class="lbody" id="employeeList"></div>
         </div>
@@ -191,7 +186,7 @@
       <div class="page-head">
         <p style="font-size:11px;color:var(--gray-400);margin:0">จัดกลุ่มพนักงานเป็นทีม กำหนดหัวหน้าทีมและสมาชิก</p>
         <div style="display:flex;gap:8px;align-items:center">
-          <button class="btn-blue" onclick="openTeamModal()">+ สร้างทีม</button>
+          <button id="addTeamBtn" class="btn-blue" style="display:none" onclick="openTeamModal()">+ สร้างทีม</button>
         </div>
       </div>
       <div class="list-wrap">
@@ -209,7 +204,7 @@
 
     <div id="emp-sub-requests" style="display:none">
       <div class="page-head">
-        <p style="font-size:11px;color:var(--gray-400);margin:0">พนักงานสมัครเข้าใช้งานเอง แล้วส่งอนุมัติ — เจ้าของ (LV1) หรือผู้จัดการ (LV2) คนใดคนหนึ่งอนุมัติได้ ก่อนสร้างบัญชีพนักงานจริง (สลับมุมมองทดสอบได้ที่มุมขวาบน)</p>
+        <p style="font-size:11px;color:var(--gray-400);margin:0">พนักงานสมัครเข้าใช้งานเอง แล้วส่งอนุมัติ — เจ้าของ (LV1) หรือผู้จัดการ (LV2) คนใดคนหนึ่งอนุมัติได้ ก่อนสร้างบัญชีพนักงานจริง</p>
         <div style="display:flex;gap:8px;align-items:center">
           <button class="btn-blue" onclick="openEmployeeRequestForm()">+ สมัครพนักงานใหม่</button>
         </div>
@@ -236,264 +231,458 @@
 <script>
 // ══════════════════════════════════════════════════════════════════════════
 // staff-shared.html — โมดูลกลาง "พนักงาน" แยกออกมาจาก CRM เพื่อให้แอปอื่น (Calendar, AI
-// chat ฯลฯ) เรียกใช้ร่วมกันได้ในอนาคต ไฟล์นี้ทำงานได้สมบูรณ์ในตัวเอง ไม่พึ่งพาไฟล์ CRM เลย
-// มีข้อมูลจำลอง (mock data) และตัวสลับมุมมอง (viewer switcher) เป็นของตัวเอง
+// chat ฯลฯ) เรียกใช้ร่วมกันได้ ต่อ Supabase project เดียวกับ CRM/ปฏิทินจริงแล้ว (org_staff /
+// org_teams / org_team_members / org_staff_requests) — ไม่มีข้อมูลจำลอง ไม่มี viewer switcher
+// อีกต่อไป สิทธิ์ทั้งหมดอ่านจากคนที่ล็อกอินอยู่จริงผ่าน Supabase Auth (session เดียวกับ CRM/ปฏิทิน
+// เพราะ origin เดียวกัน อ่าน localStorage ร่วมกัน)
 // ══════════════════════════════════════════════════════════════════════════
 
-// ── ทะเบียนพนักงาน — ตำแหน่ง 5 ระดับ เรียงจากสูงสุด (LV1) ลงมาต่ำสุด (LV5) ──
-// ป้ายที่ "แสดงผล" ใช้ชุดเดียวกับ ROLE_LABEL ของ CRM เป๊ะ (และปฏิทินที่ย้ายมาใช้ชุดนี้แล้ว)
-// เพื่อให้คนคนเดียวกันอ่านได้ชื่อระดับเดียวกันทุกแอพ ส่วน "คีย์" ยังเป็นของโมดูลนี้เอง
-// (director/staff แทน owner/parttime ของ CRM) — ห้ามแก้คีย์ เพราะ mock data/ตัวเทียบสิทธิ์
-// ทั้งไฟล์อ้างอิงคีย์ชุดนี้อยู่ (โมดูลนี้ยังไม่ผูกกับฐานข้อมูลจริงตามที่ตั้งใจไว้)
-const POSITION_LABEL = { director:'เจ้าของ (LV1)', manager:'ผู้จัดการ (LV2)', senior:'พนักงานอาวุโส (LV3)', junior:'พนักงาน (LV4)', staff:'นักศึกษาฝึกงาน (LV5)' };
-const POSITION_ORDER = ['director','manager','senior','junior','staff'];
+// ── CONFIG ── (ค่าเดียวกับ CRM/ปฏิทินเป๊ะ — project Supabase เดียวกัน)
+const SB_URL  = 'https://dqegkyobclqqichhnxfm.supabase.co';
+const SB_ANON = 'sb_publishable_4U_v9BIrQjKppfchaevA6Q_zWj3zkxE';
+// Plain defaults on purpose (เหมือน CRM/ปฏิทินเป๊ะ) — ห้ามใส่ autoRefreshToken/persistSession/
+// onAuthStateChange ที่นี่ เคยลองแล้วทำให้ระบบล็อกอินทั้งระบบพังจริง 2 รอบ (ดูบันทึกใน CLAUDE.md
+// หัวข้อ "รอบที่ 3" และ "ผู้ใช้แจ้งอาการใหม่ที่แม่นกว่า") อย่าแก้ config ตัวนี้อีก
+const sb = supabase.createClient(SB_URL, SB_ANON);
+const ADMIN_STAFF_FN = 'swift-handler'; // Edge Function slug ของ admin-staff/index.ts (ตัวเดียวกับ CRM)
+
+// ── ระดับผู้ใช้งาน 5 ระดับ — คีย์ตรงกับ CHECK constraint จริงของ org_staff.role เป๊ะ
+// (owner/manager/senior/junior/parttime) และป้ายที่แสดงตรงกับที่ห้องกลางกำหนดไว้ให้ใช้ทุกแอพ
+const ROLE_LABEL = { owner:'เจ้าของ (LV1)', manager:'ผู้จัดการ (LV2)', senior:'พนักงานอาวุโส (LV3)', junior:'พนักงาน (LV4)', parttime:'นักศึกษาฝึกงาน / ทดลองงาน (LV5)' };
+const ROLE_ORDER = ['owner','manager','senior','junior','parttime'];
+const ROLE_LEVEL = { owner:1, manager:2, senior:3, junior:4, parttime:5 };
+const PREFIX_OPTIONS = ['นาย','นาง','นางสาว'];
 const SVC_MONTHS_SHORT = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 
-let EMPLOYEES = [
-  {id:1, code:'E001', name:'สมชาย ใจดี', nickname:'ชาย', position:'director', phone:'081-234-5678', email:'somchai@dekchaibunchee.co.th', startDate:'2018-01-15', endDate:null},
-  {id:2, code:'E002', name:'วิภา ศรีสุข', nickname:'วิ', position:'manager', phone:'082-345-6789', email:'wipa@dekchaibunchee.co.th', startDate:'2019-03-01', endDate:null},
-  {id:7, code:'E003', name:'อรุณี พงษ์ไพบูลย์', nickname:'อุ๋ย', position:'manager', phone:'087-222-3333', email:'arunee@dekchaibunchee.co.th', startDate:'2020-01-10', endDate:null},
-  {id:3, code:'E004', name:'ธนากร รุ่งเรือง', nickname:'เอก', position:'senior', phone:'083-456-7890', email:'thanakorn@dekchaibunchee.co.th', startDate:'2020-06-10', endDate:null},
-  {id:8, code:'E005', name:'กิตติศักดิ์ วงศ์สุวรรณ', nickname:'ตี๋', position:'senior', phone:'088-333-4444', email:'kittisak@dekchaibunchee.co.th', startDate:'2021-02-15', endDate:null},
-  {id:4, code:'E006', name:'ปิยะดา แสงทอง', nickname:'ปิว', position:'junior', phone:'084-567-8901', email:'piyada@dekchaibunchee.co.th', startDate:'2022-09-01', endDate:null},
-  {id:10, code:'E007', name:'ธีรพงศ์ อินทร์แสง', nickname:'บอส', position:'junior', phone:'090-555-6666', email:'theerapong@dekchaibunchee.co.th', startDate:'2023-01-20', endDate:null},
-  {id:5, code:'E008', name:'ณัฐพล ทองดี', nickname:'พล', position:'staff', phone:'085-678-9012', email:'natthapon@dekchaibunchee.co.th', startDate:'2024-02-01', endDate:null},
-  {id:12, code:'E009', name:'ปรีชา ทองสุข', nickname:'ชา', position:'staff', phone:'092-777-8888', email:'preecha@dekchaibunchee.co.th', startDate:'2024-07-15', endDate:null},
-];
-// id/รหัสพนักงานคำนวณจากข้อมูลจริงเสมอ (เลิกใช้ตัวนับแยก ซึ่งหลุดจากข้อมูลได้ทุกครั้งที่ข้อมูลตั้งต้นเปลี่ยน
-// แล้วไปทับ id/รหัสของคนที่มีอยู่แล้วแบบเงียบๆ)
-function nextEmployeeId(){
-  return EMPLOYEES.reduce((max, e) => Math.max(max, e.id), 0) + 1;
+let profile = null;          // แถว org_staff ของคนที่ล็อกอินอยู่จริง (มาแทน currentViewerEmployeeId เดิม)
+let staffList = [];          // org_staff ทั้งหมดที่ RLS ยอมให้เห็น (เห็นแค่ is_active=true ถ้าไม่ใช่ owner)
+let teams = [];              // org_teams
+let teamMembersMap = {};     // team_id -> [staff_id, ...] จาก org_team_members
+let staffRequests = [];      // org_staff_requests (โหลดเฉพาะ LV1-2 เท่านั้น เพราะ RLS SELECT อนุญาตแค่ owner/manager)
+
+// ── สิทธิ์ — อิงจากคนที่ล็อกอินอยู่จริง (profile) แทน viewer switcher เดิม ต้องตรงกับ RLS จริงของ
+// Supabase ทุกจุด (query ตรวจสอบมาแล้วจาก pg_policies ของ project จริง ไม่ได้เดา) ──
+const role    = () => profile?.role || 'parttime';
+const myLevel = () => ROLE_LEVEL[role()] || 5;
+// LV1-3: สร้าง/แก้ไข/ลบทีม — ตรงกับ RLS ของ org_teams/org_team_members (crm_team_ins/upd/del,
+// crm_teammem_ins/del) ที่อนุญาต role IN ('owner','manager','senior') ทั้งหมด
+const canManageTeams = () => myLevel() <= 3;
+// LV1-3: เพิ่มพนักงานใหม่ — ตรงกับเช็คสิทธิ์ฝั่ง Edge Function (action "create") ที่อนุญาต
+// ["owner","manager","senior"] เป๊ะ (org_staff เองไม่มี INSERT policy ให้ client เขียนตรงได้เลย
+// ต้องผ่าน Edge Function เท่านั้น)
+const canCreateStaff = () => myLevel() <= 3;
+// LV1-2: อนุมัติ/ปฏิเสธคำขอสมัคร — ตรงกับ RLS SELECT ของ org_staff_requests (crm_sr_sel: เห็นได้
+// เฉพาะ owner/manager — LV3-5 เรียก SELECT ตารางนี้ไม่ได้เลยแม้แต่แถวเดียว) และ Edge Function
+// action "approve_request" ที่เช็ค ["owner","manager"] เท่านั้น
+const canApproveRequest = () => myLevel() <= 2;
+// LV1-2: รีเซ็ทรหัสผ่านพนักงาน — ตรงกับ Edge Function action "reset" (["owner","manager"])
+// หมายเหตุ: reset ไม่ได้เช็คว่า "แก้ไขคนนี้ได้ไหม" แยกจาก canEditStaffRow — ฝั่งเซิร์ฟเวอร์ไม่ได้กันไว้
+// (manager รีเซ็ทรหัสผ่านของ owner ได้จริงถ้าจำเป็น) จึงตั้งใจไม่ผูกกับ canEditStaffRow ที่นี่ด้วย
+const canManageStaffAuth = () => myLevel() <= 2;
+// ตรงกับ RLS UPDATE ของ org_staff (crm_staff_upd) เป๊ะ: owner แก้ได้ทุกแถว, manager แก้ได้เฉพาะแถวที่
+// role ปัจจุบัน "ไม่ใช่" owner/manager (แก้ senior/junior/parttime ได้ แตะ owner/manager คนอื่นไม่ได้เลย
+// แม้แต่ตัวเอง) senior/junior/parttime แก้ไขแถวใครไม่ได้เลยแม้แต่ของตัวเอง (ต้องใช้ "ตั้งค่าข้อมูลส่วนตัว"
+// ที่ CRM ผ่าน Edge Function action "self_update" แทน — โมดูลนี้ยังไม่มีหน้าตั้งค่าส่วนตัวของตัวเอง)
+function canEditStaffRow(targetRole) {
+  if (role() === 'owner') return true;
+  if (role() === 'manager') return !['owner','manager'].includes(targetRole);
+  return false;
 }
-// รหัสที่ "ถูกใช้แล้ว" ต้องนับรวมรหัสที่จ่ายไปกับคำขอที่อนุมัติแล้วด้วย ไม่ใช่แค่ที่อยู่ในทะเบียนพนักงาน
-function isEmployeeCodeTaken(code){
-  return EMPLOYEES.some(e => e.code === code)
-      || EMPLOYEE_REQUESTS.some(r => r.status === 'approved' && r.empCode === code);
+// เพดานการตั้ง "ตำแหน่งใหม่" ตอนสร้างพนักงาน/อนุมัติคำขอ — ใช้ตรรกะเดิมของไฟล์นี้ (ตั้งได้ตั้งแต่ระดับ
+// ตัวเองลงไป) รีแมปคีย์ใหม่แล้ว เป็น subset ที่ปลอดภัยกว่ากฎจริงฝั่ง Edge Function เสมอ (กฎจริง: มีแค่
+// senior ที่ถูกกันไม่ให้ตั้ง owner/manager ส่วน owner/manager ตั้งได้ทุกระดับไม่มีเพดาน) — เลือกใช้เพดาน
+// ที่เข้มกว่านี้ไว้ก่อนเพื่อความปลอดภัย ไม่มีทางถูก Edge Function ปฏิเสธ (จะขอเข้มกว่าเสมอ ไม่มีทางขอเกิน)
+function assignableRoles() {
+  const idx = ROLE_ORDER.indexOf(role());
+  return idx === -1 ? [] : ROLE_ORDER.slice(idx);
 }
-function nextFreeEmployeeCode(){
-  const used = [
-    ...EMPLOYEES.map(e => e.code),
-    ...EMPLOYEE_REQUESTS.filter(r => r.status === 'approved').map(r => r.empCode),
-  ].map(c => parseInt(String(c || '').replace(/\D/g, ''), 10)).filter(n => !isNaN(n));
-  let n = (used.length ? Math.max(...used) : 0) + 1;
-  while (isEmployeeCodeTaken('E' + String(n).padStart(3,'0'))) n++;
-  return 'E' + String(n).padStart(3,'0');
-}
-// "วันนี้" ต้องคิดตามเวลาท้องถิ่น (ไทย = UTC+7) -- toISOString() ให้เวลา UTC เสมอ ดังนั้น
-// ก่อน 07:00 น. ตามเวลาไทย จะได้วันที่ของ "เมื่อวาน" ทำให้วันที่สมัคร/วันที่อนุมัติ/วันเริ่มงาน
-// ที่บันทึกไว้เพี้ยนไป 1 วัน และคนที่วันสุดท้ายคือเมื่อวานยังถูกนับว่า "ยังทำงานอยู่"
-function todayLocalISO(){
-  const d = new Date();
-  const p2 = n => String(n).padStart(2,'0');
-  return `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
-}
-function isEmployeeActive(e){
-  return !e.endDate || e.endDate >= todayLocalISO();
+// เพดานการ "แก้ไขตำแหน่ง" ของพนักงานที่มีอยู่แล้ว — ตรงกับ with_check ของ crm_staff_upd เป๊ะ (ต่างจาก
+// assignableRoles() ด้านบนโดยตั้งใจ: ตอนแก้ไข manager ตั้งเป็น 'manager' เองไม่ได้เลยแม้แต่กับพนักงานที่
+// แก้ไขได้อยู่แล้ว เพราะ with_check บังคับว่าแถวหลังแก้ไขต้องไม่ใช่ owner/manager เสมอ)
+function assignableRolesForEditRow(targetRole) {
+  if (role() === 'owner') return ROLE_ORDER.slice();
+  if (role() === 'manager' && !['owner','manager'].includes(targetRole)) return ROLE_ORDER.filter(r => !['owner','manager'].includes(r));
+  return [];
 }
 
-// ── ทีม: จัดกลุ่มพนักงานเป็นทีม กำหนดหัวหน้าทีม+สมาชิก ──
-let TEAMS = [
-  { id:1, name:'ทีม A', leadId:3, memberIds:[4,5] },
-  { id:2, name:'ทีม B', leadId:8, memberIds:[10,12] },
-];
-let teamNextId = 2;
-
-// ── คำขอสมัครพนักงานใหม่: พนักงานกรอกเอง → เจ้าของ (LV1) หรือผู้จัดการ (LV2) คนใดคนหนึ่งอนุมัติ (กำหนดระดับผู้ใช้งาน+อีเมลบริษัท) → สร้างพนักงานจริง ──
-const PREFIX_OPTIONS = ['นาย','นาง','นางสาว'];
-let EMPLOYEE_REQUESTS = [
-  {id:1, taxId:'1-2345-00123-45-6', prefix:'นาย', firstName:'วีระ', lastName:'สุขเจริญ', birthDate:'1998-04-12', idCardAddress:'123 หมู่ 4 ต.บางรัก อ.เมือง จ.นนทบุรี 11000', personalEmail:'weera.personal@gmail.com', status:'pending', submittedAt:'2026-08-14', position:null, companyEmail:null},
-  {id:2, taxId:'1-2345-00456-78-9', prefix:'นางสาว', firstName:'กมลชนก', lastName:'แสงอรุณ', birthDate:'2000-11-02', idCardAddress:'45/2 ถ.รัชดาภิเษก แขวงดินแดง เขตดินแดง กรุงเทพฯ 10400', personalEmail:'kamonchanok.p@gmail.com', status:'pending', submittedAt:'2026-08-08', position:null, companyEmail:null},
-  {id:3, taxId:'1-2345-00789-12-3', prefix:'นาย', firstName:'พีรพัฒน์', lastName:'เจริญสุข', nickname:'พีร', birthDate:'2001-05-20', idCardAddress:'88 ซ.ลาดพร้าว 42 แขวงสามเสนนอก เขตห้วยขวาง กรุงเทพฯ 10310', personalEmail:'peerapat.p@gmail.com', status:'approved', submittedAt:'2026-08-03', position:'staff', companyEmail:'peerapat@dekchaibunchee.co.th', empCode:'E010', approvedBy:{id:7, name:'อรุณี พงษ์ไพบูลย์', position:'manager', date:'2026-08-10'}},
-  {id:4, taxId:'1-2345-01011-34-5', prefix:'นางสาว', firstName:'ชนิดา', lastName:'รักเรียน', nickname:'ชนิ', birthDate:'1999-09-08', idCardAddress:'12/5 ถ.สุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110', personalEmail:'chanida.r@gmail.com', status:'approved', submittedAt:'2026-07-28', position:'junior', companyEmail:'chanida@dekchaibunchee.co.th', empCode:'E011', approvedBy:{id:1, name:'สมชาย ใจดี', position:'director', date:'2026-08-05'}},
-  {id:5, taxId:'1-2345-01122-56-7', prefix:'นาย', firstName:'ณรงค์ศักดิ์', lastName:'แข็งขัน', nickname:'ณรงค์', birthDate:'2002-01-30', idCardAddress:'56 ถ.พระราม 4 แขวงคลองเตย เขตคลองเตย กรุงเทพฯ 10110', personalEmail:'narongsak.k@gmail.com', status:'rejected', submittedAt:'2026-08-11', position:null, companyEmail:null, rejectedBy:{id:2, name:'วิภา ศรีสุข', position:'manager', date:'2026-08-12'}},
-];
-let empReqNextId = 5;
-// ผู้อนุมัติต้องเป็นเจ้าของ (LV1) หรือผู้จัดการ (LV2) คนใดคนหนึ่ง (ไม่มีลำดับขั้น ใครอนุมัติก่อนก็เสร็จเลย)
-// โมดูลนี้เป็นอิสระจากระบบล็อกอินของแอปอื่น จึงมี "มุมมองปัจจุบัน" ของตัวเอง สลับได้จากมุมขวาบน (ไว้ทดสอบสิทธิ์)
-let currentViewerEmployeeId = 1;
-function canApproveRequest(){
-  const viewer = EMPLOYEES.find(e => e.id === currentViewerEmployeeId);
-  if (!viewer) return false;
-  return viewer.position === 'director' || viewer.position === 'manager';
+// ── helper ทั่วไป ──
+function e(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
-// ผู้อนุมัติกำหนดระดับผู้ใช้งานให้คนอื่นได้สูงสุดเท่าระดับตัวเอง เช่น ผู้จัดการ (LV2) กำหนดให้ใครเป็นเจ้าของ (LV1) ไม่ได้
-function maxAssignablePositions(){
-  const viewer = EMPLOYEES.find(e => e.id === currentViewerEmployeeId);
-  if (!viewer) return [];
-  const idx = POSITION_ORDER.indexOf(viewer.position);
-  return idx === -1 ? POSITION_ORDER.slice() : POSITION_ORDER.slice(idx);
+async function invokeErrorMessage(error) {
+  if (!error) return '';
+  try {
+    if (error.context && typeof error.context.json === 'function') {
+      const body = await error.context.clone().json();
+      if (body?.error) return body.error;
+    }
+  } catch (_) {}
+  return error.message || String(error);
 }
-function renderViewerSwitcher(){
-  const sel = document.getElementById('viewerSwitch');
-  if (!sel) return;
-  // มุมมองปัจจุบันต้องเป็นคนที่ยังเลือกได้จริงเสมอ ไม่งั้นชื่อที่แสดงกับสิทธิ์ที่มีผลจริงจะไม่ตรงกัน
-  // (เช่น บันทึกวันที่ออกให้คนที่กำลังใช้มุมมองอยู่ — เขาหลุดจากรายชื่อ แต่สิทธิ์เดิมยังมีผลอยู่)
-  const actives = EMPLOYEES.filter(isEmployeeActive);
-  const moved = !actives.some(e => e.id === currentViewerEmployeeId);
-  if (moved) currentViewerEmployeeId = actives.length ? actives[0].id : null;
-  sel.innerHTML = actives.length
-    ? actives.map(e =>
-        `<option value="${e.id}" ${e.id === currentViewerEmployeeId ? 'selected' : ''}>${e.name} · ${POSITION_LABEL[e.position]}</option>`
-      ).join('')
-    : '<option value="">— ไม่มีพนักงานที่ทำงานอยู่ —</option>';
-  if (moved) {
-    // สิทธิ์ที่มีผลเปลี่ยนไปด้วย เรนเดอร์ส่วนที่อิงสิทธิ์ใหม่ทันทีในจังหวะเดียวกัน
-    const nv = actives.find(e => e.id === currentViewerEmployeeId);
-    renderEmployeeRequests();
-    showToastMock(nv
-      ? 'สลับมุมมองเป็น ' + nv.name + ' (' + POSITION_LABEL[nv.position] + ') อัตโนมัติ'
-      : 'ไม่มีพนักงานที่ทำงานอยู่ — มุมมองปัจจุบันว่าง');
+function showToast(msg, type) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  const isErr = type === 'error';
+  t.style.cssText = `position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:${isErr ? '#dc2626' : 'var(--ink)'};color:${isErr ? '#fff' : 'var(--bg)'};padding:10px 18px;border-radius:8px;font-size:13px;z-index:100;max-width:80vw;text-align:center`;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), isErr ? 3600 : 1800);
+}
+// รับได้ทั้งวันที่ล้วน "YYYY-MM-DD" (เช่น birthdate) กับ timestamp เต็ม (เช่น created_at):
+// - วันที่ล้วนไม่มีเวลากำกับ ต้องแกะเป็นตัวเลขปี/เดือน/วันตรงๆ ห้ามผ่าน new Date(str) เด็ดขาด เพราะ
+//   JS จะตีความเป็นเที่ยงคืน UTC แล้วอ่านกลับด้วยเวลาท้องถิ่น อาจได้วันที่คลาดเคลื่อนได้ (ตามเครื่อง
+//   ผู้ใช้/timezone) — ใช้แนวเดียวกับ ฟังก์ชันเดิมของไฟล์นี้ (ที่เคยชื่อ todayLocalISO)
+// - timestamp เต็มมีเวลาจริงกำกับอยู่แล้ว (ช่วงเวลาจริง ไม่ใช่แค่ปฏิทิน) new Date(str) + ตัวอ่านแบบ
+//   local ถูกต้องอยู่แล้วสำหรับกรณีนี้ (ไม่ใช่บั๊กเดียวกัน)
+function fmtServiceDate(input) {
+  if (!input) return '—';
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})/.exec(input);
+  let y, mIdx, d;
+  if (dateOnly && input.length <= 10) {
+    y = parseInt(dateOnly[1], 10); mIdx = parseInt(dateOnly[2], 10) - 1; d = parseInt(dateOnly[3], 10);
+  } else {
+    const dt = new Date(input);
+    if (isNaN(dt.getTime())) return '—';
+    y = dt.getFullYear(); mIdx = dt.getMonth(); d = dt.getDate();
   }
-}
-function switchViewer(id){
-  const viewer = EMPLOYEES.find(e => e.id === parseInt(id));
-  if (!viewer) { renderViewerSwitcher(); return; }
-  currentViewerEmployeeId = viewer.id;
-  showToastMock('สลับมุมมองเป็น ' + viewer.name + ' (' + POSITION_LABEL[viewer.position] + ')');
+  return `${d} ${SVC_MONTHS_SHORT[mIdx]} ${y}`;
 }
 
 // ── modal ทั่วไปที่ใช้ร่วมกัน (เพิ่ม/แก้ไขพนักงาน · ทีม · คำขอสมัคร) ──
-function openGenModal(html, opts){
+function openGenModal(html, opts) {
   document.getElementById('genModalBox').innerHTML = html;
   document.getElementById('genModalBox').style.maxWidth = (opts && opts.maxWidth) || '';
   document.getElementById('genModalOverlay').classList.add('show');
 }
-function closeGenModal(){
+function closeGenModal() {
   document.getElementById('genModalOverlay').classList.remove('show');
 }
-function showToastMock(msg){
-  const t = document.createElement('div');
-  t.textContent = msg;
-  t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:8px;font-size:13px;z-index:100';
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 1800);
+
+// ── โหลดข้อมูลจริงจาก Supabase ──
+async function loadStaff() {
+  const { data, error } = await sb.from('org_staff').select('*').order('display_name');
+  if (error) { showToast('โหลดรายชื่อพนักงานไม่สำเร็จ: ' + error.message, 'error'); staffList = []; return; }
+  staffList = data || [];
 }
-function fmtServiceDate(iso){
-  if (!iso) return '—';
-  const d = new Date(iso);
-  return `${d.getDate()} ${SVC_MONTHS_SHORT[d.getMonth()]} ${d.getFullYear()}`;
+async function loadTeams() {
+  const [{ data: t, error: tErr }, { data: tm, error: tmErr }] = await Promise.all([
+    sb.from('org_teams').select('*').order('name'),
+    sb.from('org_team_members').select('*'),
+  ]);
+  if (tErr || tmErr) showToast('โหลดข้อมูลทีมไม่สำเร็จ: ' + (tErr?.message || tmErr?.message), 'error');
+  teams = t || [];
+  teamMembersMap = {};
+  (tm || []).forEach(r => { (teamMembersMap[r.team_id] ||= []).push(r.staff_id); });
+}
+async function loadStaffRequests() {
+  const { data, error } = await sb.from('org_staff_requests').select('*').order('created_at', { ascending: false });
+  if (error) { showToast('โหลดคำขอสมัครไม่สำเร็จ: ' + error.message, 'error'); staffRequests = []; return; }
+  staffRequests = data || [];
 }
 
-// ── ทะเบียนพนักงาน: list + add/edit ──
-function employeeRowHtml(e){
-  const active = isEmployeeActive(e);
-  return `<div class="lrow" onclick="openEmployeeModal(${e.id})" style="${active ? '' : 'opacity:.5'}">
-      <span class="col-num">${e.code.replace('E','')}</span>
-      <span class="col-code"><span>${e.code}</span></span>
-      <span class="col-name">${e.name}${e.nickname ? ` <span style="color:var(--gray-400);font-size:11.5px">(${e.nickname})</span>` : ''}${active ? '' : ' <span style=\'font-size:11px;color:var(--gray-400)\'>(ออกแล้ว)</span>'}</span>
-      <span style="width:130px;flex-shrink:0;font-size:12.5px;color:var(--gray-600)">${POSITION_LABEL[e.position]}</span>
-      <span style="width:120px;flex-shrink:0;font-size:12.5px;color:var(--gray-600)">${e.phone || '—'}</span>
-      <span style="width:100px;flex-shrink:0;text-align:center;font-size:12.5px;color:var(--gray-600)">${fmtServiceDate(e.startDate)}</span>
-      <span style="width:100px;flex-shrink:0;text-align:center;font-size:12.5px;color:var(--gray-600)">${e.endDate ? fmtServiceDate(e.endDate) : '—'}</span>
+// ── เริ่มต้น: รอ session จริงจาก Supabase ก่อนโหลดอะไรทั้งสิ้น ──
+// หน้านี้ถูกฝังเป็น <iframe> ในหน้ารวม (shell) ที่ล็อกอินไว้แล้วก่อนเสมอ ปกติ session ควรมีอยู่แล้วใน
+// localStorage ที่ใช้ร่วมกัน (origin เดียวกัน) ตั้งแต่บรรทัดแรกที่ไฟล์นี้เริ่มทำงาน — ถ้าเช็คครั้งแรกยัง
+// ไม่เจอ มีโอกาสสูงว่าเป็นจังหวะแข่งกัน (race) ไม่ใช่ "ยังไม่ได้ล็อกอิน" จริงๆ (เช่น iframe เริ่มรันสคริปต์
+// นี้ก่อนที่ localStorage ของ shell จะเขียนเสร็จ) จึงรอแล้วเช็คซ้ำอีกหลายครั้งก่อนยอมแพ้ — ลอกแพทเทิร์น
+// นี้มาจาก CRM ตรงๆ (init() ของ CRM, ค่า retry เดียวกันเป๊ะ 500/1000/1500/2000ms) ห้ามเปลี่ยนไปใช้
+// onAuthStateChange แทน (ดูคอมเมนต์ที่ const sb = ... ด้านบนว่าทำไม)
+async function init() {
+  let { data: { session } } = await sb.auth.getSession();
+  if (!session) {
+    const retryDelaysMs = [500, 1000, 1500, 2000];
+    for (const delay of retryDelaysMs) {
+      await new Promise(r => setTimeout(r, delay));
+      ({ data: { session } } = await sb.auth.getSession());
+      if (session) break;
+    }
+  }
+  if (!session) { showNotLoggedIn(); return; }
+
+  const { data: prof, error: profErr } = await sb.from('org_staff').select('*').eq('id', session.user.id).single();
+  if (profErr || !prof) { showNotLoggedIn('โหลดข้อมูลพนักงานไม่สำเร็จ: ' + (profErr?.message || 'ไม่พบข้อมูลพนักงาน')); return; }
+  if (!prof.is_active) { showNotLoggedIn('บัญชีนี้ถูกปิดใช้งานแล้ว'); return; }
+  profile = prof;
+
+  document.getElementById('addEmployeeBtn').style.display = canCreateStaff() ? '' : 'none';
+  document.getElementById('addTeamBtn').style.display = canManageTeams() ? '' : 'none';
+  document.getElementById('empTab-requests').style.display = canApproveRequest() ? '' : 'none';
+
+  const loads = [loadStaff(), loadTeams()];
+  if (canApproveRequest()) loads.push(loadStaffRequests());
+  await Promise.all(loads);
+
+  document.getElementById('staffLoading').style.display = 'none';
+  document.getElementById('staffApp').style.display = '';
+  showEmployeeSubTab('list');
+}
+function showNotLoggedIn(msg) {
+  document.getElementById('staffLoading').style.display = 'none';
+  if (msg) document.getElementById('staffLoginRequiredMsg').textContent = msg;
+  document.getElementById('staffLoginRequired').style.display = 'flex';
+}
+
+// ── ทะเบียนพนักงาน: list + add/edit + รีเซ็ทรหัสผ่าน ──
+function employeeRowHtml(s, idx) {
+  return `<div class="lrow" onclick="openEmployeeModal('${s.id}')" style="${s.is_active ? '' : 'opacity:.5'}">
+      <span class="col-num">${idx + 1}</span>
+      <span class="col-code"><span>${e(s.staff_code || '—')}</span></span>
+      <span class="col-name">${e(s.display_name)}${s.nickname ? ` <span style="color:var(--gray-400);font-size:11.5px">(${e(s.nickname)})</span>` : ''}${s.is_active ? '' : ' <span style=\'font-size:11px;color:var(--gray-400)\'>(ออกแล้ว)</span>'}</span>
+      <span style="width:190px;flex-shrink:0;font-size:12.5px;color:var(--gray-600);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e(ROLE_LABEL[s.role] || s.role)}</span>
+      <span style="width:110px;flex-shrink:0;text-align:center;font-size:12.5px;color:var(--gray-600)">${fmtServiceDate(s.created_at)}</span>
+      <span style="width:90px;flex-shrink:0;text-align:center;font-size:12.5px">${s.is_active ? '<span style="color:#15803d;font-weight:600">ทำงาน</span>' : '<span style="color:var(--gray-400)">ปิดใช้งาน</span>'}</span>
     </div>`;
 }
-function renderEmployees(){
+function renderEmployees() {
   const q = (document.getElementById('employeeSearch')?.value || '').toLowerCase();
-  let rows = EMPLOYEES.slice();
-  if (q) rows = rows.filter(e => e.code.toLowerCase().includes(q) || e.name.toLowerCase().includes(q) || (e.phone||'').includes(q));
-  rows = rows.sort((a,b) => (isEmployeeActive(b) - isEmployeeActive(a)) || (POSITION_ORDER.indexOf(a.position) - POSITION_ORDER.indexOf(b.position)) || a.code.localeCompare(b.code));
+  let rows = staffList.slice();
+  if (q) rows = rows.filter(s => (s.staff_code || '').toLowerCase().includes(q) || s.display_name.toLowerCase().includes(q) || (s.nickname || '').toLowerCase().includes(q));
+  rows = rows.sort((a, b) => (b.is_active - a.is_active) || (ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role)) || (a.staff_code || '').localeCompare(b.staff_code || ''));
 
   const el = document.getElementById('employeeList');
-  el.innerHTML = rows.length ? rows.map(employeeRowHtml).join('') : '<div style="padding:32px;text-align:center;color:var(--gray-400);font-size:13px">ไม่พบพนักงาน</div>';
+  el.innerHTML = rows.length ? rows.map((s, i) => employeeRowHtml(s, i)).join('') : '<div style="padding:32px;text-align:center;color:var(--gray-400);font-size:13px">ไม่พบพนักงาน</div>';
 }
-function openEmployeeModal(employeeId){
-  const e = employeeId ? EMPLOYEES.find(x => x.id === employeeId) : null;
-  const positionOptions = POSITION_ORDER.map(p =>
-    `<option value="${p}" ${e && e.position === p ? 'selected' : ''}>${POSITION_LABEL[p]}</option>`
-  ).join('');
+function openEmployeeModal(employeeId) {
+  const s = employeeId ? staffList.find(x => x.id === employeeId) : null;
+  if (employeeId && !s) { showToast('ไม่พบพนักงาน', 'error'); return; }
+  if (!s && !canCreateStaff()) return; // ปุ่มถูกซ่อนอยู่แล้ว กันไว้อีกชั้นเผื่อเรียกตรงๆ
+
+  // ── สร้างพนักงานใหม่ (LV1-3) — org_staff ไม่มี INSERT policy ให้ client เขียนตรงได้เลย ต้องผ่าน
+  // Edge Function action "create" เท่านั้น ซึ่งรับแค่ username/display_name/role (ไม่มีช่อง staff_code/
+  // nickname ให้ตั้งตอนสร้าง) — ตั้งได้ทีหลังผ่าน "แก้ไข" (LV1-2 เท่านั้น เพราะ UPDATE ของ org_staff
+  // เข้มกว่า — ดู canEditStaffRow) ──
+  if (!s) {
+    const roleOptions = assignableRoles().map(p => `<option value="${p}" ${p === 'junior' ? 'selected' : ''}>${e(ROLE_LABEL[p])}</option>`).join('');
+    openGenModal(`
+      <div style="padding:16px">
+        <div style="font-size:15px;font-weight:700;color:var(--ink)">เพิ่มพนักงานใหม่</div>
+        <div style="font-size:11px;color:var(--ink-muted);margin-top:2px;margin-bottom:12px">รหัสผ่านเริ่มต้นคือ 123456 (บังคับเปลี่ยนตอนเข้าสู่ระบบครั้งแรก) — กำหนดรหัสพนักงาน/ชื่อเล่นได้ทีหลังจากเมนู "แก้ไข" (เจ้าของ/ผู้จัดการเท่านั้น)</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--gray-600);margin-bottom:4px">ชื่อ-นามสกุล</div>
+            <input id="emp-name" class="search-input" style="width:100%">
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--gray-600);margin-bottom:4px">ชื่อผู้ใช้ (สำหรับเข้าสู่ระบบ)</div>
+            <input id="emp-username" class="search-input" style="width:100%" placeholder="เช่น somchai">
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--gray-600);margin-bottom:4px">ตำแหน่ง</div>
+            <select id="emp-role" class="search-input" style="width:100%">${roleOptions}</select>
+          </div>
+        </div>
+        <div id="emp-err" style="display:none;color:#b91c1c;font-size:12px;margin-top:8px"></div>
+        <button id="emp-save-btn" class="btn-blue" style="width:100%;margin-top:14px" onclick="saveEmployee(null)">บันทึก</button>
+        <div style="display:flex;justify-content:flex-end;margin-top:10px">
+          <button class="btn-ghost" onclick="closeGenModal()">ปิด</button>
+        </div>
+      </div>`);
+    return;
+  }
+
+  const resetBtnHtml = (canManageStaffAuth() && s.is_active && s.id !== profile.id)
+    ? `<button class="btn-ghost" onclick="resetStaffPassword('${s.id}')">รีเซ็ทรหัสผ่าน</button>` : '<span></span>';
+
+  // ── ไม่มีสิทธิ์แก้ไขแถวนี้ (senior/junior/parttime ทุกแถว, หรือ manager ที่แถวเป็น owner/manager
+  // คนอื่น) — โชว์ข้อมูลอย่างเดียว ปุ่มรีเซ็ทรหัสผ่านยังโชว์ได้ถ้ามีสิทธิ์ (independent จากสิทธิ์แก้ไข
+  // ข้อมูล — ตรงกับที่ Edge Function เช็คแยกกันจริง) ──
+  if (!canEditStaffRow(s.role)) {
+    openGenModal(`
+      <div style="padding:16px">
+        <div style="font-size:15px;font-weight:700;color:var(--ink)">ข้อมูลพนักงาน</div>
+        <div style="font-size:11px;color:var(--ink-muted);margin-top:2px;margin-bottom:12px">${e(s.staff_code || '—')}</div>
+        <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;color:var(--gray-700)">
+          <div><span style="color:var(--gray-400)">ชื่อ-นามสกุล:</span> ${e(s.display_name)}</div>
+          <div><span style="color:var(--gray-400)">ชื่อเล่น:</span> ${e(s.nickname) || '—'}</div>
+          <div><span style="color:var(--gray-400)">ตำแหน่ง:</span> ${e(ROLE_LABEL[s.role] || s.role)}</div>
+          <div><span style="color:var(--gray-400)">สถานะ:</span> ${s.is_active ? 'ทำงาน' : 'ปิดใช้งาน'}</div>
+        </div>
+        <div style="font-size:11px;color:var(--ink-muted);margin-top:10px">ไม่มีสิทธิ์แก้ไขพนักงานคนนี้</div>
+        <div style="display:flex;justify-content:space-between;margin-top:14px">
+          ${resetBtnHtml}
+          <button class="btn-ghost" onclick="closeGenModal()">ปิด</button>
+        </div>
+      </div>`);
+    return;
+  }
+
+  const roleChoices = assignableRolesForEditRow(s.role);
+  const roleOptionsList = roleChoices.includes(s.role) ? roleChoices : roleChoices.concat([s.role]);
+  const roleOptions = roleOptionsList.map(p => `<option value="${p}" ${s.role === p ? 'selected' : ''}>${e(ROLE_LABEL[p])}</option>`).join('');
   openGenModal(`
     <div style="padding:16px">
-      <div style="font-size:15px;font-weight:700;color:var(--ink)">${e ? 'แก้ไขข้อมูลพนักงาน' : 'เพิ่มพนักงานใหม่'}</div>
-      <div style="font-size:11px;color:var(--ink-muted);margin-top:2px;margin-bottom:12px">${e ? e.code : 'จะสร้างรหัสพนักงานให้อัตโนมัติ'}</div>
+      <div style="font-size:15px;font-weight:700;color:var(--ink)">แก้ไขข้อมูลพนักงาน</div>
+      <div style="font-size:11px;color:var(--ink-muted);margin-top:2px;margin-bottom:12px">ชื่อผู้ใช้ (username) เปลี่ยนได้เฉพาะเจ้าของบัญชีเองเท่านั้น (หน้า "ตั้งค่าข้อมูลส่วนตัว" ใน CRM)</div>
       <div style="display:flex;flex-direction:column;gap:10px">
         <div>
+          <div style="font-size:11px;font-weight:600;color:var(--gray-600);margin-bottom:4px">รหัสพนักงาน (CODE)</div>
+          <input id="emp-code" class="search-input" style="width:100%;text-transform:uppercase" value="${e(s.staff_code || '')}">
+        </div>
+        <div>
           <div style="font-size:11px;font-weight:600;color:var(--gray-600);margin-bottom:4px">ชื่อ-นามสกุล</div>
-          <input id="emp-name" class="search-input" style="width:100%" value="${e ? e.name : ''}">
+          <input id="emp-name" class="search-input" style="width:100%" value="${e(s.display_name)}">
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--gray-600);margin-bottom:4px">ชื่อเล่น</div>
+          <input id="emp-nickname" class="search-input" style="width:100%" value="${e(s.nickname || '')}">
         </div>
         <div>
           <div style="font-size:11px;font-weight:600;color:var(--gray-600);margin-bottom:4px">ตำแหน่ง</div>
-          <select id="emp-position" class="search-input" style="width:100%">${positionOptions}</select>
+          <select id="emp-role" class="search-input" style="width:100%">${roleOptions}</select>
         </div>
-        <div>
-          <div style="font-size:11px;font-weight:600;color:var(--gray-600);margin-bottom:4px">เบอร์โทร</div>
-          <input id="emp-phone" class="search-input" style="width:100%" value="${e ? (e.phone||'') : ''}">
-        </div>
-        <div>
-          <div style="font-size:11px;font-weight:600;color:var(--gray-600);margin-bottom:4px">อีเมล</div>
-          <input id="emp-email" class="search-input" style="width:100%" value="${e ? (e.email||'') : ''}">
-        </div>
-        <div>
-          <div style="font-size:11px;font-weight:600;color:var(--gray-600);margin-bottom:4px">วันที่เริ่มงาน</div>
-          <input type="date" id="emp-startdate" class="search-input" style="width:100%" value="${e ? (e.startDate||'') : ''}">
-        </div>
-        <div>
-          <div style="font-size:11px;font-weight:600;color:var(--gray-600);margin-bottom:4px">วันที่ออก (เว้นว่างไว้ถ้ายังทำงานอยู่)</div>
-          <input type="date" id="emp-enddate" class="search-input" style="width:100%" value="${e ? (e.endDate||'') : ''}">
-        </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--gray-700);cursor:pointer">
+          <input type="checkbox" id="emp-active" ${s.is_active ? 'checked' : ''}> ยังทำงานอยู่
+        </label>
       </div>
       <div id="emp-err" style="display:none;color:#b91c1c;font-size:12px;margin-top:8px"></div>
-      <button class="btn-blue" style="width:100%;margin-top:14px" onclick="saveEmployee(${e ? e.id : 'null'})">บันทึก</button>
-      <div style="display:flex;justify-content:flex-end;margin-top:10px">
+      <button id="emp-save-btn" class="btn-blue" style="width:100%;margin-top:14px" onclick="saveEmployee('${s.id}')">บันทึก</button>
+      <div style="display:flex;justify-content:space-between;margin-top:10px">
+        ${resetBtnHtml}
         <button class="btn-ghost" onclick="closeGenModal()">ปิด</button>
       </div>
     </div>`);
 }
-function saveEmployee(employeeId){
-  const name = document.getElementById('emp-name').value.trim();
-  const position = document.getElementById('emp-position').value;
-  const phone = document.getElementById('emp-phone').value.trim();
-  const email = document.getElementById('emp-email').value.trim();
-  const startDate = document.getElementById('emp-startdate').value;
-  const endDate = document.getElementById('emp-enddate').value || null;
+async function saveEmployee(employeeId) {
   const errEl = document.getElementById('emp-err');
-  if (!name) { errEl.textContent = 'กรุณากรอกชื่อ-นามสกุล'; errEl.style.display = 'block'; return; }
-  if (endDate && startDate && endDate < startDate) { errEl.textContent = 'วันที่ออกต้องไม่ก่อนวันที่เริ่มงาน'; errEl.style.display = 'block'; return; }
+  errEl.style.display = 'none';
+  const btn = document.getElementById('emp-save-btn');
+
   if (employeeId) {
-    const e = EMPLOYEES.find(x => x.id === employeeId);
-    Object.assign(e, { name, position, phone, email, startDate, endDate });
+    // ── แก้ไขพนักงานที่มีอยู่แล้ว: UPDATE ตรงเข้า org_staff (LV1-2 ตามเพดานจริงของ RLS เท่านั้น) ──
+    const s = staffList.find(x => x.id === employeeId);
+    if (!s || !canEditStaffRow(s.role)) { showToast('ไม่มีสิทธิ์แก้ไขพนักงานคนนี้', 'error'); return; }
+    const display_name = document.getElementById('emp-name').value.trim();
+    const nickname = document.getElementById('emp-nickname').value.trim();
+    const staff_code = document.getElementById('emp-code').value.trim().toUpperCase();
+    const roleVal = document.getElementById('emp-role').value;
+    const is_active = document.getElementById('emp-active').checked;
+    if (!display_name) { errEl.textContent = 'กรุณากรอกชื่อ-นามสกุล'; errEl.style.display = 'block'; return; }
+
+    if (btn) { btn.disabled = true; btn.textContent = 'กำลังบันทึก…'; }
+    // ห้ามใช้ .select().single() อ่านค่ากลับ — ถ้า manager ปิดการใช้งาน (is_active=false) ในคำสั่ง
+    // เดียวกันนี้ แถวที่เพิ่งเขียนจะหลุดจาก SELECT policy ของ manager ทันที (crm_staff_sel: non-owner
+    // เห็นได้แค่ is_active=true) ทำให้ RETURNING ว่างเปล่า แล้วขึ้นว่า "บันทึกไม่สำเร็จ" ทั้งที่จริงบันทึก
+    // สำเร็จแล้ว — ค่าที่เขียนอยู่ในมือครบอยู่แล้ว ไม่ต้องอ่านกลับ
+    const { error } = await sb.from('org_staff')
+      .update({ display_name, nickname, staff_code, role: roleVal, is_active })
+      .eq('id', employeeId);
+    if (btn) { btn.disabled = false; btn.textContent = 'บันทึก'; }
+    if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; return; }
+    Object.assign(s, { display_name, nickname, staff_code, role: roleVal, is_active });
+    closeGenModal();
+    renderEmployees();
+    showToast('บันทึกข้อมูลพนักงานแล้ว');
   } else {
-    EMPLOYEES.push({ id: nextEmployeeId(), code: nextFreeEmployeeCode(), name, position, phone, email, startDate: startDate || todayLocalISO(), endDate });
+    // ── เพิ่มพนักงานใหม่ผ่าน Edge Function (LV1-3) ──
+    if (!canCreateStaff()) { showToast('ไม่มีสิทธิ์เพิ่มพนักงาน', 'error'); return; }
+    const display_name = document.getElementById('emp-name').value.trim();
+    const username = document.getElementById('emp-username').value.trim();
+    const roleVal = document.getElementById('emp-role').value;
+    if (!display_name) { errEl.textContent = 'กรุณากรอกชื่อ-นามสกุล'; errEl.style.display = 'block'; return; }
+    if (!username) { errEl.textContent = 'กรุณากรอกชื่อผู้ใช้'; errEl.style.display = 'block'; return; }
+
+    if (btn) { btn.disabled = true; btn.textContent = 'กำลังสร้าง…'; }
+    const { data, error } = await sb.functions.invoke(ADMIN_STAFF_FN, {
+      body: { action: 'create', username, display_name, role: roleVal },
+    });
+    if (btn) { btn.disabled = false; btn.textContent = 'บันทึก'; }
+    if (error || data?.error) {
+      errEl.textContent = data?.error || await invokeErrorMessage(error) || 'สร้างพนักงานไม่สำเร็จ';
+      errEl.style.display = 'block';
+      return;
+    }
+    closeGenModal();
+    await loadStaff();
+    renderEmployees();
+    showToast(`เพิ่มพนักงานใหม่แล้ว (รหัสผ่านเริ่มต้น: ${data.default_password}) — เปิด "แก้ไข" เพื่อกำหนดรหัสพนักงาน/ชื่อเล่นภายหลังได้`);
   }
-  closeGenModal();
-  renderEmployees();
-  renderViewerSwitcher();
-  showToastMock(employeeId ? 'บันทึกข้อมูลพนักงานแล้ว' : 'เพิ่มพนักงานใหม่แล้ว');
+}
+async function resetStaffPassword(staffId) {
+  if (!confirm('รีเซ็ทรหัสผ่านพนักงานคนนี้กลับเป็นค่าเริ่มต้นหรือไม่? (พนักงานต้องตั้งรหัสผ่านใหม่ตอนเข้าสู่ระบบครั้งถัดไป)')) return;
+  const { data, error } = await sb.functions.invoke(ADMIN_STAFF_FN, { body: { action: 'reset', staff_id: staffId } });
+  if (error || data?.error) { showToast(data?.error || await invokeErrorMessage(error) || 'รีเซ็ทไม่สำเร็จ', 'error'); return; }
+  showToast('รีเซ็ทรหัสผ่านแล้ว (รหัสเริ่มต้น: 123456)');
 }
 
 // ── ทีม: list + add/edit/delete ──
-function teamRowHtml(t, idx){
-  const lead = EMPLOYEES.find(e => e.id === t.leadId);
-  const members = t.memberIds.map(id => EMPLOYEES.find(e => e.id === id)).filter(Boolean);
-  const memberNames = members.length ? members.map(m => m.name).join(', ') : '—';
+function teamRowHtml(t, idx) {
+  const lead = staffList.find(s => s.id === t.lead_id);
+  const memberIds = teamMembersMap[t.id] || [];
+  const members = memberIds.map(id => staffList.find(s => s.id === id)).filter(Boolean);
+  const memberNames = members.length ? members.map(m => m.display_name).join(', ') : '—';
   return `<div class="lrow" onclick="openTeamModal(${t.id})">
       <span class="col-num">${idx + 1}</span>
-      <span style="width:180px;flex-shrink:0;font-weight:700;font-size:12.5px;color:var(--gray-900);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.name}</span>
-      <span style="width:180px;flex-shrink:0;font-size:12.5px;color:var(--gray-600);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${lead ? lead.name : '—'}${lead ? ` <span style="font-size:10px;color:var(--blue-600)">· ${POSITION_LABEL[lead.position]}</span>` : ''}</span>
-      <span style="flex:1;min-width:0;font-size:12.5px;color:var(--gray-600);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${memberNames}">${memberNames}${members.length ? ` <span style="color:var(--gray-400)">(${members.length})</span>` : ''}</span>
+      <span style="width:180px;flex-shrink:0;font-weight:700;font-size:12.5px;color:var(--gray-900);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e(t.name)}</span>
+      <span style="width:180px;flex-shrink:0;font-size:12.5px;color:var(--gray-600);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${lead ? e(lead.display_name) : '—'}${lead ? ` <span style="font-size:10px;color:var(--blue-600)">· ${e(ROLE_LABEL[lead.role] || lead.role)}</span>` : ''}</span>
+      <span style="flex:1;min-width:0;font-size:12.5px;color:var(--gray-600);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${e(memberNames)}">${e(memberNames)}${members.length ? ` <span style="color:var(--gray-400)">(${members.length})</span>` : ''}</span>
     </div>`;
 }
-function renderTeams(){
+function renderTeams() {
   const el = document.getElementById('teamList');
-  el.innerHTML = TEAMS.length ? TEAMS.map((t, i) => teamRowHtml(t, i)).join('') : '<div style="padding:32px;text-align:center;color:var(--gray-400);font-size:13px">ยังไม่มีทีม กด "+ สร้างทีม" เพื่อเริ่มต้น</div>';
+  el.innerHTML = teams.length ? teams.map((t, i) => teamRowHtml(t, i)).join('') : '<div style="padding:32px;text-align:center;color:var(--gray-400);font-size:13px">ยังไม่มีทีม กด "+ สร้างทีม" เพื่อเริ่มต้น</div>';
 }
-function openTeamModal(teamId){
-  const t = teamId ? TEAMS.find(x => x.id === teamId) : null;
-  const activeEmps = EMPLOYEES.filter(isEmployeeActive);
-  const leadOptions = activeEmps.map(e =>
-    `<option value="${e.id}" ${t && t.leadId === e.id ? 'selected' : ''}>${e.name} · ${POSITION_LABEL[e.position]}</option>`
-  ).join('');
-  const memberCheckboxes = activeEmps.map(e => `
+function openTeamModal(teamId) {
+  const t = teamId ? teams.find(x => x.id === teamId) : null;
+
+  if (!canManageTeams()) {
+    if (!t) return; // ปุ่ม "+ สร้างทีม" ถูกซ่อนอยู่แล้ว ไม่มีอะไรให้โชว์แบบอ่านอย่างเดียว
+    const lead = staffList.find(s => s.id === t.lead_id);
+    const memberIds = teamMembersMap[t.id] || [];
+    const members = memberIds.map(id => staffList.find(s => s.id === id)).filter(Boolean);
+    openGenModal(`
+      <div style="padding:16px">
+        <div style="font-size:15px;font-weight:700;color:var(--ink)">${e(t.name)}</div>
+        <div style="font-size:12.5px;color:var(--gray-600);margin-top:10px"><span style="color:var(--gray-400)">หัวหน้าทีม:</span> ${lead ? e(lead.display_name) : '—'}</div>
+        <div style="font-size:12.5px;color:var(--gray-600);margin-top:6px"><span style="color:var(--gray-400)">สมาชิก:</span> ${members.length ? members.map(m => e(m.display_name)).join(', ') : '—'}</div>
+        <div style="font-size:11px;color:var(--ink-muted);margin-top:10px">ไม่มีสิทธิ์แก้ไขทีม</div>
+        <div style="display:flex;justify-content:flex-end;margin-top:14px">
+          <button class="btn-ghost" onclick="closeGenModal()">ปิด</button>
+        </div>
+      </div>`, { maxWidth: '420px' });
+    return;
+  }
+
+  const byId = id => staffList.find(s => s.id === id);
+  const activeStaff = staffList.filter(s => s.is_active);
+
+  // ── บั๊กที่ต้องกัน: ถ้าหัวหน้าทีมปัจจุบันลาออกไปแล้ว (ไม่อยู่ใน activeStaff อีกต่อไป — หรือกรณี
+  // ผู้ดูเป็น manager/senior ที่ RLS ของ org_staff ไม่ให้เห็นแถวที่ is_active=false เลยด้วยซ้ำ) ตัวเลือก
+  // ในดรอปดาวน์จะไม่มีค่าเดิมให้เลือกอีกต่อไป เบราว์เซอร์จะเลือกตัวแรกในลิสต์ให้แทนแบบเงียบๆ กดบันทึก
+  // โดยไม่ได้ตั้งใจแก้ตรงนี้ก็จะเขียนทับหัวหน้าทีมผิดคนไปเลย จึงต้องคง option ของค่าเดิมไว้เสมอ (ใช้
+  // ข้อมูลที่มีจริงถ้ามี ไม่มีก็ใช้ป้ายบอกว่า "ไม่พบข้อมูล" แทน แต่ค่า id ยังคงเดิมเป๊ะ) ──
+  let leadPool = activeStaff.slice();
+  if (t && t.lead_id && !leadPool.some(s => s.id === t.lead_id)) {
+    const known = byId(t.lead_id);
+    leadPool = leadPool.concat([known ? Object.assign({}, known, { _departed: true }) : { id: t.lead_id, display_name: 'พนักงานเดิม (ไม่พบข้อมูล)', role: null, _departed: true, _unknown: true }]);
+  }
+  const leadOptions = leadPool.map(s => {
+    const label = s._unknown ? s.display_name : `${s.display_name}${s._departed ? ' (ออกแล้ว)' : ''} · ${ROLE_LABEL[s.role] || s.role}`;
+    return `<option value="${s.id}" ${t && t.lead_id === s.id ? 'selected' : ''}>${e(label)}</option>`;
+  }).join('');
+
+  const currentMemberIds = t ? (teamMembersMap[t.id] || []) : [];
+  let memberPool = activeStaff.slice();
+  currentMemberIds.forEach(id => {
+    if (!memberPool.some(s => s.id === id)) {
+      const known = byId(id);
+      memberPool.push(known ? Object.assign({}, known, { _departed: true }) : { id, display_name: 'พนักงานเดิม (ไม่พบข้อมูล)', role: null, _departed: true, _unknown: true });
+    }
+  });
+  const memberCheckboxes = memberPool.map(s => {
+    const label = s._unknown ? s.display_name : `${s.display_name}${s._departed ? ' (ออกแล้ว)' : ''} · ${ROLE_LABEL[s.role] || s.role}`;
+    return `
     <label style="display:flex;align-items:center;gap:8px;padding:6px 4px;font-size:13px;cursor:pointer">
-      <input type="checkbox" class="team-member-chk" value="${e.id}" ${t && t.memberIds.includes(e.id) ? 'checked' : ''}>
-      ${e.name} <span style="color:var(--gray-400);font-size:11px">· ${POSITION_LABEL[e.position]}</span>
-    </label>`).join('');
+      <input type="checkbox" class="team-member-chk" value="${s.id}" ${currentMemberIds.includes(s.id) ? 'checked' : ''}>
+      ${e(label)}
+    </label>`;
+  }).join('');
+
   openGenModal(`
     <div style="padding:16px">
       <div style="font-size:15px;font-weight:700;color:var(--ink)">${t ? 'แก้ไขทีม' : 'สร้างทีมใหม่'}</div>
       <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
         <div>
           <div style="font-size:11px;font-weight:600;color:var(--gray-600);margin-bottom:4px">ชื่อทีม</div>
-          <input id="team-name" class="search-input" style="width:100%" value="${t ? t.name : ''}">
+          <input id="team-name" class="search-input" style="width:100%" value="${t ? e(t.name) : ''}">
         </div>
         <div>
           <div style="font-size:11px;font-weight:600;color:var(--gray-600);margin-bottom:4px">หัวหน้าทีม</div>
@@ -501,7 +690,7 @@ function openTeamModal(teamId){
         </div>
         <div>
           <div style="font-size:11px;font-weight:600;color:var(--gray-600);margin-bottom:4px">สมาชิกทีม</div>
-          <div style="border:1px solid var(--gray-100);border-radius:8px;max-height:220px;overflow-y:auto;padding:4px 8px">${memberCheckboxes}</div>
+          <div style="border:1px solid var(--gray-100);border-radius:8px;max-height:220px;overflow-y:auto;padding:4px 8px">${memberCheckboxes || '<div style="font-size:12px;color:var(--gray-400);padding:8px 4px">ไม่มีพนักงาน</div>'}</div>
         </div>
       </div>
       <div id="team-err" style="display:none;color:#b91c1c;font-size:12px;margin-top:8px"></div>
@@ -510,48 +699,68 @@ function openTeamModal(teamId){
         ${t ? `<button class="btn-ghost" style="color:#b91c1c" onclick="deleteTeam(${t.id})">ลบทีม</button>` : '<span></span>'}
         <button class="btn-ghost" onclick="closeGenModal()">ปิด</button>
       </div>
-    </div>`, {maxWidth:'420px'});
+    </div>`, { maxWidth: '420px' });
 }
-function saveTeam(teamId){
+async function saveTeam(teamId) {
+  if (!canManageTeams()) { showToast('ไม่มีสิทธิ์จัดการทีม', 'error'); return; }
   const name = document.getElementById('team-name').value.trim();
-  const leadId = parseInt(document.getElementById('team-lead').value);
-  const memberIds = [...document.querySelectorAll('.team-member-chk:checked')].map(el => parseInt(el.value));
+  const leadId = document.getElementById('team-lead').value || null;
+  const memberIds = [...document.querySelectorAll('.team-member-chk:checked')].map(el => el.value);
   const errEl = document.getElementById('team-err');
+  errEl.style.display = 'none';
   if (!name) { errEl.textContent = 'กรุณากรอกชื่อทีม'; errEl.style.display = 'block'; return; }
+
+  let savedTeamId = teamId;
   if (teamId) {
-    const t = TEAMS.find(x => x.id === teamId);
-    Object.assign(t, { name, leadId, memberIds });
+    const { error } = await sb.from('org_teams').update({ name, lead_id: leadId }).eq('id', teamId);
+    if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; return; }
   } else {
-    teamNextId++;
-    TEAMS.push({ id: teamNextId, name, leadId, memberIds });
+    // ทุกพนักงานที่ active มองเห็นทีมทุกทีมได้อยู่แล้ว (org_teams SELECT ไม่จำกัดตามสมาชิก) จึงอ่านค่า
+    // id ที่เพิ่ง insert กลับมาได้อย่างปลอดภัย (ต่างจากกรณีอื่นในโปรเจกต์นี้ที่ RLS กรอง RETURNING ทิ้ง)
+    const { data, error } = await sb.from('org_teams').insert({ name, lead_id: leadId }).select().single();
+    if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; return; }
+    savedTeamId = data.id;
   }
+
+  const { error: delErr } = await sb.from('org_team_members').delete().eq('team_id', savedTeamId);
+  if (delErr) { errEl.textContent = delErr.message; errEl.style.display = 'block'; return; }
+  if (memberIds.length) {
+    const { error: insErr } = await sb.from('org_team_members').insert(memberIds.map(staff_id => ({ team_id: savedTeamId, staff_id })));
+    if (insErr) { errEl.textContent = insErr.message; errEl.style.display = 'block'; return; }
+  }
+
+  await loadTeams();
   closeGenModal();
   renderTeams();
-  showToastMock(teamId ? 'บันทึกทีมแล้ว' : 'สร้างทีมใหม่แล้ว');
+  showToast(teamId ? 'บันทึกทีมแล้ว' : 'สร้างทีมใหม่แล้ว');
 }
-function deleteTeam(teamId){
-  // หมายเหตุ: เวอร์ชันนี้ (แยกออกมาจาก CRM) ไม่มี CLIENTS ของตัวเอง จึงไม่ต้องเคลียร์ teamId
-  // ของลูกค้าเหมือนต้นฉบับใน CRM — แอปที่อ้างอิงทีมชุดนี้ (เช่น CRM) ต้องดูแลกรณีทีมถูกลบเอง
-  TEAMS = TEAMS.filter(t => t.id !== teamId);
+async function deleteTeam(teamId) {
+  if (!canManageTeams()) { showToast('ไม่มีสิทธิ์ลบทีม', 'error'); return; }
+  if (!confirm('ต้องการลบทีมนี้ใช่หรือไม่?')) return;
+  const { error } = await sb.from('org_teams').delete().eq('id', teamId);
+  if (error) { showToast(error.message, 'error'); return; }
+  await loadTeams();
   closeGenModal();
   renderTeams();
-  showToastMock('ลบทีมแล้ว');
+  showToast('ลบทีมแล้ว');
 }
 
 // ── สลับแท็บย่อย (ทะเบียนพนักงาน / ทีม / คำขอสมัคร) ──
-function showEmployeeSubTab(tab){
+function showEmployeeSubTab(tab) {
+  if (tab === 'requests' && !canApproveRequest()) tab = 'list'; // แท็บนี้ถูกซ่อนอยู่แล้วสำหรับ LV3-5
   document.getElementById('emp-sub-list').style.display = tab === 'list' ? '' : 'none';
   document.getElementById('emp-sub-teams').style.display = tab === 'teams' ? '' : 'none';
   document.getElementById('emp-sub-requests').style.display = tab === 'requests' ? '' : 'none';
   document.getElementById('empTab-list').classList.toggle('active', tab === 'list');
   document.getElementById('empTab-teams').classList.toggle('active', tab === 'teams');
   document.getElementById('empTab-requests').classList.toggle('active', tab === 'requests');
+  if (tab === 'list') renderEmployees();
   if (tab === 'teams') renderTeams();
   if (tab === 'requests') renderEmployeeRequests();
 }
 
 // ── คำขอสมัครพนักงานใหม่: สมัคร + อนุมัติ/ปฏิเสธ ──
-function openEmployeeRequestForm(){
+function openEmployeeRequestForm() {
   openGenModal(`
     <div style="padding:16px">
       <div style="font-size:15px;font-weight:700;color:var(--ink)">สมัครเป็นพนักงานใหม่</div>
@@ -595,13 +804,13 @@ function openEmployeeRequestForm(){
         </div>
       </div>
       <div id="req-err" style="display:none;color:#b91c1c;font-size:12px;margin-top:8px"></div>
-      <button class="btn-blue" style="width:100%;margin-top:14px" onclick="submitEmployeeRequest()">ส่งคำขอสมัคร</button>
+      <button id="req-submit-btn" class="btn-blue" style="width:100%;margin-top:14px" onclick="submitEmployeeRequest()">ส่งคำขอสมัคร</button>
       <div style="display:flex;justify-content:flex-end;margin-top:10px">
         <button class="btn-ghost" onclick="closeGenModal()">ยกเลิก</button>
       </div>
     </div>`);
 }
-function submitEmployeeRequest(){
+async function submitEmployeeRequest() {
   const prefix = document.getElementById('req-prefix').value;
   const firstName = document.getElementById('req-firstname').value.trim();
   const lastName = document.getElementById('req-lastname').value.trim();
@@ -611,21 +820,25 @@ function submitEmployeeRequest(){
   const idCardAddress = document.getElementById('req-address').value.trim();
   const personalEmail = document.getElementById('req-personalemail').value.trim();
   const errEl = document.getElementById('req-err');
+  errEl.style.display = 'none';
   if (!firstName || !lastName || !nickname || !taxId || !birthDate || !idCardAddress || !personalEmail) {
     errEl.textContent = 'กรุณากรอกข้อมูลให้ครบทุกช่อง';
     errEl.style.display = 'block';
     return;
   }
-  empReqNextId++;
-  EMPLOYEE_REQUESTS.push({
-    id: empReqNextId, taxId, prefix, firstName, lastName, nickname, birthDate, idCardAddress, personalEmail,
-    status: 'pending', submittedAt: todayLocalISO(), position: null, companyEmail: null,
+  const btn = document.getElementById('req-submit-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'กำลังส่ง…'; }
+  const { error } = await sb.from('org_staff_requests').insert({
+    prefix, first_name: firstName, last_name: lastName, nickname,
+    tax_id: taxId, birthdate: birthDate, id_card_address: idCardAddress, personal_email: personalEmail,
   });
+  if (btn) { btn.disabled = false; btn.textContent = 'ส่งคำขอสมัคร'; }
+  if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; return; }
   closeGenModal();
-  renderEmployeeRequests();
-  showToastMock('ส่งคำขอสมัครแล้ว รอผู้มีสิทธิ์อนุมัติระดับ 1');
+  showToast('ส่งคำขอสมัครแล้ว รอผู้มีสิทธิ์อนุมัติ');
+  if (canApproveRequest()) { await loadStaffRequests(); renderEmployeeRequests(); }
 }
-function reqStatusChip(status){
+function reqStatusChip(status) {
   const map = {
     pending: `<span class="tog-chip" style="background:#fef3c7;color:#92400e;border-color:#fcd34d">รออนุมัติ</span>`,
     approved: `<span class="tog-chip" style="background:#dcfce7;color:#15803d;border-color:#86efac">✓ อนุมัติแล้ว</span>`,
@@ -633,73 +846,82 @@ function reqStatusChip(status){
   };
   return map[status] || '';
 }
-function requestRowHtml(r){
+function requestRowHtml(r) {
   return `<div class="lrow" onclick="openReviewRequestModal(${r.id})">
       <span class="col-num">${r.id}</span>
-      <span class="col-name">${r.prefix}${r.firstName} ${r.lastName}${r.nickname ? ` <span style="color:var(--gray-400);font-size:11.5px">(${r.nickname})</span>` : ''}</span>
-      <span style="width:140px;flex-shrink:0;font-size:12.5px;color:var(--gray-600)">${fmtServiceDate(r.submittedAt)}</span>
+      <span class="col-name">${e(r.prefix)}${e(r.first_name)} ${e(r.last_name)}${r.nickname ? ` <span style="color:var(--gray-400);font-size:11.5px">(${e(r.nickname)})</span>` : ''}</span>
+      <span style="width:140px;flex-shrink:0;font-size:12.5px;color:var(--gray-600)">${fmtServiceDate(r.created_at)}</span>
       <span style="width:150px;flex-shrink:0">${reqStatusChip(r.status)}</span>
     </div>`;
 }
-function renderEmployeeRequests(){
-  const rows = EMPLOYEE_REQUESTS.slice().sort((a,b) => b.id - a.id);
+function renderEmployeeRequests() {
+  const rows = staffRequests.slice().sort((a, b) => b.id - a.id);
   const el = document.getElementById('employeeRequestList');
   if (el) el.innerHTML = rows.length ? rows.map(requestRowHtml).join('') : '<div style="padding:32px;text-align:center;color:var(--gray-400);font-size:13px">ยังไม่มีคำขอสมัคร</div>';
-  const pendingCount = EMPLOYEE_REQUESTS.filter(r => r.status === 'pending').length;
+  const pendingCount = staffRequests.filter(r => r.status === 'pending').length;
   const badgeEl = document.getElementById('empReqBadge');
   if (badgeEl) {
     badgeEl.textContent = pendingCount || '';
     badgeEl.style.display = pendingCount > 0 ? '' : 'none';
   }
 }
-function openReviewRequestModal(reqId){
-  const r = EMPLOYEE_REQUESTS.find(x => x.id === reqId);
+// รหัสพนักงานที่แนะนำ — ไล่จากรหัสรูปแบบ "E" + ตัวเลข ที่มีอยู่จริงในทะเบียนพนักงานตอนนี้ (แพทเทิร์น
+// เดียวกับ CRM: suggestStaffCode())
+function suggestStaffCode() {
+  const nums = staffList.map(s => {
+    const m = /^E(\d+)$/i.exec(s.staff_code || '');
+    return m ? parseInt(m[1], 10) : 0;
+  });
+  const next = (nums.length ? Math.max(...nums) : 0) + 1;
+  return 'E' + String(next).padStart(3, '0');
+}
+function suggestStaffUsername(firstName, personalEmail) {
+  const fromName = String(firstName || '').trim().toLowerCase().replace(/[^a-z0-9._-]/g, '');
+  if (fromName) return fromName;
+  return String(personalEmail || '').split('@')[0].trim().toLowerCase().replace(/[^a-z0-9._-]/g, '');
+}
+function openReviewRequestModal(reqId) {
+  const r = staffRequests.find(x => x.id === reqId);
   if (!r) return;
   const infoHtml = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;font-size:12.5px;color:var(--gray-700);margin:12px 0">
-      <div><span style="color:var(--gray-400)">คำนำหน้า-ชื่อ-นามสกุล:</span> ${r.prefix}${r.firstName} ${r.lastName}</div>
-      <div><span style="color:var(--gray-400)">ชื่อเล่น:</span> ${r.nickname || '—'}</div>
-      <div><span style="color:var(--gray-400)">เลขผู้เสียภาษี:</span> ${r.taxId}</div>
-      <div><span style="color:var(--gray-400)">วันเกิด:</span> ${fmtServiceDate(r.birthDate)}</div>
-      <div><span style="color:var(--gray-400)">อีเมลส่วนตัว:</span> ${r.personalEmail}</div>
-      <div style="grid-column:1/-1"><span style="color:var(--gray-400)">ที่อยู่ตามบัตรประชาชน:</span> ${r.idCardAddress}</div>
+      <div><span style="color:var(--gray-400)">คำนำหน้า-ชื่อ-นามสกุล:</span> ${e(r.prefix)}${e(r.first_name)} ${e(r.last_name)}</div>
+      <div><span style="color:var(--gray-400)">ชื่อเล่น:</span> ${e(r.nickname) || '—'}</div>
+      <div><span style="color:var(--gray-400)">เลขผู้เสียภาษี:</span> ${e(r.tax_id) || '—'}</div>
+      <div><span style="color:var(--gray-400)">วันเกิด:</span> ${fmtServiceDate(r.birthdate)}</div>
+      <div><span style="color:var(--gray-400)">อีเมลส่วนตัว:</span> ${e(r.personal_email) || '—'}</div>
+      <div style="grid-column:1/-1"><span style="color:var(--gray-400)">ที่อยู่ตามบัตรประชาชน:</span> ${e(r.id_card_address) || '—'}</div>
     </div>`;
-
-  const viewer = EMPLOYEES.find(e => e.id === currentViewerEmployeeId);
-  const viewerLabel = viewer ? `${viewer.name} · ${POSITION_LABEL[viewer.position]}` : 'ไม่มีพนักงานที่ทำงานอยู่';
 
   let actionHtml = '';
   if (r.status === 'pending') {
-    const allowed = canApproveRequest();
-    const dis = allowed ? '' : 'disabled';
-    const dimStyle = allowed ? '' : 'opacity:.4;cursor:not-allowed';
-    const positionOptions = maxAssignablePositions().map(p => `<option value="${p}">${POSITION_LABEL[p]}</option>`).join('');
-    const suggestedCode = nextFreeEmployeeCode();
-    actionHtml = `
-      <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--gray-100)">
-        <div style="font-size:12px;font-weight:600;color:var(--gray-600);margin-bottom:8px">อนุมัติ — กำหนดรหัสพนักงาน ระดับผู้ใช้งาน และอีเมลบริษัท</div>
-        ${!allowed ? `<div style="font-size:11.5px;color:#b91c1c;margin-bottom:8px">มุมมองปัจจุบัน (${viewerLabel}) ไม่มีสิทธิ์อนุมัติ — ต้องเป็นเจ้าของ (LV1) หรือผู้จัดการ (LV2)</div>` : ''}
-        <div style="font-size:11px;color:var(--gray-400);margin-bottom:6px">กำหนดระดับผู้ใช้งานได้สูงสุดเท่าตำแหน่งของตัวเอง (${viewer ? POSITION_LABEL[viewer.position] : '—'})</div>
-        <div style="display:flex;flex-direction:column;gap:8px">
-          <input id="req-empcode" class="search-input" style="width:100%;text-transform:uppercase" value="${suggestedCode}" placeholder="รหัสพนักงาน เช่น E007" ${dis}>
-          <select id="req-position" class="search-input" style="width:100%" ${dis}>${positionOptions}</select>
-          <input type="email" id="req-companyemail" class="search-input" style="width:100%" placeholder="อีเมลบริษัท เช่น name@dekchaibunchee.co.th" ${dis}>
-        </div>
-        <div id="req-approve-err" style="display:none;color:#b91c1c;font-size:12px;margin-top:8px"></div>
-        <div style="display:flex;gap:8px;margin-top:10px">
-          <button class="btn-blue" style="flex:1;${dimStyle}" ${dis} onclick="approveRequest(${r.id})">✓ อนุมัติ (สร้างพนักงาน)</button>
-          <button class="btn-ghost" style="flex:1;color:#b91c1c;${dimStyle}" ${dis} onclick="rejectRequest(${r.id})">ปฏิเสธ</button>
-        </div>
-      </div>`;
+    if (canApproveRequest()) {
+      const roleOptions = assignableRoles().map(k => `<option value="${k}" ${k === 'junior' ? 'selected' : ''}>${e(ROLE_LABEL[k])}</option>`).join('');
+      const suggestedCode = suggestStaffCode();
+      const suggestedUsername = suggestStaffUsername(r.first_name, r.personal_email);
+      actionHtml = `
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--gray-100)">
+          <div style="font-size:12px;font-weight:600;color:var(--gray-600);margin-bottom:8px">อนุมัติ — กำหนดรหัสพนักงาน ระดับผู้ใช้งาน และชื่อผู้ใช้</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <input id="req-empcode" class="search-input" style="width:100%;text-transform:uppercase" value="${e(suggestedCode)}" placeholder="รหัสพนักงาน เช่น E007">
+            <select id="req-role" class="search-input" style="width:100%">${roleOptions}</select>
+            <input id="req-username" class="search-input" style="width:100%" value="${e(suggestedUsername)}" placeholder="ชื่อผู้ใช้ เช่น somchai">
+          </div>
+          <div id="req-approve-err" style="display:none;color:#b91c1c;font-size:12px;margin-top:8px"></div>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button id="req-approve-btn" class="btn-blue" style="flex:1" onclick="approveRequest(${r.id})">✓ อนุมัติ (สร้างพนักงาน)</button>
+            <button class="btn-ghost" style="flex:1;color:#b91c1c" onclick="rejectRequest(${r.id})">ปฏิเสธ</button>
+          </div>
+        </div>`;
+    } else {
+      actionHtml = `<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--gray-100);font-size:11.5px;color:var(--gray-400)">รอผู้มีสิทธิ์ (เจ้าของ/ผู้จัดการ) อนุมัติ</div>`;
+    }
   } else if (r.status === 'approved') {
     actionHtml = `<div style="margin-top:14px;padding:10px 12px;background:#f0fdf4;border-radius:8px;font-size:12.5px;color:#15803d">
-      ✓ อนุมัติแล้ว รหัสพนักงาน ${r.empCode || '—'} เป็น ${POSITION_LABEL[r.position]} · อีเมลบริษัท: ${r.companyEmail}
-      <div style="font-size:11px;color:#166534;margin-top:4px">อนุมัติโดย ${r.approvedBy ? r.approvedBy.name + ' (' + POSITION_LABEL[r.approvedBy.position] + ')' : '—'}</div>
+      ✓ อนุมัติแล้ว รหัสพนักงาน ${e(r.staff_code) || '—'} เป็น ${e(ROLE_LABEL[r.role] || r.role)} · ชื่อผู้ใช้: ${e(r.assigned_username) || '—'}
     </div>`;
   } else if (r.status === 'rejected') {
-    actionHtml = `<div style="margin-top:14px;padding:10px 12px;background:#fef2f2;border-radius:8px;font-size:12.5px;color:#b91c1c">
-      ✕ คำขอนี้ถูกปฏิเสธ${r.rejectedBy ? ' โดย ' + r.rejectedBy.name + ' (' + POSITION_LABEL[r.rejectedBy.position] + ')' : ''}
-    </div>`;
+    actionHtml = `<div style="margin-top:14px;padding:10px 12px;background:#fef2f2;border-radius:8px;font-size:12.5px;color:#b91c1c">✕ คำขอนี้ถูกปฏิเสธแล้ว</div>`;
   }
 
   openGenModal(`
@@ -708,60 +930,57 @@ function openReviewRequestModal(reqId){
         <div style="font-size:15px;font-weight:700;color:var(--ink)">คำขอสมัครพนักงาน</div>
         ${reqStatusChip(r.status)}
       </div>
-      <div style="font-size:11px;color:var(--ink-muted);margin-top:2px">ส่งคำขอเมื่อ ${fmtServiceDate(r.submittedAt)}</div>
+      <div style="font-size:11px;color:var(--ink-muted);margin-top:2px">ส่งคำขอเมื่อ ${fmtServiceDate(r.created_at)}</div>
       ${infoHtml}
       ${actionHtml}
       <div style="display:flex;justify-content:flex-end;margin-top:14px">
         <button class="btn-ghost" onclick="closeGenModal()">ปิด</button>
       </div>
-    </div>`, {maxWidth:'440px'});
+    </div>`, { maxWidth: '440px' });
 }
-function approveRequest(reqId){
-  if (!canApproveRequest()) { showToastMock('มุมมองปัจจุบันไม่มีสิทธิ์อนุมัติ — ต้องเป็นเจ้าของ (LV1) หรือผู้จัดการ (LV2)'); return; }
-  const r = EMPLOYEE_REQUESTS.find(x => x.id === reqId);
+async function approveRequest(reqId) {
+  if (!canApproveRequest()) { showToast('ไม่มีสิทธิ์อนุมัติคำขอนี้', 'error'); return; }
+  const r = staffRequests.find(x => x.id === reqId);
   if (!r) return;
   const empCode = document.getElementById('req-empcode').value.trim().toUpperCase();
-  const position = document.getElementById('req-position').value;
-  const companyEmail = document.getElementById('req-companyemail').value.trim();
+  const roleVal = document.getElementById('req-role').value;
+  const username = document.getElementById('req-username').value.trim();
   const errEl = document.getElementById('req-approve-err');
+  errEl.style.display = 'none';
   if (!empCode) { errEl.textContent = 'กรุณากำหนดรหัสพนักงาน'; errEl.style.display = 'block'; return; }
-  if (isEmployeeCodeTaken(empCode)) { errEl.textContent = 'รหัสพนักงานนี้ถูกใช้แล้ว กรุณาใช้รหัสอื่น'; errEl.style.display = 'block'; return; }
-  if (!companyEmail) { errEl.textContent = 'กรุณากรอกอีเมลบริษัท'; errEl.style.display = 'block'; return; }
-  if (!maxAssignablePositions().includes(position)) { errEl.textContent = 'กำหนดระดับผู้ใช้งานสูงกว่าตำแหน่งตัวเองไม่ได้'; errEl.style.display = 'block'; return; }
-  const viewer = EMPLOYEES.find(e => e.id === currentViewerEmployeeId);
-  r.status = 'approved';
-  r.position = position;
-  r.companyEmail = companyEmail;
-  r.empCode = empCode;
-  r.approvedBy = { id: viewer.id, name: viewer.name, position: viewer.position, date: todayLocalISO() };
-  EMPLOYEES.push({
-    id: nextEmployeeId(), code: empCode,
-    name: `${r.prefix}${r.firstName} ${r.lastName}`, nickname: r.nickname, position,
-    phone: '', email: companyEmail, startDate: todayLocalISO(), endDate: null,
-    taxId: r.taxId, birthDate: r.birthDate, idCardAddress: r.idCardAddress, personalEmail: r.personalEmail,
+  if (!username) { errEl.textContent = 'กรุณากำหนดชื่อผู้ใช้'; errEl.style.display = 'block'; return; }
+  if (!assignableRoles().includes(roleVal)) { errEl.textContent = 'กำหนดระดับผู้ใช้งานสูงกว่าตำแหน่งตัวเองไม่ได้'; errEl.style.display = 'block'; return; }
+
+  const btn = document.getElementById('req-approve-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'กำลังอนุมัติ…'; }
+  const { data, error } = await sb.functions.invoke(ADMIN_STAFF_FN, {
+    body: { action: 'approve_request', request_id: reqId, staff_code: empCode, role: roleVal, username },
   });
-  renderEmployeeRequests();
-  renderEmployees();
-  renderViewerSwitcher();
+  if (btn) { btn.disabled = false; btn.textContent = '✓ อนุมัติ (สร้างพนักงาน)'; }
+  if (error || data?.error) {
+    errEl.textContent = data?.error || await invokeErrorMessage(error) || 'อนุมัติไม่สำเร็จ';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  await Promise.all([loadStaffRequests(), loadStaff()]);
+  showToast(`อนุมัติแล้ว สร้างพนักงานใหม่เรียบร้อย (รหัสผ่านเริ่มต้น: ${data.default_password})`);
   openReviewRequestModal(reqId);
-  showToastMock('อนุมัติแล้ว สร้างพนักงานใหม่เรียบร้อย');
+  renderEmployeeRequests();
 }
-function rejectRequest(reqId){
-  if (!canApproveRequest()) { showToastMock('มุมมองปัจจุบันไม่มีสิทธิ์ปฏิเสธคำขอนี้'); return; }
-  const r = EMPLOYEE_REQUESTS.find(x => x.id === reqId);
-  if (!r) return;
-  const viewer = EMPLOYEES.find(e => e.id === currentViewerEmployeeId);
-  r.status = 'rejected';
-  r.rejectedBy = { id: viewer.id, name: viewer.name, position: viewer.position, date: todayLocalISO() };
-  renderEmployeeRequests();
+async function rejectRequest(reqId) {
+  if (!canApproveRequest()) { showToast('ไม่มีสิทธิ์ปฏิเสธคำขอนี้', 'error'); return; }
+  if (!confirm('ต้องการปฏิเสธคำขอนี้ใช่หรือไม่?')) return;
+  const { error } = await sb.from('org_staff_requests')
+    .update({ status: 'rejected', rejected_by: profile.id, rejected_at: new Date().toISOString() })
+    .eq('id', reqId);
+  if (error) { showToast(error.message, 'error'); return; }
+  await loadStaffRequests();
+  showToast('ปฏิเสธคำขอแล้ว');
   openReviewRequestModal(reqId);
-  showToastMock('ปฏิเสธคำขอแล้ว');
+  renderEmployeeRequests();
 }
 
 // ── เริ่มต้นเมื่อโหลดหน้า ──
-renderViewerSwitcher();
-showEmployeeSubTab('list');
-renderEmployees();
-renderTeams();
-renderEmployeeRequests();
+init();
 </script>
