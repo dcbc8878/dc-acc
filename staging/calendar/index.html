@@ -475,6 +475,12 @@ const CATEGORIES = {
   other:    {label:'อื่นๆ',            emoji:'⭐', color:'#F97316'}
 };
 const PRIORITY = {high:{label:'สูง',color:'#dc2626'}, medium:{label:'กลาง',color:'#F59E0B'}, low:{label:'ต่ำ',color:'#16a34a'}};
+// ค่า category/priority ที่ไม่รู้จัก (ข้อมูลเก่าใน localStorage, ไฟล์สำรองที่นำเข้ามา, หรือหมวดที่ถูกตัดออกภายหลัง)
+// เคยทำให้ CATEGORIES[...]/PRIORITY[...] เป็น undefined แล้ว .color/.emoji โยน error กลาง template literal —
+// innerHTML จึงไม่ถูกเซ็ตเลยและ "ทั้งหน้า" ว่างเปล่า (ปฏิทินทุกมุมมอง/บอร์ดงาน) จากข้อมูลผิดเพียงแถวเดียว
+// ใช้ตัวสำรองแบบเดียวกับที่ renderActivityLog() ทำอยู่แล้ว (CATEGORIES[...] || CATEGORIES.other)
+function catOf(k){ return CATEGORIES[k] || CATEGORIES.other; }
+function prioOf(k){ return PRIORITY[k] || PRIORITY.medium; }
 const TASK_CATEGORY = {work:'งาน', personal:'ส่วนตัว', health:'สุขภาพ', other:'อื่นๆ'};
 const TASK_STATUS_LABEL = {todo:'รอ', in_progress:'กำลังทำ', done:'เสร็จ'};
 // 5 ระดับ ตรงกับ role จริงในฐานข้อมูล (org_staff.role: owner/manager/senior/junior/parttime) และใช้ป้ายชื่อ
@@ -674,6 +680,7 @@ let authUser = null;       // supabase auth user once logged in (shared account 
 let cloudProfile = null;   // matching row from cal_profiles
 let cloudClients = [];     // crm_clients loaded live once logged in, for the event client picker
 let dailyActivityDate = new Date();  // selected day for the "กิจกรรมประจำวัน" view
+let dailyActivityReqId = 0;// bumped per render; a response whose id no longer matches is stale and must be dropped
 let staffNameMap = {};     // org_staff id -> display_name, lazy-loaded for the daily activity view
 let staffCodeMap = {};     // org_staff id -> staff_code, for the compact grid tag ("CODE - item - status - staff_code")
 let clientCodeMap = {};    // crm_clients id -> code, same purpose
@@ -830,7 +837,7 @@ function renderMonthGrid(){
       <div class="daynum"><span class="num">${d.getDate()}</span></div>
       ${hol ? `<span class="holiday-tag" title="${hol.name}">${hol.name}</span>` : ''}
       ${taxDl ? `<span class="tax-tag" title="${taxDl.name}">📋 ${taxDl.short}</span>` : ''}
-      ${shown.map(ev=>`<div class="event-pill" style="background:${CATEGORIES[ev.category].color}" data-action="edit-event" data-id="${ev.id}">${ev.all_day?'':(ev.time+' ')}${escapeHtml(ev.title)}</div>`).join('')}
+      ${shown.map(ev=>`<div class="event-pill" style="background:${catOf(ev.category).color}" data-action="edit-event" data-id="${ev.id}">${ev.all_day?'':(ev.time+' ')}${escapeHtml(ev.title)}</div>`).join('')}
       ${extra>0 ? `<div class="more-link" data-action="show-day" data-date="${iso}">+${extra} เพิ่มเติม</div>` : ''}
       ${calActivityTagsHtml(iso)}
     </div>`;
@@ -862,7 +869,7 @@ function renderWeekGrid(){
     html += `<div class="cell">
       ${hol?`<div class="event-pill" style="background:${CATEGORIES.holiday.color}">${hol.name}</div>`:''}
       ${taxDl?`<div class="event-pill" style="background:#dc2626" title="${taxDl.name}">📋 ${taxDl.short}</div>`:''}
-      ${allday.map(ev=>`<div class="event-pill" style="background:${CATEGORIES[ev.category].color}" data-action="edit-event" data-id="${ev.id}">${escapeHtml(ev.title)}</div>`).join('')}
+      ${allday.map(ev=>`<div class="event-pill" style="background:${catOf(ev.category).color}" data-action="edit-event" data-id="${ev.id}">${escapeHtml(ev.title)}</div>`).join('')}
       ${calActivityTagsHtml(iso)}
     </div>`;
   });
@@ -888,7 +895,7 @@ function renderWeekGrid(){
       if(top<0) top=0;
       // ไม่ต้องมี onclick="event.stopPropagation()" — ตัวจัดการคลิกกลางที่ #calBody เช็ค data-action="edit-event"
       // ก่อน add-on-date อยู่แล้ว การหยุด event ไว้ตรงนี้ทำให้กดกิจกรรมในมุมมองสัปดาห์แล้วไม่มีอะไรเกิดขึ้นเลย
-      html += `<div class="week-event" style="top:${top}px;height:${heightPx}px;background:${CATEGORIES[ev.category].color}" data-action="edit-event" data-id="${ev.id}">${ev.time} ${escapeHtml(ev.title)}</div>`;
+      html += `<div class="week-event" style="top:${top}px;height:${heightPx}px;background:${catOf(ev.category).color}" data-action="edit-event" data-id="${ev.id}">${ev.time} ${escapeHtml(ev.title)}</div>`;
     });
     html += '</div>';
   });
@@ -921,9 +928,9 @@ function renderAgendaList(){
     });
     dayEvents.forEach(ev=>{
       html += `<div class="agenda-item" data-action="edit-event" data-id="${ev.id}">
-        <span class="dot" style="background:${CATEGORIES[ev.category].color}"></span>
+        <span class="dot" style="background:${catOf(ev.category).color}"></span>
         <span class="time">${timeLabel(ev)}</span>
-        <span class="title">${CATEGORIES[ev.category].emoji} ${escapeHtml(ev.title)}</span>
+        <span class="title">${catOf(ev.category).emoji} ${escapeHtml(ev.title)}</span>
         ${ev.client?`<span class="client">${escapeHtml(ev.client)}</span>`:''}
       </div>`;
     });
@@ -1050,7 +1057,7 @@ function renderTasks(){
           <div class="ttitle">${escapeHtml(t.title)}</div>
           ${t.description?`<div class="tdesc">${escapeHtml(t.description)}</div>`:''}
           <div class="tmeta">
-            <span class="pill" style="background:${PRIORITY[t.priority].color}22;color:${PRIORITY[t.priority].color}">${PRIORITY[t.priority].label}</span>
+            <span class="pill" style="background:${prioOf(t.priority).color}22;color:${prioOf(t.priority).color}">${prioOf(t.priority).label}</span>
             <span>${TASK_CATEGORY[t.category]||''}</span>
             ${t.due_date?`<span>📅 ${t.due_date.slice(5)}${overdue?' (เลยกำหนด)':''}</span>`:''}
           </div>
@@ -1082,9 +1089,11 @@ function openTaskModal(id){
   document.getElementById('tk_desc').value = t ? (t.description||'') : '';
   document.getElementById('tk_duedate').value = t ? (t.due_date||'') : '';
   document.getElementById('tk_duetime').value = t ? (t.due_time||'') : '';
-  document.getElementById('tk_priority').value = t ? t.priority : 'medium';
-  document.getElementById('tk_category').value = t ? t.category : 'work';
-  document.getElementById('tk_status').value = t ? t.status : 'todo';
+  // หนีบค่าที่ไม่รู้จักให้กลับมาเป็นค่าที่มีในดรอปดาวน์จริง (แพทเทิร์นเดียวกับ ev_category ใน openEventModal)
+  // ไม่งั้น <select> จะไม่เลือกอะไรเลย (value กลายเป็น "") แล้วกดบันทึกทับด้วยค่าว่างโดยไม่มีใครรู้ตัว
+  document.getElementById('tk_priority').value = (t && PRIORITY[t.priority]) ? t.priority : 'medium';
+  document.getElementById('tk_category').value = (t && TASK_CATEGORY[t.category]) ? t.category : 'work';
+  document.getElementById('tk_status').value = (t && TASK_STATUS_LABEL[t.status]) ? t.status : 'todo';
   document.getElementById('taskModal').classList.add('open');
   document.getElementById('tk_title').focus();
 }
@@ -1322,6 +1331,9 @@ function calActivityTagsHtml(iso, max){
   return html;
 }
 async function renderDailyActivity(){
+  // กด ◀/▶ เปลี่ยนวันเร็วๆ แล้วผลของวันเก่า (ที่ช้ากว่า) มาถึงทีหลัง จะเขียนทับผลของวันที่กำลังดูอยู่ ทำให้
+  // ป้ายวันที่กับรายการข้างล่างเป็นคนละวันกัน — กันด้วย request id แบบเดียวกับ calActivityRequestKey ของตารางปฏิทิน
+  const reqId = ++dailyActivityReqId;
   const body = document.getElementById('dailyActivityBody');
   const todayIso = toISODate(new Date());
   const selIso = toISODate(dailyActivityDate);
@@ -1341,6 +1353,7 @@ async function renderDailyActivity(){
       .gte('created_at', dayStart.toISOString())
       .lt('created_at', dayEnd.toISOString())
       .order('created_at', { ascending:false });
+    if(reqId !== dailyActivityReqId) return;   // ผู้ใช้เปลี่ยนวันไปแล้วระหว่างรอผล — ทิ้งผลของวันเก่า
     if(error){ body.innerHTML = '<div class="agenda-empty">โหลดไม่สำเร็จ: '+escapeHtml(error.message||'')+'</div>'; return; }
     if(!data || !data.length){ body.innerHTML = '<div class="agenda-empty">ไม่มีกิจกรรมในวันนี้</div>'; return; }
     body.innerHTML = data.map(a=>{
@@ -1356,6 +1369,7 @@ async function renderDailyActivity(){
       </div>`;
     }).join('');
   }catch(e){
+    if(reqId !== dailyActivityReqId) return;
     body.innerHTML = '<div class="agenda-empty">เกิดข้อผิดพลาด ลองใหม่อีกครั้ง</div>';
   }
 }
@@ -1516,15 +1530,29 @@ async function getSupabaseClient(){
   return sb;
 }
 async function initAuthOnLoad(){
+  let sessionChecked = false;   // แยก "เช็คแล้วไม่มี session" ออกจาก "เช็คไม่ได้เลย (ออฟไลน์)" ให้ชัด
   try{
     const client = await getSupabaseClient();
     const { data } = await client.auth.getSession();
+    sessionChecked = true;
     if(data && data.session){
       authUser = data.session.user;
       await loadCloudProfile();
       await loadCrmClients();
     }
   }catch(e){ /* ออฟไลน์ หรือโหลด SDK ไม่ได้ — ใช้โหมด Local ต่อได้ตามปกติ ไม่ต้องแจ้งเตือน */ }
+  // มีตัวสำรองโปรไฟล์ Local ค้างอยู่ทั้งที่ตอนนี้ไม่มี session = เคยล็อกอินบัญชี CRM แล้วออกจากระบบ "ที่อื่น"
+  // (ปุ่มของหน้ารวม หรือฝั่ง CRM) ซึ่งไม่ได้ผ่าน logoutCrmAccount() ของหน้านี้ ชื่อ/บทบาทของคนก่อนหน้าจึงยัง
+  // ค้างอยู่ใน dcbc_profile และสิทธิ์ที่อ่านจากมัน (isTopRole/isOwnerOrManager → ตัวกรอง "ทั้งหมด") ยังใช้ได้ต่อ
+  // ในโหมด Local — คืนโปรไฟล์ Local เดิมด้วยเหตุผลและวิธีเดียวกันเป๊ะกับตอนกดออกจากระบบในหน้านี้
+  if(sessionChecked && !authUser && localStorage.getItem(LOCAL_PROFILE_BACKUP_KEY) !== null){
+    const localBackup = lsGet(LOCAL_PROFILE_BACKUP_KEY, null);
+    profile = (localBackup && localBackup.name) ? {name:localBackup.name, role:normalizeRoleLabel(localBackup.role)}
+                                                : {name:'ผู้ใช้งาน', role: ROLES[4].label};
+    lsSet('dcbc_profile', profile);
+    localStorage.removeItem(LOCAL_PROFILE_BACKUP_KEY);
+    enforceFilterAccess();
+  }
   // ต้อง re-render หน้าที่เปิดอยู่ ไม่ใช่แค่หน้าตั้งค่า — ตอน init() เรียก switchMenu('calendar') ครั้งแรก
   // authUser ยังเป็น null อยู่ ทำให้ ensureCalendarActivityLoaded() ไม่ยิง query เลย และตัวกรอง/สิทธิ์
   // (enforceFilterAccess/applyFilterLock) ยังเป็นค่าก่อนรู้ว่าใครล็อกอินอยู่
@@ -1674,9 +1702,18 @@ function importBackupFile(file){
       const data = JSON.parse(reader.result);
       if(Array.isArray(data.events)) { events = data.events; lsSet('dcbc_events', events); }
       if(Array.isArray(data.tasks)) { tasks = data.tasks; lsSet('dcbc_tasks', tasks); }
-      if(data.profile) { profile = data.profile; lsSet('dcbc_profile', profile); }
+      // โปรไฟล์: (1) ต้องผ่าน normalizeRoleLabel() เหมือนตอนโหลดจาก localStorage ตอนเปิดแอพ ไม่งั้นไฟล์สำรอง
+      // เก่าที่เก็บป้ายบทบาทชุดเดิม (เช่น 'กรรมการ') จะไม่ตรงกับ ROLES เลย → ดรอปดาวน์บทบาทว่าง และ
+      // isTopRole()/isOwnerOrManager() คืน false ตลอด (2) ระหว่างล็อกอินบัญชี CRM ชื่อ-บทบาทมาจาก CRM และ
+      // ตั้งใจให้แก้ไม่ได้อยู่แล้ว (renderSettings() ปิดช่องกรอก+ซ่อนปุ่มบันทึก) — การนำเข้าจึงต้องไม่ลัดผ่านจุดนั้น
+      let profileSkipped = false;
+      if(data.profile){
+        if(authUser) profileSkipped = true;
+        else { profile = {name: data.profile.name || 'ผู้ใช้งาน', role: normalizeRoleLabel(data.profile.role)}; lsSet('dcbc_profile', profile); }
+      }
       if(Array.isArray(data.activity_log)) { lsSet('dcbc_activity_log', data.activity_log); }
-      toast('นำเข้าข้อมูลสำเร็จ');
+      enforceFilterAccess();
+      toast(profileSkipped ? 'นำเข้าข้อมูลสำเร็จ (ชื่อ-บทบาทยังใช้ของบัญชี CRM ที่ล็อกอินอยู่)' : 'นำเข้าข้อมูลสำเร็จ');
       switchMenu(activeMenu);
     }catch(err){ toast('ไฟล์ไม่ถูกต้อง ไม่สามารถนำเข้าได้'); }
   };
@@ -1688,6 +1725,9 @@ function clearAllData(){
   localStorage.removeItem('dcbc_tasks');
   localStorage.removeItem('dcbc_profile');
   localStorage.removeItem('dcbc_activity_log');
+  // ตัวสำรองโปรไฟล์โหมด Local ก็เป็น "โปรไฟล์" ที่กล่องยืนยันบอกว่าจะล้าง — ถ้าไม่ลบด้วย โปรไฟล์เก่า
+  // (รวมบทบาทเดิม) จะย้อนกลับมาเองตอนออกจากระบบบัญชี CRM ครั้งถัดไป ทั้งที่ผู้ใช้สั่งล้างไปแล้ว
+  localStorage.removeItem(LOCAL_PROFILE_BACKUP_KEY);
   events = seedEvents(); lsSet('dcbc_events', events);
   tasks = seedTasks(); lsSet('dcbc_tasks', tasks);
   profile = {name:'ผู้ใช้งาน', role: ROLES[4].label}; lsSet('dcbc_profile', profile);

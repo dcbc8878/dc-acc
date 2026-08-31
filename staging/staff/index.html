@@ -279,8 +279,16 @@ function nextFreeEmployeeCode(){
   while (isEmployeeCodeTaken('E' + String(n).padStart(3,'0'))) n++;
   return 'E' + String(n).padStart(3,'0');
 }
+// "วันนี้" ต้องคิดตามเวลาท้องถิ่น (ไทย = UTC+7) -- toISOString() ให้เวลา UTC เสมอ ดังนั้น
+// ก่อน 07:00 น. ตามเวลาไทย จะได้วันที่ของ "เมื่อวาน" ทำให้วันที่สมัคร/วันที่อนุมัติ/วันเริ่มงาน
+// ที่บันทึกไว้เพี้ยนไป 1 วัน และคนที่วันสุดท้ายคือเมื่อวานยังถูกนับว่า "ยังทำงานอยู่"
+function todayLocalISO(){
+  const d = new Date();
+  const p2 = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
+}
 function isEmployeeActive(e){
-  return !e.endDate || e.endDate >= new Date().toISOString().slice(0,10);
+  return !e.endDate || e.endDate >= todayLocalISO();
 }
 
 // ── ทีม: จัดกลุ่มพนักงานเป็นทีม กำหนดหัวหน้าทีม+สมาชิก ──
@@ -444,7 +452,7 @@ function saveEmployee(employeeId){
     const e = EMPLOYEES.find(x => x.id === employeeId);
     Object.assign(e, { name, position, phone, email, startDate, endDate });
   } else {
-    EMPLOYEES.push({ id: nextEmployeeId(), code: nextFreeEmployeeCode(), name, position, phone, email, startDate: startDate || new Date().toISOString().slice(0,10), endDate });
+    EMPLOYEES.push({ id: nextEmployeeId(), code: nextFreeEmployeeCode(), name, position, phone, email, startDate: startDate || todayLocalISO(), endDate });
   }
   closeGenModal();
   renderEmployees();
@@ -611,7 +619,7 @@ function submitEmployeeRequest(){
   empReqNextId++;
   EMPLOYEE_REQUESTS.push({
     id: empReqNextId, taxId, prefix, firstName, lastName, nickname, birthDate, idCardAddress, personalEmail,
-    status: 'pending', submittedAt: new Date().toISOString().slice(0,10), position: null, companyEmail: null,
+    status: 'pending', submittedAt: todayLocalISO(), position: null, companyEmail: null,
   });
   closeGenModal();
   renderEmployeeRequests();
@@ -725,11 +733,11 @@ function approveRequest(reqId){
   r.position = position;
   r.companyEmail = companyEmail;
   r.empCode = empCode;
-  r.approvedBy = { id: viewer.id, name: viewer.name, position: viewer.position, date: new Date().toISOString().slice(0,10) };
+  r.approvedBy = { id: viewer.id, name: viewer.name, position: viewer.position, date: todayLocalISO() };
   EMPLOYEES.push({
     id: nextEmployeeId(), code: empCode,
     name: `${r.prefix}${r.firstName} ${r.lastName}`, nickname: r.nickname, position,
-    phone: '', email: companyEmail, startDate: new Date().toISOString().slice(0,10), endDate: null,
+    phone: '', email: companyEmail, startDate: todayLocalISO(), endDate: null,
     taxId: r.taxId, birthDate: r.birthDate, idCardAddress: r.idCardAddress, personalEmail: r.personalEmail,
   });
   renderEmployeeRequests();
@@ -744,7 +752,7 @@ function rejectRequest(reqId){
   if (!r) return;
   const viewer = EMPLOYEES.find(e => e.id === currentViewerEmployeeId);
   r.status = 'rejected';
-  r.rejectedBy = { id: viewer.id, name: viewer.name, position: viewer.position, date: new Date().toISOString().slice(0,10) };
+  r.rejectedBy = { id: viewer.id, name: viewer.name, position: viewer.position, date: todayLocalISO() };
   renderEmployeeRequests();
   openReviewRequestModal(reqId);
   showToastMock('ปฏิเสธคำขอแล้ว');

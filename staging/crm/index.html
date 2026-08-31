@@ -459,12 +459,13 @@
                the page's own surrounding chrome — stat cards, sub-tabs — so 6 was chosen as
                the safe uniform value, same "one shared number everywhere" rule as before). -->
           <div style="height:362px;overflow-y:auto">
-          <table class="text-center" style="table-layout:fixed;width:100%;min-width:1210px">
+          <table class="text-center" style="table-layout:fixed;width:100%;min-width:1330px">
             <colgroup>
               <col style="width:32px"> <!-- ดาว -->
               <col style="width:40px"> <!-- ลำดับ -->
               <col style="width:80px"> <!-- CODE -->
               <col style="width:350px"><!-- NAME -->
+              <col id="trk-col-owner" style="width:120px"><!-- ผู้รับผิดชอบ (LV1-2 เท่านั้น — init() ถอด <col>+<th> นี้ออกสำหรับ LV3-5 ดู canSeeAssignees) -->
               <col> <!-- NOTE: ไม่กำหนดความกว้าง ยืดเต็มพื้นที่ที่เหลือ -->
               <col style="width:116px"><!-- รับเอกสาร -->
               <col style="width:116px"><!-- TAX1 -->
@@ -479,6 +480,7 @@
                 <th class="px-1 text-xs font-semibold text-[var(--ink-muted)] border-b-2 border-[var(--border)] col-num">#</th>
                 <th class="px-1 text-xs font-semibold text-[var(--ink-muted)] border-b-2 border-[var(--border)] col-code">CODE</th>
                 <th class="px-2 text-xs font-semibold text-[var(--ink-muted)] border-b-2 border-[var(--border)] col-name">ชื่อบริษัท</th>
+                <th id="trk-th-owner" class="px-2 text-xs font-semibold text-[var(--ink-muted)] border-b-2 border-[var(--border)]">ผู้รับผิดชอบ</th>
                 <th class="px-2 text-xs font-semibold text-[var(--ink-muted)] border-b-2 border-[var(--border)] border-l border-[var(--border)]">โน๊ต</th>
                 <th class="px-2 text-xs font-semibold text-[var(--ink-muted)] border-b-2 border-[var(--border)] border-l border-[var(--border)]">รับเอกสาร</th>
                 <th class="px-2 text-xs font-bold text-blue-600 bg-blue-50 border-b-2 border-[var(--border)] border-l border-[var(--border)]">TAX 1<div class="text-[9px] font-normal text-blue-400 mt-0.5">PND1·3·53·54·PP36</div></th>
@@ -488,7 +490,7 @@
               </tr>
             </thead>
             <tbody id="tracking-tbody">
-              <tr><td colspan="11" class="py-10 text-[var(--ink-muted)] text-sm">กำลังโหลด…</td></tr>
+              <tr><td colspan="12" class="py-10 text-[var(--ink-muted)] text-sm">กำลังโหลด…</td></tr>
             </tbody>
           </table>
           </div>
@@ -553,7 +555,7 @@
           </div>
         </div>
         <div class="px-6 pb-8 overflow-x-auto">
-          <div class="bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden" style="min-width:620px">
+          <div class="bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden" style="min-width:740px">
             <!-- height (fixed) = header row (60px) + 6 rows at the shared 49px row height
                  (see "#yearend-tbody tr" in the <style> block) + ~8px buffer = 362px. Same
                  fixed-not-elastic + sticky-header pattern as #tracking-tbody's wrapper
@@ -569,6 +571,7 @@
                   <th class="text-center px-1 text-xs font-semibold text-[var(--ink-muted)] border-b-2 border-[var(--border)]" style="width:40px">#</th>
                   <th class="text-center px-1 text-xs font-semibold text-[var(--ink-muted)] border-b-2 border-[var(--border)]" style="width:76px">CODE</th>
                   <th class="text-left px-2 text-xs font-semibold text-[var(--ink-muted)] border-b-2 border-[var(--border)]" style="min-width:150px">ชื่อบริษัท</th>
+                  <th class="text-left px-2 text-xs font-semibold text-[var(--ink-muted)] border-b-2 border-[var(--border)]" style="min-width:120px">ทีมที่รับผิดชอบ</th>
                   <th class="px-3 text-xs font-semibold text-[var(--ink-muted)] border-b-2 border-[var(--border)] border-l border-[var(--border)]">กท.26ก</th>
                   <th class="px-3 text-xs font-semibold text-[var(--ink-muted)] border-b-2 border-[var(--border)]">กท.20ก</th>
                   <th class="px-3 text-xs font-semibold text-[var(--ink-muted)] border-b-2 border-[var(--border)]">ภ.ง.ด.1ก</th>
@@ -576,7 +579,7 @@
                 </tr>
               </thead>
               <tbody id="yearend-tbody">
-                <tr><td colspan="8" class="py-10 text-[var(--ink-muted)] text-sm">กำลังโหลด…</td></tr>
+                <tr><td colspan="9" class="py-10 text-[var(--ink-muted)] text-sm">กำลังโหลด…</td></tr>
               </tbody>
             </table>
             </div>
@@ -608,7 +611,7 @@
           </div>
         </div>
         <div class="px-6 pb-8 overflow-x-auto">
-          <div class="bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden" style="min-width:880px">
+          <div class="bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden" style="min-width:1000px">
             <!-- matches #yearend-tbody above: fixed height = header (60px) + 6 rows at
                  49px + ~8px buffer = 362px (see that comment for why 6, not 12) -->
             <div style="height:362px;overflow-y:auto">
@@ -619,6 +622,7 @@
                   <th class="text-center px-1 text-xs font-semibold text-[var(--ink-muted)] border-b-2 border-[var(--border)]" style="width:40px">#</th>
                   <th class="text-center px-1 text-xs font-semibold text-[var(--ink-muted)] border-b-2 border-[var(--border)]" style="width:76px">CODE</th>
                   <th class="text-left px-2 text-xs font-semibold text-[var(--ink-muted)] border-b-2 border-[var(--border)]" style="min-width:150px">ชื่อบริษัท</th>
+                  <th class="text-left px-2 text-xs font-semibold text-[var(--ink-muted)] border-b-2 border-[var(--border)]" style="min-width:120px">ทีมที่รับผิดชอบ</th>
                   <th class="px-3 text-xs font-semibold text-[var(--ink-muted)] border-b-2 border-[var(--border)]" style="min-width:150px">รอบงบการเงิน</th>
                   <th class="px-3 text-xs font-semibold text-[var(--ink-muted)] border-b-2 border-[var(--border)] border-l border-[var(--border)]">ภ.ง.ด.51</th>
                   <th class="px-3 text-xs font-semibold text-[var(--ink-muted)] border-b-2 border-[var(--border)]">กระทบยอด</th>
@@ -629,7 +633,7 @@
                 </tr>
               </thead>
               <tbody id="yearend-fin-tbody">
-                <tr><td colspan="11" class="py-10 text-[var(--ink-muted)] text-sm">กำลังโหลด…</td></tr>
+                <tr><td colspan="12" class="py-10 text-[var(--ink-muted)] text-sm">กำลังโหลด…</td></tr>
               </tbody>
             </table>
             </div>
@@ -661,7 +665,7 @@
           </div>
         </div>
         <div class="px-6 pb-8 overflow-x-auto">
-          <div class="bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden" style="min-width:740px">
+          <div class="bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden" style="min-width:860px">
             <!-- matches #yearend-tbody above: fixed height = header (60px) + 6 rows at
                  49px + ~8px buffer = 362px (see that comment for why 6, not 12) -->
             <div style="height:362px;overflow-y:auto">
@@ -672,6 +676,7 @@
                   <th class="text-center px-1 text-xs font-semibold text-[var(--ink-muted)] border-b-2 border-[var(--border)]" style="width:40px">#</th>
                   <th class="text-center px-1 text-xs font-semibold text-[var(--ink-muted)] border-b-2 border-[var(--border)]" style="width:76px">CODE</th>
                   <th class="text-left px-2 text-xs font-semibold text-[var(--ink-muted)] border-b-2 border-[var(--border)]" style="min-width:150px">ชื่อบริษัท</th>
+                  <th class="text-left px-2 text-xs font-semibold text-[var(--ink-muted)] border-b-2 border-[var(--border)]" style="min-width:120px">ทีมที่รับผิดชอบ</th>
                   <th class="px-3 text-xs font-semibold text-[var(--ink-muted)] border-b-2 border-[var(--border)] border-l border-[var(--border)]" style="min-width:110px">วันที่เลิกกิจการ</th>
                   <th class="px-3 text-xs font-semibold text-[var(--ink-muted)] border-b-2 border-[var(--border)]">การปิดงบการเงิน</th>
                   <th class="px-3 text-xs font-semibold text-[var(--ink-muted)] border-b-2 border-[var(--border)]">ยื่นแบบ</th>
@@ -680,7 +685,7 @@
                 </tr>
               </thead>
               <tbody id="yearend-dissolved-tbody">
-                <tr><td colspan="9" class="py-10 text-[var(--ink-muted)] text-sm">กำลังโหลด…</td></tr>
+                <tr><td colspan="10" class="py-10 text-[var(--ink-muted)] text-sm">กำลังโหลด…</td></tr>
               </tbody>
             </table>
             </div>
@@ -742,11 +747,11 @@
           <div class="bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden list-card-cap">
             <div class="flex items-center gap-3 px-4 py-2.5 border-b border-[var(--border)] bg-[var(--surface-2)] text-[11px] font-semibold text-[var(--ink-muted)] uppercase tracking-wide">
               <span class="w-6 flex-shrink-0"></span>
-              <span class="w-12 flex-shrink-0">#</span>
-              <span class="flex-shrink-0" style="width:72px">CODE</span>
+              <span class="w-10 flex-shrink-0">#</span>
+              <span class="flex-shrink-0" style="width:80px">CODE</span>
               <span class="flex-1">NAME</span>
               <span class="w-20 flex-shrink-0 text-center">TYPE</span>
-              <span class="w-14 flex-shrink-0 text-center">EDIT</span>
+              <span class="w-10 flex-shrink-0 text-center">EDIT</span>
             </div>
             <!-- height (fixed, not max-height) = 6 rows at the shared 49px row height (see
                  "#client-list > div" in the <style> block): 6 × 49px = 294px (see the
@@ -791,11 +796,11 @@
           <div class="bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden list-card-cap">
             <div class="flex items-center gap-3 px-4 py-2.5 border-b border-[var(--border)] bg-[var(--surface-2)] text-[11px] font-semibold text-[var(--ink-muted)] uppercase tracking-wide">
               <span class="w-6 flex-shrink-0"></span>
-              <span class="w-12 flex-shrink-0">#</span>
-              <span class="flex-shrink-0" style="width:72px">CODE</span>
+              <span class="w-10 flex-shrink-0">#</span>
+              <span class="flex-shrink-0" style="width:80px">CODE</span>
               <span class="flex-1">NAME</span>
               <span class="w-20 flex-shrink-0 text-center">TYPE</span>
-              <span class="w-14 flex-shrink-0 text-center">EDIT</span>
+              <span class="w-10 flex-shrink-0 text-center">EDIT</span>
             </div>
             <!-- matches #client-list above: fixed height, 6 rows at the shared 49px row
                  height = 294px -->
@@ -860,8 +865,8 @@
           <div class="bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden list-card-cap">
             <div class="flex items-center gap-3 px-4 py-2.5 border-b border-[var(--border)] bg-[var(--surface-2)] text-[11px] font-semibold text-[var(--ink-muted)] uppercase tracking-wide">
               <span class="w-6 flex-shrink-0"></span>
-              <span class="w-12 flex-shrink-0">#</span>
-              <span class="flex-shrink-0" style="width:72px">CODE</span>
+              <span class="w-10 flex-shrink-0">#</span>
+              <span class="flex-shrink-0" style="width:80px">CODE</span>
               <span class="flex-1">NAME</span>
               <span class="w-24 flex-shrink-0 text-right">ค่าบริการ</span>
               <span class="w-36 flex-shrink-0 text-center">สถานะ</span>
@@ -912,8 +917,8 @@
           <div class="bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden list-card-cap">
             <div class="flex items-center gap-3 px-4 py-2.5 border-b border-[var(--border)] bg-[var(--surface-2)] text-[11px] font-semibold text-[var(--ink-muted)] uppercase tracking-wide">
               <span class="w-6 flex-shrink-0"></span>
-              <span class="w-12 flex-shrink-0">#</span>
-              <span class="flex-shrink-0" style="width:72px">CODE</span>
+              <span class="w-10 flex-shrink-0">#</span>
+              <span class="flex-shrink-0" style="width:80px">CODE</span>
               <span class="flex-1">NAME</span>
               <span class="w-20 flex-shrink-0 text-center">TYPE</span>
               <span class="w-24 flex-shrink-0 text-right">ค่าบริการ</span>
@@ -1376,6 +1381,10 @@ let credMap      = {};
 let invoiceMap   = {};
 let yearEndMap   = {};
 let staffList    = [];
+// crm_staff_clients (staff_id, client_id) — ผู้รับผิดชอบลูกค้าแต่ละราย (many-to-many: ลูกค้า 1 ราย
+// มีผู้รับผิดชอบได้มากกว่า 1 คน) เก็บเป็น client_id -> [staff_id,...] ชื่อคนดึงจาก staffList (org_staff)
+// ตัวเดิมที่มีอยู่แล้ว ไม่สร้างแหล่งข้อมูลชื่อพนักงานชุดที่สอง
+let clientStaffMap = {};
 let curPage      = 'tracking';
 let curYear      = new Date().getFullYear();
 let curMonth     = new Date().getMonth() + 1;
@@ -1422,6 +1431,14 @@ const canManageStaffAuth = () => myLevel() <= 2;          // LV1-2: รีเซ
 const canManageTeams = () => myLevel() <= 3;              // LV1-3: สร้าง/แก้ไข/ลบทีม, มอบหมายทีมให้ลูกค้า
 const canManageProgramSettings = () => myLevel() <= 2;    // LV1-2: ตั้งค่าโปรแกรม
 const canSeeAllTeamClients = () => myLevel() <= 2;        // LV1-2: ไม่ถูกจำกัดตามทีมในหน้ารายเดือน/ปลายปี
+// LV1-2: คอลัมน์ "ผู้รับผิดชอบ" ในหน้ารายเดือน — เกณฑ์นี้ไม่ได้ตั้งขึ้นใหม่ แต่ล้อตาม RLS ของตาราง
+// crm_staff_clients ตรงๆ: policy crm_sc_sel อนุญาต SELECT เมื่อ org_get_role() IN ('owner','manager')
+// หรือ staff_id = auth.uid() เท่านั้น แปลว่า LV3-5 จะได้ข้อมูลกลับมา "เฉพาะแถวของตัวเอง" ทำให้คอลัมน์นี้
+// ว่างเกือบทั้งคอลัมน์สำหรับพวกเขา ซึ่งอ่านผิดความหมายได้ทันที (ช่องว่างในไฟล์นี้แปลว่า "ไม่มีคนรับผิดชอบ"
+// ตามธรรมเนียมเดียวกับ computeClientNo ที่คืนค่าว่าง) จึงซ่อนทั้งคอลัมน์สำหรับ LV3-5 แทนที่จะโชว์ข้อมูล
+// ที่ไม่ครบแล้วปล่อยให้เข้าใจผิด — ตรงกับ canSeeAuditLog (LV1-2) ที่ใช้หลักการเดียวกันอยู่แล้วในไฟล์นี้
+// *ไม่ได้* แก้ RLS ฝั่งฐานข้อมูลเพื่อให้เห็นครบ (เป็นการแตะ production ที่เจ้าของยังไม่อนุมัติ)
+const canSeeAssignees = () => myLevel() <= 2;
 function myTeamIds() {
   return teams.filter(t => t.lead_id === profile.id || (teamMembersMap[t.id] || []).includes(profile.id)).map(t => t.id);
 }
@@ -1499,7 +1516,10 @@ function noteCell(clientId, note, prevNote) {
     // ไม่ได้ escape ให้ — พอหลุดเข้าไปใน string literal ของ JS จะกลายเป็น syntax error ทั้งบรรทัด กดแก้ไม่ได้
     // อีกเลยตลอดไป (ปุ่ม "+ โน๊ต" ขึ้นเฉพาะตอนโน๊ตว่าง) ส่ง id อย่างเดียวแล้วให้ editNote ไปอ่านค่าจาก
     // taskMap เอง (แหล่งเดียวกับที่ renderTracking ใช้ส่งเข้ามาอยู่แล้ว)
-    return `<div class="text-xs text-[var(--ink)] leading-tight cursor-pointer hover:text-[var(--accent)] truncate" title="${e(note)}" onclick="editNote(${clientId})">${e(note)}</div>`;
+    // LV4-5 อ่านได้อย่างเดียว (editNote คืนค่าทันทีถ้า !canEdit) จึงไม่ใส่ cursor-pointer/hover/onclick ให้
+    // ไม่งั้นโน๊ตจะดูกดได้แต่กดแล้วเงียบ — สองกิ่งล่างของฟังก์ชันนี้แยกกรณีอ่านอย่างเดียวไว้ถูกอยู่แล้ว
+    const noteEditable = canEdit();
+    return `<div class="text-xs text-[var(--ink)] leading-tight truncate${noteEditable ? ' cursor-pointer hover:text-[var(--accent)]' : ''}" title="${e(note)}"${noteEditable ? ` onclick="editNote(${clientId})"` : ''}>${e(note)}</div>`;
   }
   if (!canEdit()) {
     return prevNote ? `<div class="text-xs text-[var(--ink-muted)] italic leading-tight truncate" title="โน๊ตเดือนก่อน: ${e(prevNote)}">${e(prevNote)}</div>` : '';
@@ -1652,6 +1672,14 @@ async function init() {
   // สร้าง/แก้ไขทีมได้จริง (ปุ่ม "+ สร้างทีม" อยู่ในแท็บย่อย "ทีม" ของหน้านี้) — LV3 มีสิทธิ์จัดการทีมอยู่แล้ว
   // ตามนิยามเดิม จึงต้องเปิดหน้านี้ให้ถึงได้ ส่วนสิทธิ์ที่แคบกว่านั้นยังกันไว้ในหน้าเองเหมือนเดิมทุกจุด
   // (แท็บ "คำขอ" = canApproveRequest LV1-2, ปุ่มรีเซ็ทรหัสผ่าน = canManageStaffAuth LV1-2)
+  // คอลัมน์ "ผู้รับผิดชอบ" ของหน้ารายเดือน — ถอด <col>+<th> ออกจาก DOM ไปเลยสำหรับ LV3-5 (ไม่ใช่แค่
+  // ซ่อนด้วย class) เพราะตารางนี้เป็น table-layout:fixed ที่อ่านความกว้างจาก <colgroup> — display:none
+  // ใช้กับ <col> ไม่ได้จริง ต้องเอาตัว <col> ออกความกว้างถึงจะจัดใหม่ถูก renderTracking() ก็ไม่สร้าง <td>
+  // ของคอลัมน์นี้ตามไปด้วย (เช็ค canSeeAssignees ซ้ำอีกจุด) จำนวนคอลัมน์จึงตรงกันทั้งสองฝั่งเสมอ
+  if (!canSeeAssignees()) {
+    document.getElementById('trk-col-owner')?.remove();
+    document.getElementById('trk-th-owner')?.remove();
+  }
   if (!canManageTeams()) document.getElementById('settings-menu-employees').classList.add('hidden');
   if (!canManageTeams()) document.getElementById('settings-menu-teamgrid').classList.add('hidden');
   if (canManageTeams()) document.getElementById('add-team-btn').classList.remove('hidden');
@@ -1669,6 +1697,11 @@ async function init() {
     canCred() ? loadCreds() : Promise.resolve(),
     canEdit() ? loadInvoices() : Promise.resolve(),
     canApproveRequest() ? loadStaffRequests() : Promise.resolve(),
+    // ชื่อพนักงาน + ตารางผู้รับผิดชอบ ใช้คู่กันเสมอ (map เก็บแค่ staff_id ต้องพึ่ง staffList แปลงเป็นชื่อ)
+    // ตั้ง staffListLoaded ไปด้วยเพื่อไม่ให้หน้า "พนักงาน" โหลด org_staff ซ้ำอีกรอบทีหลัง
+    canSeeAssignees()
+      ? Promise.all([loadStaff(), loadStaffAssignments()]).then(() => { staffListLoaded = true; })
+      : Promise.resolve(),
     loadTeams().then(() => { teamsLoaded = true; }),
     loadAllBillingContracts(),
   ]);
@@ -1751,6 +1784,13 @@ async function loadYearEndTasks() {
 async function loadStaff() {
   const { data } = await sb.from('org_staff').select('*').order('display_name');
   staffList = data || [];
+}
+// ผู้รับผิดชอบลูกค้า — เรียกเฉพาะ LV1-2 เท่านั้น (ดู canSeeAssignees) เพื่อไม่ให้ยิง query ที่ RLS จะ
+// คืนค่าไม่ครบอยู่แล้วโดยเปล่าประโยชน์ แพทเทิร์นเดียวกับ canEdit() ? loadInvoices() : ... ใน init()
+async function loadStaffAssignments() {
+  const { data } = await sb.from('crm_staff_clients').select('staff_id,client_id');
+  clientStaffMap = {};
+  (data || []).forEach(r => { (clientStaffMap[r.client_id] ||= []).push(r.staff_id); });
 }
 async function loadTeams() {
   const [{ data: t }, { data: tm }] = await Promise.all([
@@ -1932,6 +1972,25 @@ document.addEventListener('click', (ev) => {
 // ─────────────────────────────────────────────────────────────
 // PAGE: TRACKING
 // ─────────────────────────────────────────────────────────────
+// ชื่อผู้รับผิดชอบของลูกค้าหนึ่งราย เรียงตามชื่อเสมอ (ลำดับที่ query คืนมาไม่การันตี — เรียงเองเพื่อให้
+// ชื่อที่โชว์เป็นตัวแรกไม่สลับไปมาระหว่างรีเฟรช) ชื่อดึงจาก staffList (org_staff) ที่โหลดไว้แล้ว
+function assigneeNames(clientId) {
+  return (clientStaffMap[clientId] || [])
+    .map(sid => staffList.find(s => s.id === sid)?.display_name)
+    .filter(Boolean)
+    .sort((a, b) => String(a).localeCompare(String(b), 'th'));
+}
+// ลูกค้า 1 รายมีผู้รับผิดชอบได้หลายคน — โชว์ชื่อคนแรก + "+N" ต่อท้ายเมื่อมีมากกว่าหนึ่ง (ไม่ใช่ต่อกัน
+// ทุกชื่อ) เพื่อการันตีว่าเนื้อหาอยู่บรรทัดเดียวเสมอ ความสูงแถวจึงยังเป็น 49px เท่ากันทุกหน้าตามที่ตั้งใจ
+// ไว้ ชื่อครบทุกคนอยู่ใน title (hover ดูได้) ไม่มีผู้รับผิดชอบ = ช่องว่าง ไม่ใช่ขีด (ธรรมเนียมเดียวกับ
+// computeClientNo)
+function assigneeCellHtml(clientId) {
+  const names = assigneeNames(clientId);
+  const label = names.length ? (names.length > 1 ? `${names[0]} +${names.length - 1}` : names[0]) : '';
+  return `<td class="px-2 py-0.5 text-left" style="overflow:hidden" title="${e(names.join(', '))}">
+            <div class="text-xs text-[var(--ink)] leading-tight overflow-hidden text-ellipsis whitespace-nowrap">${e(label)}</div>
+          </td>`;
+}
 function renderTracking() {
   const thYear = curYear;
   document.getElementById('month-display').textContent = `${THAI_MONTHS[curMonth]} ${thYear}`;
@@ -1983,9 +2042,14 @@ function renderTracking() {
     const clientNo = computeClientNo(c.billing_type, c.seq_num);
     const t = taskMap[c.id] || {};
     const docItems = (t.doc_items||'').split(',').filter(Boolean);
+    // ป้าย "รับเอกสารแล้ว" ต้องเห็นได้ทุกระดับ แต่กดแก้ไขได้เฉพาะ LV1-3 (openDocModal คืนค่าทันทีถ้า
+    // !canEdit) — ระดับที่แก้ไม่ได้จึงไม่ใส่ onclick/cursor-pointer และไม่ขึ้น title ว่า "คลิกเพื่อแก้ไข"
+    const docTitle = docItems.length
+      ? docItems.length + ' รายการ: ' + docItems.join(', ')
+      : (canEdit() ? 'คลิกเพื่อแก้ไข' : '');
     const docBadge = t.doc_date
-      ? `<span onclick="openDocModal(${c.id})" title="${e(docItems.length ? docItems.length + ' รายการ: ' + docItems.join(', ') : 'คลิกเพื่อแก้ไข')}"
-           class="inline-flex items-center bg-green-50 text-green-700 border border-green-200 text-xs font-semibold px-2 py-0.5 rounded cursor-pointer hover:bg-green-100 leading-tight whitespace-nowrap">
+      ? `<span ${canEdit() ? `onclick="openDocModal(${c.id})"` : ''} title="${e(docTitle)}"
+           class="inline-flex items-center bg-green-50 text-green-700 border border-green-200 text-xs font-semibold px-2 py-0.5 rounded leading-tight whitespace-nowrap${canEdit() ? ' cursor-pointer hover:bg-green-100' : ''}">
            📄 ${e(thaiDate(t.doc_date))}
          </span>`
       : (canEdit()
@@ -2047,6 +2111,7 @@ function renderTracking() {
       <td class="px-2 py-0.5 text-left col-name cursor-pointer" onclick="openPanel(${c.id})">
         <div class="text-sm text-[var(--ink)] leading-tight overflow-hidden text-ellipsis whitespace-nowrap">${e(c.thai_name)}</div>
       </td>
+      ${canSeeAssignees() ? assigneeCellHtml(c.id) : ''}
       <td class="px-2 py-0.5 text-left border-l border-[var(--border)]" style="overflow:hidden">
         ${noteCell(c.id, t.notes||'', (prevTaskMap[c.id]||[])[0]?.note||'')}
       </td>
@@ -2058,7 +2123,7 @@ function renderTracking() {
     </tr>`;
   });
 
-  if (!rows) rows = `<tr><td colspan="11" class="py-10 text-[var(--ink-muted)] text-sm text-center">ยังไม่มีลูกค้าในระบบ</td></tr>`;
+  if (!rows) rows = `<tr><td colspan="${canSeeAssignees() ? 12 : 11}" class="py-10 text-[var(--ink-muted)] text-sm text-center">ยังไม่มีลูกค้าในระบบ</td></tr>`;
   document.getElementById('tracking-tbody').innerHTML = rows;
 }
 
@@ -2637,6 +2702,19 @@ function yeFavNumCodeName(c) {
       <div class="text-sm text-[var(--ink)] max-w-[190px] leading-tight">${e(c.thai_name)}</div>
     </td>`;
 }
+// "ทีมที่รับผิดชอบ" — ใช้ร่วมกันทั้ง 3 แท็บย่อยของหน้ารายปี (งานรายปี/งบการเงิน/เลิกกิจการ) วางถัดจาก
+// บล็อก ดาว/#/CODE/ชื่อบริษัท เหมือนกันทุกตาราง เพื่อให้ลำดับคอลัมน์ฝั่งซ้ายของทั้ง 3 แท็บย่อยยังตรงกัน
+// ตามที่ตั้งใจไว้ ชื่อทีมมาจาก crm_clients.team_id -> org_teams.name ผ่านตัวแปร teams ที่ init() โหลดไว้
+// แล้ว (นโยบาย RLS ของ org_teams เปิดให้พนักงานที่ยัง active ทุกคนอ่านได้ ไม่มีปัญหาข้อมูลไม่ครบแบบ
+// crm_staff_clients จึงไม่ต้องกันตามระดับสิทธิ์) — บริษัทภายใน/ลูกค้าที่ยังไม่ได้กำหนดทีมได้ช่องว่าง
+// ไม่ใช่ขีด (ธรรมเนียมเดียวกับ computeClientNo) และบังคับให้อยู่บรรทัดเดียวเสมอ ความสูงแถวจึงยังเป็น 49px
+function yeTeamTd(c) {
+  const n = c.team_id == null ? '' : (teams.find(t => t.id === c.team_id)?.name || '');
+  return `<td class="px-2 py-2.5 text-left">
+            <div class="text-xs text-[var(--ink-muted)] leading-tight overflow-hidden text-ellipsis whitespace-nowrap"
+                 style="max-width:140px" title="${e(n)}">${e(n)}</div>
+          </td>`;
+}
 // คอลัมน์สรุปของแต่ละ "หัวข้อ" (group) — โชว์ "เสร็จ/ทั้งหมด" ตัวเลขเดียว กดแล้วเปิด modal เช็คลิสต์
 // ทีละขั้นตอนย่อย (แทนจุดเดียวแบบเดิม เพราะแต่ละหัวข้อตอนนี้มีหลายขั้นตอน บางหัวข้อเช่นกระทบยอดมีถึง 11)
 function mkYeGroupTd(group, c, t, groupsKind, first, subtitle) {
@@ -2689,11 +2767,12 @@ function renderYeTaskTable() {
     const t = yearEndMap[c.id] || {};
     rows += `<tr class="border-b border-[var(--border)]">
       ${yeFavNumCodeName(c)}
+      ${yeTeamTd(c)}
       ${YE_TASK_GROUPS.map((g, i) => mkYeGroupTd(g, c, t, 'task', i === 0)).join('')}
       <td class="px-3 py-2.5">${progressBar(yeGroupsPct(YE_TASK_GROUPS, c, t))}</td>
     </tr>`;
   });
-  if (!rows) rows = `<tr><td colspan="8" class="py-10 text-[var(--ink-muted)] text-sm text-center">ยังไม่มีลูกค้าในระบบ</td></tr>`;
+  if (!rows) rows = `<tr><td colspan="9" class="py-10 text-[var(--ink-muted)] text-sm text-center">ยังไม่มีลูกค้าในระบบ</td></tr>`;
   document.getElementById('yearend-tbody').innerHTML = rows;
 }
 function renderYeFinTable() {
@@ -2705,12 +2784,13 @@ function renderYeFinTable() {
     const period = yeFiscalPeriod(c, yearEndYear);
     rows += `<tr class="border-b border-[var(--border)]">
       ${yeFavNumCodeName(c)}
+      ${yeTeamTd(c)}
       <td class="px-2 py-2.5 text-xs text-[var(--ink-muted)] whitespace-nowrap">${fmtDDMMYYYY(period.startIso)} – ${fmtDDMMYYYY(period.endIso)}</td>
       ${YE_FIN_GROUPS.map((g, i) => mkYeGroupTd(g, c, t, 'fin', i === 0, g.key === 'pnd51' ? `: ${fmtDDMMYYYY(period.sixMonthIso)}` : null)).join('')}
       <td class="px-3 py-2.5">${progressBar(yeGroupsPct(YE_FIN_GROUPS, c, t))}</td>
     </tr>`;
   });
-  if (!rows) rows = `<tr><td colspan="11" class="py-10 text-[var(--ink-muted)] text-sm text-center">ยังไม่มีลูกค้าในระบบ</td></tr>`;
+  if (!rows) rows = `<tr><td colspan="12" class="py-10 text-[var(--ink-muted)] text-sm text-center">ยังไม่มีลูกค้าในระบบ</td></tr>`;
   document.getElementById('yearend-fin-tbody').innerHTML = rows;
 }
 function renderYearEnd() {
@@ -2789,6 +2869,7 @@ function renderDissolved() {
         <td class="px-2 py-3 text-left cursor-pointer hover:bg-purple-50 transition-colors" onclick="openPanel(${c.id})">
           <div class="text-sm text-[var(--ink)] max-w-[190px] leading-tight">${e(c.thai_name)}</div>
         </td>
+        ${yeTeamTd(c)}
         <td class="px-2 py-2.5 border-l border-[var(--border)] text-xs text-[var(--ink-muted)] ${canEdit() ? 'cursor-pointer hover:text-[var(--accent)]' : ''}"
             ${canEdit() ? `onclick="openEditDissolutionDate(${c.id})"` : ''}>
           ${c.dissolution_date ? fmtDate(c.dissolution_date) : (canEdit() ? '<span class="text-[var(--ink-muted)]">+ ระบุวันที่</span>' : '—')}
@@ -2799,7 +2880,7 @@ function renderDissolved() {
         <td class="px-3 py-2.5">${progressBar(pct)}</td>
       </tr>`;
     });
-  if (!rows) rows = `<tr><td colspan="9" class="py-10 text-[var(--ink-muted)] text-sm text-center">ไม่มีลูกค้าที่เลิกกิจการ</td></tr>`;
+  if (!rows) rows = `<tr><td colspan="10" class="py-10 text-[var(--ink-muted)] text-sm text-center">ไม่มีลูกค้าที่เลิกกิจการ</td></tr>`;
   document.getElementById('yearend-dissolved-tbody').innerHTML = rows;
 }
 async function toggleDissolutionField(clientId, field, cell) {
@@ -2938,7 +3019,7 @@ function missingCredsNote(c) {
   if (!cred.rd_username || !cred.rd_password) missing.push('RD');
   if (c.type !== 'บุคคลธรรมดา' && (!cred.dbd_username || !cred.dbd_password)) missing.push('DBD');
   if (c.has_sso !== false && (!cred.sso_username || !cred.sso_password)) missing.push('SSO');
-  return missing.length ? ` <span class="text-red-500 font-normal">(ขาด ${missing.join(', ')})</span>` : '';
+  return missing.length ? `<span class="flex-shrink-0 text-sm font-normal text-red-500 whitespace-nowrap">(ขาด ${missing.join(', ')})</span>` : '';
 }
 function clientRowHtml(c, editable) {
   const isFav = favoriteClientIds.has(c.id);
@@ -2947,15 +3028,17 @@ function clientRowHtml(c, editable) {
       <button onclick="event.stopPropagation();toggleFavorite(${c.id})" title="${isFav ? 'เอาออกจากรายการโปรด' : 'เพิ่มในรายการโปรด'}" class="w-6 flex-shrink-0 flex items-center justify-center ${isFav ? 'text-amber-500' : 'text-[var(--ink-muted)] hover:text-amber-500'}">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
       </button>
-      <span class="w-12 flex-shrink-0 text-xs text-[var(--ink-muted)]">${e(computeClientNo(c.billing_type, c.seq_num))}</span>
-      <span class="flex-shrink-0 inline-block bg-[var(--surface-2)] text-[var(--accent)] text-xs font-bold px-1.5 py-0.5 rounded text-center overflow-hidden text-ellipsis whitespace-nowrap" style="width:72px">${e(c.code)}</span>
-      <span class="flex-1 min-w-0 text-sm font-semibold text-[var(--ink)] overflow-hidden text-ellipsis whitespace-nowrap">${e(c.thai_name)}${missingCredsNote(c)}</span>
+      <span class="w-10 flex-shrink-0 text-xs text-[var(--ink-muted)]">${e(computeClientNo(c.billing_type, c.seq_num))}</span>
+      <span class="flex-shrink-0 inline-block bg-[var(--surface-2)] text-[var(--accent)] text-xs font-bold px-1.5 py-0.5 rounded text-center overflow-hidden text-ellipsis whitespace-nowrap" style="width:80px">${e(c.code)}</span>
+      <span class="flex-1 min-w-0 flex items-baseline gap-1 overflow-hidden">
+        <span class="min-w-0 text-sm font-semibold text-[var(--ink)] overflow-hidden text-ellipsis whitespace-nowrap">${e(c.thai_name)}</span>${missingCredsNote(c)}
+      </span>
       <span class="w-20 flex-shrink-0 text-center text-[11px] text-[var(--ink-muted)]">${BILLING_TYPE_LABEL[c.billing_type] || '—'}</span>
       ${editable
-        ? `<button onclick="event.stopPropagation();openClientChanges(${c.id})" title="บันทึกการเปลี่ยนแปลง" class="w-14 flex-shrink-0 flex items-center justify-center py-1 rounded text-[var(--ink-muted)] hover:text-[var(--accent)] hover:bg-[var(--surface-2)] transition-colors">
+        ? `<button onclick="event.stopPropagation();openClientChanges(${c.id})" title="บันทึกการเปลี่ยนแปลง" class="w-10 flex-shrink-0 flex items-center justify-center py-1 rounded text-[var(--ink-muted)] hover:text-[var(--accent)] hover:bg-[var(--surface-2)] transition-colors">
              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
            </button>`
-        : `<span class="w-14 flex-shrink-0"></span>`}
+        : `<span class="w-10 flex-shrink-0"></span>`}
     </div>`;
 }
 
@@ -3683,12 +3766,14 @@ async function applyFeeChangeCore_(clientId, newFee, effectiveDate, note) {
     effective_from: effectiveDate,
     notes: `เปลี่ยนค่าบริการ: ${newFee} บาท (${effectiveDate})`,
   }).select().single();
-  // sync cache ประวัติสัญญาที่โหลดไว้แล้ว (ถ้าเคยเปิดแท็บ "การเงิน" มาก่อน) ให้ตรงกับ DB ทันที ไม่ต้องรอโหลด
-  // ใหม่ทั้งหน้า — กัน resolveEffectiveFee() ในแท็บการเงินเห็นประวัติเก่าค้างในหน้าเดียวกันนี้
-  if (billingContractsByClient[clientId]) {
-    billingContractsByClient[clientId].forEach(bc => { if (bc.effective_to == null) bc.effective_to = effectiveDate; });
-    if (newContract) billingContractsByClient[clientId].push(newContract);
-  }
+  // sync cache ประวัติสัญญาที่โหลดไว้แล้ว ให้ตรงกับ DB ทันที ไม่ต้องรอโหลดใหม่ทั้งหน้า — กัน
+  // resolveEffectiveFee() เห็นประวัติเก่าค้างในหน้าเดียวกันนี้ ต้องสร้าง array ให้ด้วยถ้าลูกค้ารายนี้ยังไม่เคยมี
+  // ประวัติสัญญาเลย (loadAllBillingContracts สร้าง key เฉพาะลูกค้าที่มีแถวอยู่แล้ว — ตอนนี้ยังไม่มีใครมีเลย
+  // สักราย) ไม่งั้นแถวที่เพิ่งสร้างจะตกหล่นจาก cache แล้วการเปลี่ยนครั้งถัดไปในเซสชันเดียวกันจะ resolve
+  // ราคา/ประเภทของเดือนกลางผิด (ใบแจ้งหนี้ที่ออกตอนนั้นก็ผิดตาม) จนกว่าจะโหลดหน้าใหม่
+  const feeCache = (billingContractsByClient[clientId] ||= []);
+  feeCache.forEach(bc => { if (bc.effective_to == null) bc.effective_to = effectiveDate; });
+  if (newContract) feeCache.push(newContract);
   c.monthly_fee = newFee;
 
   await logActivity('client_change_add', 'client', clientId, `บันทึกการเปลี่ยนแปลง: เปลี่ยนค่าบริการ → ${newFee}`);
@@ -3828,10 +3913,11 @@ async function applyTypeChangeCore_(clientId, newType, effectiveDate) {
     effective_from: effectiveDate,
     notes: `เปลี่ยนประเภท: ${oldNo} → ${newNo} (${effectiveDate})`,
   }).select().single();
-  if (billingContractsByClient[clientId]) {
-    billingContractsByClient[clientId].forEach(bc => { if (bc.effective_to == null) bc.effective_to = effectiveDate; });
-    if (newContract) billingContractsByClient[clientId].push(newContract);
-  }
+  // ต้องสร้าง array ให้ด้วยถ้ายังไม่มี key — เหตุผลเดียวกับ applyFeeChangeCore_ ด้านบน (ถ้าตกหล่น
+  // ตัวกรองประเภทของหน้ารายเดือนจะย้อนดูประเภท ณ เดือนก่อนหน้าผิดไปจนกว่าจะโหลดหน้าใหม่)
+  const typeCache = (billingContractsByClient[clientId] ||= []);
+  typeCache.forEach(bc => { if (bc.effective_to == null) bc.effective_to = effectiveDate; });
+  if (newContract) typeCache.push(newContract);
   c.billing_type = newType;
 
   await logActivity('client_info_update', 'client', clientId, `เปลี่ยนประเภทลูกค้า → ${newNo}`);
@@ -4709,6 +4795,18 @@ function onDateTextBlur(textId, hiddenId) {
   }
 }
 
+// ช่องวันที่ = พิมพ์เองก็ได้ กดเลือกจากปฏิทินก็ได้ — คลิกที่ตัวช่องเปิดปฏิทินขึ้นมาเลย (ปุ่มไอคอนปฏิทิน
+// ด้านขวายังอยู่เหมือนเดิม สำหรับคนที่ชินกับการกดไอคอน) ทั้งสองทางเรียก openDatePicker ด้วยอาร์กิวเมนต์ชุด
+// เดียวกันเป๊ะ รวม onChangeExtra (ผ่าน extraArg) จึงไม่มีทางที่สองทางนี้จะทำงานต่างกันได้
+//   • ไม่แย่งโฟกัส: openDatePicker ไม่เรียก focus()/blur() ที่ไหนเลย และวาดปฏิทินลงใน #dp-popup ซึ่งอยู่
+//     นอกช่องกรอก คลิกแล้วเคอร์เซอร์จึงยังอยู่ในช่อง พิมพ์ต่อได้ทันทีเหมือนเดิมทุกอย่าง (oninput/onblur เดิม)
+//   • ตัวปิดเมื่อคลิกข้างนอก (document listener ด้านล่าง) ไม่เผลอปิดทันทีที่คลิกเปิด เพราะ handler บนตัว
+//     input ทำงานก่อน (target phase) แล้วตั้ง dpTextId ให้เป็นช่องนี้ ตอน event ลอยไปถึง document จึงเข้า
+//     เงื่อนไขยกเว้น ev.target.id === dpTextId พอดี — คลิกช่องวันที่ "อีกช่องหนึ่ง" ตอนปฏิทินเปิดค้างอยู่ก็
+//     ด้วยเหตุผลเดียวกัน (ย้ายปฏิทินไปผูกกับช่องใหม่ ไม่ใช่ปิดทิ้ง)
+//   • คลิกช่องเดิมซ้ำ = เปิด/จัดตำแหน่งใหม่เสมอ ตั้งใจเลือกแบบนี้ (ไม่ใช่สลับปิด) เพราะคนมักคลิกกลางข้อความ
+//     เพื่อวางเคอร์เซอร์แก้ตัวเลข ถ้าคลิกที่สองแล้วปฏิทินหายจะงง — และให้เหมือนปุ่มไอคอนที่กดกี่ครั้งก็เปิด
+//   • ro (อ่านอย่างเดียว) ไม่ใส่ handler ใดๆ เลย เหมือนเดิม (ตัว input เป็น disabled อยู่แล้วด้วย)
 function dateFieldHtml(opts) {
   const { label, textId, hiddenId, isoVal, ro, dataKey, cls, wrapClass, onChangeExtra } = opts;
   const inputCls = cls || 'editable-field w-full text-sm text-[var(--ink)]';
@@ -4718,7 +4816,7 @@ function dateFieldHtml(opts) {
       ${label ? `<div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide mb-1">${label}</div>` : ''}
       <div class="relative">
         <input type="text" id="${textId}" inputmode="numeric" maxlength="10" value="${fmtDDMMYYYY(isoVal)}" placeholder="วว/ดด/ปปปป"
-          ${ro ? 'disabled' : `oninput="onDateTextInput('${textId}','${hiddenId}'${extraArg})" onblur="onDateTextBlur('${textId}','${hiddenId}')"`}
+          ${ro ? 'disabled' : `onclick="openDatePicker('${textId}','${hiddenId}'${extraArg})" oninput="onDateTextInput('${textId}','${hiddenId}'${extraArg})" onblur="onDateTextBlur('${textId}','${hiddenId}')"`}
           class="${inputCls} pr-8">
         <button type="button" tabindex="-1" ${ro ? 'disabled' : `onclick="openDatePicker('${textId}','${hiddenId}'${extraArg})"`}
           class="dp-open-btn absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-[var(--ink-muted)] hover:text-[var(--accent)] ${ro ? '' : 'cursor-pointer'}">
@@ -5096,8 +5194,8 @@ function financeCollectionRowHtml(c) {
       <button onclick="event.stopPropagation();toggleFavorite(${c.id})" title="${isFav ? 'เอาออกจากรายการโปรด' : 'เพิ่มในรายการโปรด'}" class="w-6 flex-shrink-0 flex items-center justify-center ${isFav ? 'text-amber-500' : 'text-[var(--ink-muted)] hover:text-amber-500'}">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
       </button>
-      <span class="w-12 flex-shrink-0 text-xs text-[var(--ink-muted)]">${e(computeClientNo(c.billing_type, c.seq_num))}</span>
-      <span class="flex-shrink-0 inline-block bg-[var(--surface-2)] text-[var(--accent)] text-xs font-bold px-1.5 py-0.5 rounded text-center overflow-hidden text-ellipsis whitespace-nowrap" style="width:72px">${e(c.code)}</span>
+      <span class="w-10 flex-shrink-0 text-xs text-[var(--ink-muted)]">${e(computeClientNo(c.billing_type, c.seq_num))}</span>
+      <span class="flex-shrink-0 inline-block bg-[var(--surface-2)] text-[var(--accent)] text-xs font-bold px-1.5 py-0.5 rounded text-center overflow-hidden text-ellipsis whitespace-nowrap" style="width:80px">${e(c.code)}</span>
       <span class="flex-1 min-w-0 text-sm font-semibold text-[var(--ink)] overflow-hidden text-ellipsis whitespace-nowrap">${e(c.thai_name)}</span>
       <span class="w-24 flex-shrink-0 text-right text-xs font-mono text-[var(--ink)]">${fmtMoney(amount)}</span>
       <span class="w-36 flex-shrink-0 text-center">${finStatusCellHtml(c, inv)}</span>
@@ -5240,8 +5338,8 @@ function financeFeeRowHtml(c) {
       <button onclick="event.stopPropagation();toggleFavorite(${c.id})" title="${isFav ? 'เอาออกจากรายการโปรด' : 'เพิ่มในรายการโปรด'}" class="w-6 flex-shrink-0 flex items-center justify-center ${isFav ? 'text-amber-500' : 'text-[var(--ink-muted)] hover:text-amber-500'}">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
       </button>
-      <span class="w-12 flex-shrink-0 text-xs text-[var(--ink-muted)]">${e(computeClientNo(c.billing_type, c.seq_num))}</span>
-      <span class="flex-shrink-0 inline-block bg-[var(--surface-2)] text-[var(--accent)] text-xs font-bold px-1.5 py-0.5 rounded text-center overflow-hidden text-ellipsis whitespace-nowrap" style="width:72px">${e(c.code)}</span>
+      <span class="w-10 flex-shrink-0 text-xs text-[var(--ink-muted)]">${e(computeClientNo(c.billing_type, c.seq_num))}</span>
+      <span class="flex-shrink-0 inline-block bg-[var(--surface-2)] text-[var(--accent)] text-xs font-bold px-1.5 py-0.5 rounded text-center overflow-hidden text-ellipsis whitespace-nowrap" style="width:80px">${e(c.code)}</span>
       <span class="flex-1 min-w-0 text-sm font-semibold text-[var(--ink)] overflow-hidden text-ellipsis whitespace-nowrap">${e(c.thai_name)}</span>
       <span class="w-20 flex-shrink-0 text-center text-[11px] text-[var(--ink-muted)] ${canEdit() ? 'cursor-pointer hover:text-[var(--accent)]' : ''}"${canEdit() ? ` onclick="event.stopPropagation();openEditType(${c.id})" title="เปลี่ยนประเภท"` : ''}>${BILLING_TYPE_LABEL[c.billing_type] || '—'}${canEdit() ? ' <span class="text-[var(--ink-muted)]">✎</span>' : ''}</span>
       <span class="w-24 flex-shrink-0 text-right text-xs font-mono ${canEdit() ? 'cursor-pointer hover:text-[var(--accent)]' : ''}"${canEdit() ? ` onclick="event.stopPropagation();openEditFee(${c.id})" title="แก้ไขค่าบริการ"` : ''}>${fmtMoney(fee)}${canEdit() ? ' <span class="text-[var(--ink-muted)]">✎</span>' : ''}</span>
@@ -5491,14 +5589,21 @@ async function openOwnCompanyVisibility(clientId) {
     </div>`);
 }
 async function saveOwnCompanyVisibility(clientId) {
+  if (!canManageOwnCompany()) return;
   const ids = [...document.querySelectorAll('.oc-vis-chk:checked')].map(el => el.value);
-  const { data, error } = await sb.from('crm_clients').update({ own_company_visible_to: ids }).eq('id', clientId).select().single();
+  // ไม่ใช้ .select().single() อ่านค่ากลับ: ถ้าผู้จัดการเอาชื่อตัวเองออกจากรายชื่อ UPDATE จะสำเร็จจริง แต่
+  // RLS (crm_cli_sel) กรองแถวที่ RETURNING ส่งกลับทิ้ง → .single() โยน error แล้วขึ้นว่าบันทึกไม่สำเร็จ
+  // ทั้งที่บันทึกไปแล้ว (และ data.own_company_visible_to ก็จะพังตามไปด้วย) — ค่าที่เขียนคือ ids ที่อยู่ในมือ
+  // อยู่แล้ว ไม่ต้องอ่านกลับ
+  const { error } = await sb.from('crm_clients').update({ own_company_visible_to: ids }).eq('id', clientId);
   const errEl = document.getElementById('oc-vis-err');
   if (error) { errEl.textContent = error.message; errEl.classList.remove('hidden'); return; }
   const c = clients.find(x => x.id === clientId);
-  if (c) c.own_company_visible_to = data.own_company_visible_to;
+  if (c) c.own_company_visible_to = ids;
   closeModal();
-  showToast('บันทึกรายชื่อผู้เห็นแล้ว');
+  showToast(isOwner() || ids.includes(profile?.id)
+    ? 'บันทึกรายชื่อผู้เห็นแล้ว'
+    : 'บันทึกแล้ว — คุณไม่ได้อยู่ในรายชื่อ บริษัทนี้จะหายไปจากรายการเมื่อโหลดหน้าใหม่');
   renderOwnCompanies();
 }
 
@@ -6038,13 +6143,22 @@ async function saveOwnCompany() {
     own_company_visible_to: visibleTo,
   };
 
-  const { data, error } = await sb.from('crm_clients').insert(payload).select().single();
+  // .maybeSingle() ไม่ใช่ .single(): RLS ของ crm_clients (crm_cli_sel) คืนแถว is_own_company ให้เฉพาะ
+  // "กรรมการ" หรือคนที่อยู่ใน own_company_visible_to เท่านั้น — ถ้าผู้จัดการสร้างบริษัทภายในโดยไม่ติ๊กชื่อ
+  // ตัวเองไว้ INSERT จะสำเร็จจริง แต่แถวที่ RETURNING ส่งกลับมาจะถูกกรองทิ้ง ทำให้ .single() โยน error
+  // (PGRST116) แล้วหน้าจอขึ้นว่าบันทึกไม่สำเร็จทั้งที่บันทึกไปแล้ว — กดซ้ำก็จะได้บริษัทซ้ำอีกใบ
+  // INSERT ที่ล้มเหลวจริงๆ (RLS/CODE ซ้ำ ฯลฯ) ยังคืน error มาตามปกติ จึงแยกสองกรณีนี้ออกจากกันได้แน่นอน
+  const { data, error } = await sb.from('crm_clients').insert(payload).select().maybeSingle();
   if (error) { ocErr.textContent = error.message; ocErr.classList.remove('hidden'); return; }
 
-  clients.push(data);
-  clients.sort((a,b) => a.code.localeCompare(b.code));
+  if (data) {
+    clients.push(data);
+    clients.sort((a,b) => a.code.localeCompare(b.code));
+  }
   closeModal();
-  showToast('เพิ่มบริษัทสำเร็จ');
+  showToast(data
+    ? 'เพิ่มบริษัทสำเร็จ'
+    : 'เพิ่มบริษัทสำเร็จ — แต่คุณไม่ได้อยู่ในรายชื่อผู้ที่เห็นบริษัทนี้ จึงไม่แสดงในรายการ');
   renderOwnCompanies();
 }
 

@@ -463,11 +463,19 @@
   }
   const shellStaffName = document.getElementById('shellStaffName');
   let staffNameLoaded = false;
+  // Bumped on every load attempt and on every sign-out, so a reply that comes back
+  // after the account changed can tell it is stale and drop itself. Without it,
+  // signing out while this request is still in flight let the *previous* account's
+  // name land in the topbar of whoever signed in next -- and worse, it also set
+  // staffNameLoaded, so the new account never fetched its own name at all.
+  let staffNameGen = 0;
   async function loadStaffName() {
     if (staffNameLoaded) return;
+    const gen = ++staffNameGen;
     const { data: { session } } = await sb.auth.getSession();
-    if (!session) return;
+    if (!session || gen !== staffNameGen) return;
     const { data: prof } = await sb.from('org_staff').select('display_name').eq('id', session.user.id).single();
+    if (gen !== staffNameGen) return;
     if (prof && prof.display_name) {
       shellStaffName.textContent = prof.display_name;
       staffNameLoaded = true;
@@ -476,9 +484,23 @@
   let signedIn = false;
   function showApp() { signedIn = true; loginScreen.style.display = 'none'; appEl.style.display = 'grid'; loadIframes(); loadStaffName(); }
   function showLogin() {
+    const wasSignedIn = signedIn;
     signedIn = false;
     appEl.style.display = 'none'; loginScreen.style.display = 'flex';
-    staffNameLoaded = false; shellStaffName.textContent = '';
+    staffNameLoaded = false; staffNameGen++; shellStaffName.textContent = '';
+    // Signing out never reloads this page, so without this the previous user's
+    // username *and* password stay sitting in the form -- re-submittable, and
+    // readable through the eye toggle (which also stayed flipped to "shown").
+    // Only on the signed-in -> signed-out transition: doing it on every
+    // showLogin() would also wipe the browser's own autofill on a cold load,
+    // which is the one case where checkSession() calls this with signedIn false.
+    if (wasSignedIn) {
+      loginForm.reset();
+      loginPass.type = 'password';
+      pwEyeIcon.innerHTML = PW_EYE_OPEN;
+      pwToggle.setAttribute('aria-label', 'แสดงรหัสผ่าน');
+      loginError.classList.remove('show');
+    }
     // The iframes are only *hidden* here, never unloaded -- their documents keep
     // running with the previous user's session/role already rendered (the
     // sub-apps deliberately have no onAuthStateChange listener of their own).
