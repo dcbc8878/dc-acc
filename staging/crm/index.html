@@ -164,6 +164,10 @@
     #old-client-list > div[onclick^="openPanel("],
     #fin-collection-list > div[onclick^="openPanel("],
     #fin-fee-list > div[onclick^="openPanel("] { min-height: 49px; }
+    /* หน้า "มอบหมายงาน" (assign) เป็นหน้าใหม่ในกลุ่ม "program" ไม่ได้อยู่ใน 8 พื้นที่ที่ล็อกความสูงแถว/
+       ตำแหน่ง Y ไว้ด้วยกันด้านบน (รายเดือน/รายปี×3/ลูกค้า×2/การเงิน×2) จึงไม่จำเป็นต้องอิงเลข 49px เป๊ะ —
+       แต่ยังใช้แพทเทิร์นเดียวกัน (แถวสูงเท่ากันในลิสต์เดียวกัน) เพื่อความสอดคล้องของหน้าตาทั้งแอป */
+    #assign-list > div { min-height: 49px; }
     /* Companion to the shared row height above (and to .ye-bar-chip's tightened
        padding/gap): overrides these 3 tables' own per-cell Tailwind spacing (py-2.5/py-3
        utility classes, 10px/12px top+bottom) down to 6px. Originally scoped to just
@@ -384,10 +388,10 @@
             <div class="border-t border-[var(--border)] my-1.5"></div>
           </div>
           <div id="settings-menu-employees" class="settings-menu-item" onclick="navigate('employees')">พนักงาน</div>
-          <div id="settings-menu-teamgrid" class="settings-menu-item" onclick="navigate('teamgrid')">จัดการทีม</div>
-          <!-- ทุกระดับเห็นรายการนี้ได้เสมอ (ไม่ gate ด้วย canManageTeams เหมือน teamgrid ข้างบน) — หน้านี้
-               รองรับโหมดดูอย่างเดียวสำหรับ LV4-5 อยู่แล้ว (ดู canEditGrid ใน renderAssigneeGrid) -->
-          <div class="settings-menu-item" onclick="navigate('assigneegrid')">ผู้รับผิดชอบ</div>
+          <!-- เดิมมี "จัดการทีม" (teamgrid) กับ "ผู้รับผิดชอบ" (assigneegrid) แยก 2 รายการ — ยุบรวมเป็น
+               หน้าเดียว "มอบหมายงาน" (assign) แล้ว เปิดให้ทุกระดับเข้าดูได้เสมอเหมือน assigneegrid เดิม
+               (ไม่ gate ด้วย canManageTeams — โหมดดูอย่างเดียวสำหรับ LV4-5 อยู่ในตัว renderAssignPage เอง) -->
+          <div class="settings-menu-item" onclick="navigate('assign')">มอบหมายงาน</div>
           <div class="border-t border-[var(--border)] my-1.5"></div>
           <div class="settings-menu-item" onclick="navigate('settings')">ตั้งค่าข้อมูลส่วนตัว</div>
         </div>
@@ -414,8 +418,7 @@
       <div class="flex border-b-0" style="width:max-content">
         <button class="tab-btn section-tab" id="program-tab-appsettings" data-page="appsettings" onclick="navigate('appsettings')">ตั้งค่าโปรแกรม</button>
         <button class="tab-btn section-tab" id="program-tab-owncompany" data-page="owncompany" onclick="navigate('owncompany')">บริษัทภายใน</button>
-        <button class="tab-btn section-tab" id="program-tab-teamgrid" data-page="teamgrid" onclick="navigate('teamgrid')">จัดการทีม</button>
-        <button class="tab-btn section-tab" id="program-tab-assigneegrid" data-page="assigneegrid" onclick="navigate('assigneegrid')">ผู้รับผิดชอบ</button>
+        <button class="tab-btn section-tab" id="program-tab-assign" data-page="assign" onclick="navigate('assign')">มอบหมายงาน</button>
         <button class="tab-btn section-tab" id="program-tab-activitylog" data-page="activitylog" onclick="navigate('activitylog')">ประวัติการแก้ไข</button>
         <button class="tab-btn section-tab" id="program-tab-employees" data-page="employees" onclick="navigate('employees')">พนักงาน</button>
       </div>
@@ -1122,27 +1125,31 @@
       </div>
     </div>
 
-    <!-- PAGE: teamgrid -->
-    <div id="page-teamgrid" class="hidden">
-      <div class="bg-[var(--surface)] border-b border-[var(--border)] px-6 py-4 sticky top-0 z-10">
-        <h2 class="text-base font-bold text-[var(--ink)]">จัดการทีม</h2>
-        <p class="text-xs text-[var(--ink-muted)] mt-0.5">กำหนดว่าทีมไหนรับผิดชอบลูกค้ารายใด คลิกในตารางเพื่อเปลี่ยน</p>
+    <!-- PAGE: assign ("มอบหมายงาน") — เดิมแยก 2 หน้า: teamgrid (กริด ลูกค้า × ทีม) กับ assigneegrid
+         (กริด ลูกค้า × พนักงาน) ไม่ผูกลำดับกัน (เลือกผู้รับผิดชอบได้จากพนักงานทั้งบริษัทแม้ลูกค้าจะยังไม่มี
+         ทีมก็ตาม) — ยุบรวมเป็นหน้าเดียว 1 แถวต่อลูกค้า 1 ราย (ลูกค้า/ทีม/ผู้รับผิดชอบ) แล้วบังคับลำดับ
+         "ทีมต้องมาก่อนเสมอ": เลือกทีมได้อิสระ (คอลัมน์ทีม, openEditTeam) แต่คอลัมน์ผู้รับผิดชอบจะกดไม่ได้
+         จนกว่าจะมีทีม (ดู assignAssigneeSpanHtml_/openAssigneeModal) และเมื่อกดได้แล้วจะเห็นเฉพาะคนใน
+         ทีมนั้น (ไม่ใช่ทั้งบริษัทเหมือนเดิม) — เปิดให้ทุกระดับเข้าดูได้เสมอเหมือน assigneegrid เดิม (ไม่ซ่อน
+         เมนูแบบที่ teamgrid เดิมเคยทำ) โหมดดูอย่างเดียวสำหรับ LV4-5 อยู่ในตัว renderAssignPage -->
+    <div id="page-assign" class="hidden">
+      <div class="bg-[var(--surface)] border-b border-[var(--border)] px-6 py-4 flex items-center justify-between gap-3 sticky top-0 z-10">
+        <div>
+          <h2 class="text-base font-bold text-[var(--ink)]">มอบหมายงาน</h2>
+          <p id="assign-subtitle" class="text-xs text-[var(--ink-muted)] mt-0.5">—</p>
+        </div>
+        <input id="assign-search" type="text" placeholder="ค้นหา…" oninput="renderAssignPage()"
+          class="px-3.5 py-2 rounded-lg border border-[var(--border)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)] w-48 flex-shrink-0">
       </div>
-      <div class="p-6 overflow-x-auto">
-        <div id="team-grid-container" class="bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden"></div>
-      </div>
-    </div>
-
-    <!-- PAGE: assigneegrid — โครงเดียวกับ teamgrid ด้านบนเป๊ะ (ตารางกริด ลูกค้า × พนักงาน คลิกช่องเพื่อ
-         toggle) ต่างกันตรงที่ผู้รับผิดชอบมีได้หลายคนต่อลูกค้า 1 ราย (ทีมมีได้แค่ทีมเดียว) และหน้านี้เปิดให้
-         ทุกระดับเข้าดูได้ (ไม่ซ่อนเมนูเหมือน teamgrid) — ดูโหมดอ่านอย่างเดียวใน renderAssigneeGrid -->
-    <div id="page-assigneegrid" class="hidden">
-      <div class="bg-[var(--surface)] border-b border-[var(--border)] px-6 py-4 sticky top-0 z-10">
-        <h2 class="text-base font-bold text-[var(--ink)]">ผู้รับผิดชอบ</h2>
-        <p id="assigneegrid-subtitle" class="text-xs text-[var(--ink-muted)] mt-0.5">—</p>
-      </div>
-      <div class="p-6 overflow-x-auto">
-        <div id="assignee-grid-container" class="bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden"></div>
+      <div class="p-6">
+        <div class="bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden list-card-cap">
+          <div class="flex items-center gap-3 px-4 py-2.5 border-b border-[var(--border)] bg-[var(--surface-2)] text-[11px] font-semibold text-[var(--ink-muted)] uppercase tracking-wide">
+            <span class="flex-1">ลูกค้า</span>
+            <span class="w-40 flex-shrink-0">ทีม</span>
+            <span class="w-48 flex-shrink-0">ผู้รับผิดชอบ</span>
+          </div>
+          <div id="assign-list" style="height:294px;overflow-y:auto"></div>
+        </div>
       </div>
     </div>
 
@@ -1517,10 +1524,24 @@ const canSeeAllTeamClients = () => myLevel() <= 2;        // LV1-2: ไม่ถ
 // ซ่อนทั้งคอลัมน์แทน — ตอนนี้ RLS เปิด SELECT ให้ทุกระดับเห็นได้ครบแล้ว จึงเปิดคอลัมน์นี้ให้ทุกคนเหมือนกัน
 // การ "แก้ไข" ผู้รับผิดชอบ (toggle) ยังจำกัดสิทธิ์แยกต่างหากอยู่ — ใช้ canManageTeams() (LV1-3) ตรงกับ RLS
 // insert/delete ของตารางนี้ที่เพิ่งเปิดให้ LV1-3 แก้ได้ (เดิม owner เท่านั้น) ดู toggleClientAssignee_()/
-// หน้า "ผู้รับผิดชอบ" (page-assigneegrid)
+// หน้า "มอบหมายงาน" (page-assign)
 const canSeeAssignees = () => true;
 function myTeamIds() {
   return teams.filter(t => t.lead_id === profile.id || (teamMembersMap[t.id] || []).includes(profile.id)).map(t => t.id);
+}
+// สมาชิกของทีม teamId ทั้งหมด = คนใน org_team_members บวกหัวหน้าทีมจาก org_teams.lead_id เสมอ — ข้อมูล
+// จริงยืนยันแล้วว่าหัวหน้าทีม "ไม่" ถูกใส่ซ้ำในตาราง org_team_members เอง (สองแหล่งแยกกันเด็ดขาด) ถ้าอ่าน
+// แค่ teamMembersMap[teamId] ตรงๆ โดยไม่รวม lead_id ด้วย หัวหน้าทีมจะไม่ถูกเสนอเป็นผู้รับผิดชอบลูกค้าใน
+// ทีมตัวเองได้เลย (ผิด) — ใช้ helper ตัวนี้ตัวเดียวทุกจุดที่ต้องรู้ว่า "ใครอยู่ในทีมนี้บ้าง" (ตอนนี้มีจุดเดียว
+// คือ openAssigneeModal เพราะหน้า "มอบหมายงาน" กับฟอร์มเลือกผู้รับผิดชอบในหน้ารายเดือนเรียก modal เดียวกัน
+// อยู่แล้ว) ห้ามเขียนตรรกะ "สมาชิกทีม" ซ้ำที่อื่นแยกต่างหาก — เทียบกับ myTeamIds() ด้านบนที่แก้ปัญหาเดียวกัน
+// จากอีกทิศทาง (หาว่า "ฉันอยู่ทีมไหนบ้าง" ไม่ใช่ "ทีมนี้มีใครบ้าง") ด้วย or-condition แบบเดียวกัน
+function teamMemberIdsIncludingLead(teamId) {
+  const t = teams.find(x => x.id === teamId);
+  if (!t) return [];
+  const ids = new Set(teamMembersMap[teamId] || []);
+  if (t.lead_id) ids.add(t.lead_id);
+  return [...ids];
 }
 // รายเดือน/ปลายปี เท่านั้น (ลูกค้า/ลูกค้าเก่า ยังเห็นทุกรายเหมือนเดิม) — LV1-2 ไม่ถูกจำกัด,
 // บริษัทภายในใช้ own_company_visible_to อยู่แล้ว (RLS กรองมาก่อนหน้านี้แล้ว) ไม่ต้องเช็คทีมซ้ำ
@@ -2030,14 +2051,14 @@ async function saveAppSettings() {
 // ─────────────────────────────────────────────────────────────
 // NAVIGATION
 // ─────────────────────────────────────────────────────────────
-const ALL_PAGES = ['tracking','yearend','clients','finance','settings','owncompany','employees','teamgrid','assigneegrid','appsettings','activitylog'];
+const ALL_PAGES = ['tracking','yearend','clients','finance','settings','owncompany','employees','assign','appsettings','activitylog'];
 function navigate(p) {
   document.getElementById('settings-menu')?.classList.add('hidden');
-  // assigneegrid/activitylog เพิ่มเข้ารายการที่ LV4-5 เข้าถึงได้ด้วย (ต่างจาก teamgrid/owncompany/
-  // appsettings/employees ที่ยังจำกัดแค่สิทธิ์เดิม) — หน้าเหล่านี้เปิดให้ทุกระดับดูได้ (assigneegrid: ดู
-  // ได้ แก้ไม่ได้ ดู canEditGrid ใน renderAssigneeGrid, activitylog: canSeeAuditLog() คืน true เสมอ RLS
-  // กรองแถวการเงินให้เองแล้วที่ฐานข้อมูล)
-  if (myLevel() > 3 && !['tracking','yearend','clients','finance','settings','employees','assigneegrid','activitylog'].includes(p)) p = 'tracking';
+  // assign/activitylog เพิ่มเข้ารายการที่ LV4-5 เข้าถึงได้ด้วย (ต่างจาก owncompany/appsettings/employees
+  // ที่ยังจำกัดแค่สิทธิ์เดิม) — หน้าเหล่านี้เปิดให้ทุกระดับดูได้ (assign: ดูได้ แก้ไม่ได้ ดู
+  // canManageTeams ใน assignRowHtml/assignAssigneeSpanHtml_, activitylog: canSeeAuditLog() คืน true เสมอ
+  // RLS กรองแถวการเงินให้เองแล้วที่ฐานข้อมูล)
+  if (myLevel() > 3 && !['tracking','yearend','clients','finance','settings','employees','assign','activitylog'].includes(p)) p = 'tracking';
   curPage = p;
   ALL_PAGES.forEach(pg => {
     document.getElementById(`page-${pg}`).classList.toggle('hidden', pg !== p);
@@ -2045,8 +2066,8 @@ function navigate(p) {
   document.querySelectorAll('.nav-item').forEach(el => {
     el.classList.toggle('active', el.dataset.page === p);
   });
-  // แถบแท็บย่อยระดับ section ที่ shell สั่งมา (รายเดือน|รายปี ของ crm, ตั้งค่าโปรแกรม|บริษัทภายใน|จัดการ
-  // ทีม|ผู้รับผิดชอบ|ประวัติการแก้ไข|พนักงาน ของ program) — โชว์เฉพาะบาร์ของ section ที่ p สังกัดอยู่ อีกบาร์
+  // แถบแท็บย่อยระดับ section ที่ shell สั่งมา (รายเดือน|รายปี ของ crm, ตั้งค่าโปรแกรม|บริษัทภายใน|มอบหมาย
+  // งาน|ประวัติการแก้ไข|พนักงาน ของ program) — โชว์เฉพาะบาร์ของ section ที่ p สังกัดอยู่ อีกบาร์
   // ซ่อนไว้ ส่วน customer/service/personal ไม่มีบาร์แบบนี้ (ใช้แท็บย่อยที่มีอยู่แล้วในตัวหน้าเอง เช่นหน้า
   // clients/finance) ไฮไลต์ปุ่ม .section-tab ที่ active ตาม p ด้วยกลไกเดียวกับ .nav-item ด้านบน
   const sect = PAGE_SECTION[p];
@@ -2072,8 +2093,7 @@ function navigate(p) {
   else if (p === 'activitylog') { if (canSeeAuditLog()) renderActivityLog(); }
   else if (p === 'owncompany') { if (canManageOwnCompany()) renderOwnCompanies(); }
   else if (p === 'employees') showEmployeeSubTab(employeeSubTab);
-  else if (p === 'teamgrid') { if (!teamsLoaded) { loadTeams().then(() => { teamsLoaded = true; renderTeamGrid(); }); } else renderTeamGrid(); }
-  else if (p === 'assigneegrid') renderAssigneeGrid();
+  else if (p === 'assign') { if (!teamsLoaded) { loadTeams().then(() => { teamsLoaded = true; renderAssignPage(); }); } else renderAssignPage(); }
   else if (p === 'appsettings') renderAppSettings();
 }
 function toggleSettingsMenu(ev) {
@@ -2099,7 +2119,7 @@ const PAGE_SECTION = {
   clients: 'customer',
   finance: 'service',
   settings: 'personal',
-  owncompany: 'program', appsettings: 'program', teamgrid: 'program', assigneegrid: 'program',
+  owncompany: 'program', appsettings: 'program', assign: 'program',
   activitylog: 'program', employees: 'program',
 };
 const SECTION_DEFAULT_PAGE = { crm: 'tracking', customer: 'clients', service: 'finance', personal: 'settings', program: 'appsettings' };
@@ -2107,20 +2127,22 @@ const KNOWN_SECTIONS = Object.keys(SECTION_DEFAULT_PAGE);
 
 // สิทธิ์เข้าถึงแต่ละหน้าใน section "program" — เกณฑ์เดียวกับที่เคยใช้ซ่อน/โชว์รายการในเมนูดรอปดาวน์เดิม
 // ทุกประการ (canManageOwnCompany สำหรับทั้งบริษัทภายใน+ตั้งค่าโปรแกรมด้วยกัน เหมือนเดิมที่ทั้งคู่ผูกกับ
-// settings-menu-company-group เดียวกัน, canManageTeams สำหรับทั้งจัดการทีม+พนักงาน, ผู้รับผิดชอบเปิดให้
-// ทุกระดับเสมอ, ประวัติการแก้ไขตาม canSeeAuditLog) ใช้ทั้งซ่อน/โชว์ปุ่มแท็บ
+// settings-menu-company-group เดียวกัน, canManageTeams สำหรับพนักงาน, มอบหมายงานเปิดให้ทุกระดับเสมอ
+// (เดิม teamgrid จำกัด canManageTeams + assigneegrid เปิดทุกระดับ แยกกันคนละหน้า — ยุบรวมเป็นหน้าเดียวแล้ว
+// ยึดกฎที่กว้างกว่าคือ "เปิดทุกระดับ" เพราะหน้าใหม่มีโหมดดูอย่างเดียวในตัวสำหรับ LV4-5 อยู่แล้ว เหมือน
+// assigneegrid เดิม), ประวัติการแก้ไขตาม canSeeAuditLog) ใช้ทั้งซ่อน/โชว์ปุ่มแท็บ
 // (renderProgramSubnavVisibility_) และเลือกหน้า default ที่เข้าถึงได้จริงตอน shell สั่ง section='program'
 // (firstAccessibleProgramPage_)
 function programPageAllowed_(p) {
   if (p === 'appsettings' || p === 'owncompany') return canManageOwnCompany();
-  if (p === 'teamgrid' || p === 'employees') return canManageTeams();
+  if (p === 'employees') return canManageTeams();
   if (p === 'activitylog') return canSeeAuditLog();
-  if (p === 'assigneegrid') return true;
+  if (p === 'assign') return true;
   return false;
 }
 function firstAccessibleProgramPage_() {
-  const order = ['appsettings', 'owncompany', 'teamgrid', 'assigneegrid', 'activitylog', 'employees'];
-  return order.find(programPageAllowed_) || 'assigneegrid';
+  const order = ['appsettings', 'owncompany', 'assign', 'activitylog', 'employees'];
+  return order.find(programPageAllowed_) || 'assign';
 }
 // เรียกครั้งเดียวใน init() (แทนที่การซ่อน/โชว์ settings-menu-* เดิม) — ซ่อนปุ่มแท็บใน
 // program-section-subnav ที่สิทธิ์ปัจจุบันเข้าไม่ถึง ด้วยคลาส .tab-btn.hidden ตัวเดิมที่ไฟล์นี้ใช้อยู่แล้ว
@@ -2128,10 +2150,9 @@ function firstAccessibleProgramPage_() {
 function renderProgramSubnavVisibility_() {
   document.getElementById('program-tab-appsettings').classList.toggle('hidden', !programPageAllowed_('appsettings'));
   document.getElementById('program-tab-owncompany').classList.toggle('hidden', !programPageAllowed_('owncompany'));
-  document.getElementById('program-tab-teamgrid').classList.toggle('hidden', !programPageAllowed_('teamgrid'));
   document.getElementById('program-tab-activitylog').classList.toggle('hidden', !programPageAllowed_('activitylog'));
   document.getElementById('program-tab-employees').classList.toggle('hidden', !programPageAllowed_('employees'));
-  // program-tab-assigneegrid: ไม่ต้องซ่อน เปิดให้ทุกระดับเข้าถึงได้เสมอ (เหมือนเดิม)
+  // program-tab-assign: ไม่ต้องซ่อน เปิดให้ทุกระดับเข้าถึงได้เสมอ (เหมือน assigneegrid เดิม)
 }
 // สั่งให้ CRM แสดง section ที่ระบุ — ถ้าอยู่ใน section นั้นอยู่แล้ว คงหน้า/แท็บย่อยที่กำลังดูอยู่ไว้ ไม่
 // กระโดดกลับหน้า default (กันตัวเลือกที่ผู้ใช้เลือกอยู่ เช่นแท็บย่อยของรายปี/ลูกค้า/การเงิน หายไปเวลา shell
@@ -2170,15 +2191,29 @@ function assigneeNames(clientId) {
 // ลูกค้า 1 รายมีผู้รับผิดชอบได้หลายคน — โชว์ชื่อคนแรก + "+N" ต่อท้ายเมื่อมีมากกว่าหนึ่ง (ไม่ใช่ต่อกัน
 // ทุกชื่อ) เพื่อการันตีว่าเนื้อหาอยู่บรรทัดเดียวเสมอ ความสูงแถวจึงยังเป็น 49px เท่ากันทุกหน้าตามที่ตั้งใจ
 // ไว้ ชื่อครบทุกคนอยู่ใน title (hover ดูได้) ไม่มีผู้รับผิดชอบ = ช่องว่าง ไม่ใช่ขีด (ธรรมเนียมเดียวกับ
-// computeClientNo)
-// LV1-3 คลิกเซลล์นี้ได้เพื่อเปิดฟอร์มเลือกผู้รับผิดชอบหลายคน (openAssigneeModal ดู canManageTeams) — LV4-5
-// เห็นได้อย่างเดียว ไม่มี onclick/cursor-pointer ให้เลย (กดไม่ได้จริง ไม่ใช่แค่ปุ่มเงียบ)
-function assigneeCellHtml(clientId) {
+// computeClientNo) — เว้นแต่ลูกค้ายังไม่มีทีมเลยด้วย (ไม่เคยมีใครถูกมอบหมายมาก่อน) จะขึ้นคำใบ้ "เลือกทีมก่อน"
+// แทนช่องว่างเปล่าๆ (ดู assigneeCellInnerHtml_) ใช้ร่วมกัน 2 จุด: cell นี้ (หน้ารายเดือน ห่อด้วย <td>) กับ
+// แถวหน้า "มอบหมายงาน" (ห่อด้วย <span>, ดู assignAssigneeSpanHtml_) กันเขียนตรรกะแสดงชื่อซ้ำสองที่
+function assigneeCellInnerHtml_(clientId, hasTeam) {
   const names = assigneeNames(clientId);
-  const label = names.length ? (names.length > 1 ? `${names[0]} +${names.length - 1}` : names[0]) : '';
-  const editable = canManageTeams();
-  return `<td class="px-2 py-0.5 text-left ${editable ? 'cursor-pointer hover:bg-[var(--surface-2)]' : ''}" style="overflow:hidden" title="${e(names.join(', '))}"${editable ? ` onclick="openAssigneeModal(${clientId})"` : ''}>
-            <div class="text-xs text-[var(--ink)] leading-tight overflow-hidden text-ellipsis whitespace-nowrap">${e(label)}</div>
+  if (names.length) {
+    const label = names.length > 1 ? `${names[0]} +${names.length - 1}` : names[0];
+    return { html: e(label), title: names.join(', ') };
+  }
+  if (!hasTeam) return { html: '<span class="text-[var(--ink-muted)] italic">เลือกทีมก่อน</span>', title: '' };
+  return { html: '', title: '' };
+}
+// LV1-3 คลิกเซลล์นี้ได้เพื่อเปิดฟอร์มเลือกผู้รับผิดชอบหลายคน (openAssigneeModal ดู canManageTeams) — LV4-5
+// เห็นได้อย่างเดียว ไม่มี onclick/cursor-pointer ให้เลย (กดไม่ได้จริง ไม่ใช่แค่ปุ่มเงียบ) — ต้องมีทีมก่อน
+// ด้วย (ดู "มอบหมายงาน") ไม่งั้นก็กดไม่ได้เหมือนกัน แม้จะเป็น LV1-3 ก็ตาม (ไม่มีทีม = ไม่มีสมาชิกให้เลือก
+// เลือกเป็นผู้รับผิดชอบไม่ได้ — เคยเปิดฟอร์มแล้วโชว์พนักงานทั้งบริษัทมาก่อน เปลี่ยนเป็นกรองตามทีมแล้ว)
+function assigneeCellHtml(clientId) {
+  const c = clients.find(x => x.id === clientId);
+  const hasTeam = !!(c && c.team_id != null);
+  const editable = canManageTeams() && hasTeam;
+  const { html, title } = assigneeCellInnerHtml_(clientId, hasTeam);
+  return `<td class="px-2 py-0.5 text-left ${editable ? 'cursor-pointer hover:bg-[var(--surface-2)]' : ''}" style="overflow:hidden" title="${e(title)}"${editable ? ` onclick="openAssigneeModal(${clientId})"` : ''}>
+            <div class="text-xs text-[var(--ink)] leading-tight overflow-hidden text-ellipsis whitespace-nowrap">${html}</div>
           </td>`;
 }
 function renderTracking() {
@@ -5882,7 +5917,7 @@ async function saveTeam(teamId) {
   closeModal();
   showToast(teamId ? 'บันทึกทีมแล้ว' : 'สร้างทีมใหม่แล้ว');
   renderTeams();
-  if (curPage === 'teamgrid') renderTeamGrid();
+  if (curPage === 'assign') renderAssignPage();
 }
 async function deleteTeam(teamId) {
   if (!canManageTeams()) return;
@@ -5894,7 +5929,7 @@ async function deleteTeam(teamId) {
   closeModal();
   showToast('ลบทีมแล้ว');
   renderTeams();
-  if (curPage === 'teamgrid') renderTeamGrid();
+  if (curPage === 'assign') renderAssignPage();
 }
 
 // -- คำขอ --
@@ -6125,46 +6160,69 @@ async function rejectRequest(reqId) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// PAGE: จัดการทีม (team ↔ client assignment grid)
+// PAGE: มอบหมายงาน (assign) — ทีม + ผู้รับผิดชอบของลูกค้าแต่ละราย รวมในหน้าเดียว บังคับลำดับ "ทีมต้อง
+// มาก่อนเสมอ" ตามโมเดลที่เจ้าของระบบระบุไว้ตรงๆ: "ลูกค้าเข้ามา ให้เลือกว่าอยู่ทีมไหน แล้วในทีมให้แต่งตั้งว่า
+// ใครเป็นคนดูแล" — เดิมแยก 2 หน้า/2 กริด (จัดการทีม ↔ ผู้รับผิดชอบ) ไม่ผูกลำดับกันเลย (เลือกผู้รับผิดชอบ
+// จากพนักงานทั้งบริษัทได้แม้ลูกค้าจะยังไม่มีทีม) ตอนนี้คอลัมน์ "ผู้รับผิดชอบ" กดไม่ได้จนกว่าจะมีทีม (ดู
+// assignAssigneeSpanHtml_/assigneeCellHtml) และเมื่อกดได้แล้วจะเห็นเฉพาะคนในทีมนั้น (openAssigneeModal)
 // ─────────────────────────────────────────────────────────────
-function renderTeamGrid() {
-  const el = document.getElementById('team-grid-container');
-  if (!el) return;
-  if (!teams.length) {
-    el.innerHTML = '<div class="p-8 text-center text-sm text-[var(--ink-muted)]">ยังไม่มีทีม — สร้างทีมได้ที่เมนู พนักงาน &gt; ทีม</div>';
-    return;
-  }
-  const rows = clients.filter(c => c.is_active && !c.is_own_company).slice().sort((a, b) => a.code.localeCompare(b.code));
-  if (!rows.length) {
-    el.innerHTML = '<div class="p-8 text-center text-sm text-[var(--ink-muted)]">ยังไม่มีลูกค้า</div>';
-    return;
-  }
-  const canEditGrid = canManageTeams();
-  const header = `<tr>
-    <th class="col-fav text-left px-3 text-xs font-semibold text-[var(--ink-muted)] border-b-2 border-[var(--border)]" style="min-width:220px;position:sticky;left:0;background:var(--surface-2);z-index:2">ลูกค้า</th>
-    ${teams.map(t => `<th class="px-3 text-xs font-semibold text-[var(--ink-muted)] border-b-2 border-l border-[var(--border)] text-center" style="min-width:110px">${e(t.name)}</th>`).join('')}
-  </tr>`;
-  const body = rows.map(c => `<tr>
-    <td class="px-3 py-2 text-sm text-[var(--ink)] border-b border-[var(--border)]" style="position:sticky;left:0;background:var(--surface)"><span class="text-xs font-bold text-[var(--ink-muted)] mr-1.5">${e(c.code)}</span>${e(c.thai_name)}</td>
-    ${teams.map(t => `<td class="px-3 py-2 text-center border-b border-l border-[var(--border)] ${canEditGrid ? 'cursor-pointer hover:bg-[var(--surface-2)]' : ''}" ${canEditGrid ? `onclick="toggleClientTeamGrid(${c.id},${t.id})"` : ''}>${c.team_id === t.id ? '<span class="dot done">✓</span>' : '<span class="dot todo"></span>'}</td>`).join('')}
-  </tr>`).join('');
-  el.innerHTML = `<table class="w-full text-center" style="border-collapse:collapse"><thead>${header}</thead><tbody>${body}</tbody></table>`;
+
+// แกนกลาง "เปลี่ยนทีมของลูกค้า" — เขียนแค่ crm_clients.team_id คอลัมน์เดียว ไม่มีประวัติแบบ
+// crm_billing_contracts เหมือนค่าบริการ/ประเภท (ทีมไม่ใช่ข้อมูลที่ต้องย้อนดูตามช่วงเวลา) — ห้ามลบผู้รับ
+// ผิดชอบเดิมทิ้งอัตโนมัติตอนเปลี่ยนทีม (กำหนดไว้ตรงๆ) จึงไม่แตะ crm_staff_clients เลยในฟังก์ชันนี้ —
+// ผู้รับผิดชอบเดิม (ถ้ามี) ยังอยู่ครบเสมอ แค่อาจไม่ตรงกับสมาชิกทีมใหม่อีกต่อไป (แสดงพร้อมป้าย "(ไม่อยู่
+// ในทีมแล้ว)" ตอนเปิดฟอร์มผู้รับผิดชอบครั้งถัดไป ดู openAssigneeModal) ผู้ใช้เอาออกเองได้
+async function applyTeamChangeCore_(clientId, newTeamId) {
+  const c = clients.find(x => x.id === clientId);
+  if (!c) return { ok: false, error: 'ไม่พบข้อมูลลูกค้า' };
+  if (c.team_id === newTeamId) return { ok: true }; // ไม่มีอะไรเปลี่ยน ไม่ต้องยิง query
+  const { error } = await sb.from('crm_clients').update({ team_id: newTeamId }).eq('id', clientId);
+  if (error) return { ok: false, error: error.message };
+  c.team_id = newTeamId;
+  return { ok: true };
 }
-async function toggleClientTeamGrid(clientId, teamId) {
+// ฟอร์มเล็กเลือกทีมของลูกค้า 1 ราย — เปิดจากคลิกคอลัมน์ "ทีม" ในหน้า "มอบหมายงาน" (assignRowHtml)
+function openEditTeam(clientId) {
   if (!canManageTeams()) return;
   const c = clients.find(x => x.id === clientId);
   if (!c) return;
-  const newTeamId = c.team_id === teamId ? null : teamId;
-  const { error } = await sb.from('crm_clients').update({ team_id: newTeamId }).eq('id', clientId);
-  if (error) { showToast(error.message, 'error'); return; }
-  c.team_id = newTeamId;
-  renderTeamGrid();
+  const teamOptions = teams.slice().sort((a, b) => String(a.name).localeCompare(String(b.name), 'th'))
+    .map(t => `<option value="${t.id}" ${c.team_id === t.id ? 'selected' : ''}>${e(t.name)}</option>`).join('');
+  openModal(`
+    <h3 class="text-base font-bold text-[var(--ink)] mb-1">เลือกทีม</h3>
+    <p class="text-xs text-[var(--ink-muted)] mb-4">${e(c.thai_name)}</p>
+    <div>
+      <div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide mb-1">ทีมที่รับผิดชอบ</div>
+      <select id="eteam-select" class="w-full px-3 py-2 rounded-lg border border-[var(--border)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]">
+        <option value="">— ไม่มีทีม —</option>
+        ${teamOptions}
+      </select>
+    </div>
+    <div id="eteam-err" class="hidden text-sm text-red-600 mt-3"></div>
+    <div class="flex justify-end gap-2 mt-6">
+      <button onclick="closeModal()" class="px-4 py-2 text-sm text-[var(--ink-muted)] font-medium hover:text-[var(--ink)]">ยกเลิก</button>
+      <button onclick="saveEditTeam(${clientId})" class="px-4 py-2 bg-[var(--accent)] hover:bg-[color-mix(in_oklab,var(--accent)_85%,black)] text-white text-sm font-semibold rounded-lg transition-colors">บันทึก</button>
+    </div>`);
+}
+async function saveEditTeam(clientId) {
+  const val = document.getElementById('eteam-select')?.value || '';
+  const newTeamId = val ? parseInt(val, 10) : null;
+  const res = await applyTeamChangeCore_(clientId, newTeamId);
+  if (!res.ok) {
+    const err = document.getElementById('eteam-err');
+    if (err) { err.textContent = 'บันทึกไม่สำเร็จ: ' + res.error; err.classList.remove('hidden'); }
+    return;
+  }
+  closeModal();
+  showToast('เปลี่ยนทีมแล้ว');
+  if (curPage === 'assign') renderAssignPage();
+  if (curPage === 'tracking') renderTracking();
 }
 
-// ── ผู้รับผิดชอบ (crm_staff_clients) — โครงเดียวกับทีมด้านบนเป๊ะ (ตารางกริด ลูกค้า × พนักงาน คลิกช่อง
-// เพื่อ toggle) ต่างกันตรงที่ลูกค้า 1 รายมีผู้รับผิดชอบได้หลายคน (ทีมมีได้แค่ทีมเดียว บนคอลัมน์
-// crm_clients.team_id) จึงต้อง insert/delete แถวในตาราง crm_staff_clients แทนการ update คอลัมน์เดียว
-// เห็นได้ทุกระดับ (ดู canSeeAssignees) แต่แก้ได้เฉพาะ LV1-3 (canManageTeams ตรงกับ RLS insert/delete จริง) ──
+// ── ผู้รับผิดชอบ (crm_staff_clients) — ลูกค้า 1 รายมีผู้รับผิดชอบได้หลายคน (ทีมมีได้แค่ทีมเดียว บนคอลัมน์
+// crm_clients.team_id ด้านบน) จึงต้อง insert/delete แถวในตาราง crm_staff_clients แทนการ update คอลัมน์
+// เดียว เห็นได้ทุกระดับ (ดู canSeeAssignees) แต่แก้ได้เฉพาะ LV1-3 (canManageTeams ตรงกับ RLS insert/
+// delete ของตารางนี้จริง) ──
 async function toggleClientAssignee_(clientId, staffId) {
   if (!canManageTeams()) return { ok: false, error: 'ไม่มีสิทธิ์แก้ไข' };
   const has = (clientStaffMap[clientId] || []).includes(staffId);
@@ -6185,74 +6243,54 @@ async function toggleClientAssignee_(clientId, staffId) {
   }
   return { ok: true };
 }
-function renderAssigneeGrid() {
-  const el = document.getElementById('assignee-grid-container');
-  if (!el) return;
-  const canEditGrid = canManageTeams();
-  const subEl = document.getElementById('assigneegrid-subtitle');
-  if (subEl) subEl.textContent = canEditGrid
-    ? 'กำหนดว่าพนักงานคนไหนรับผิดชอบลูกค้ารายใด (เลือกได้หลายคนต่อลูกค้า 1 ราย) คลิกในตารางเพื่อเปลี่ยน'
-    : 'พนักงานคนไหนรับผิดชอบลูกค้ารายใด (เลือกได้หลายคนต่อลูกค้า 1 ราย) — ดูได้อย่างเดียว แก้ไขได้เฉพาะเจ้าของ/ผู้จัดการ/พนักงานอาวุโส';
-  const activeStaff = staffList.filter(s => s.is_active);
-  if (!activeStaff.length) {
-    el.innerHTML = '<div class="p-8 text-center text-sm text-[var(--ink-muted)]">ยังไม่มีพนักงาน</div>';
-    return;
-  }
-  const rows = clients.filter(c => c.is_active && !c.is_own_company).slice().sort((a, b) => a.code.localeCompare(b.code));
-  if (!rows.length) {
-    el.innerHTML = '<div class="p-8 text-center text-sm text-[var(--ink-muted)]">ยังไม่มีลูกค้า</div>';
-    return;
-  }
-  const header = `<tr>
-    <th class="col-fav text-left px-3 text-xs font-semibold text-[var(--ink-muted)] border-b-2 border-[var(--border)]" style="min-width:220px;position:sticky;left:0;background:var(--surface-2);z-index:2">ลูกค้า</th>
-    ${activeStaff.map(s => `<th class="px-3 text-xs font-semibold text-[var(--ink-muted)] border-b-2 border-l border-[var(--border)] text-center" style="min-width:110px">${e(s.display_name)}</th>`).join('')}
-  </tr>`;
-  const body = rows.map(c => {
-    const assigned = new Set(clientStaffMap[c.id] || []);
-    return `<tr>
-    <td class="px-3 py-2 text-sm text-[var(--ink)] border-b border-[var(--border)]" style="position:sticky;left:0;background:var(--surface)"><span class="text-xs font-bold text-[var(--ink-muted)] mr-1.5">${e(c.code)}</span>${e(c.thai_name)}</td>
-    ${activeStaff.map(s => `<td class="px-3 py-2 text-center border-b border-l border-[var(--border)] ${canEditGrid ? 'cursor-pointer hover:bg-[var(--surface-2)]' : ''}" ${canEditGrid ? `onclick="toggleClientAssigneeGrid(${c.id},'${s.id}')"` : ''}>${assigned.has(s.id) ? '<span class="dot done">✓</span>' : '<span class="dot todo"></span>'}</td>`).join('')}
-  </tr>`;
-  }).join('');
-  el.innerHTML = `<table class="w-full text-center" style="border-collapse:collapse"><thead>${header}</thead><tbody>${body}</tbody></table>`;
-}
-async function toggleClientAssigneeGrid(clientId, staffId) {
-  if (!canManageTeams()) return;
-  const res = await toggleClientAssignee_(clientId, staffId);
-  if (!res.ok) { showToast('บันทึกผู้รับผิดชอบไม่สำเร็จ: ' + res.error, 'error'); return; }
-  renderAssigneeGrid();
-  if (curPage === 'tracking') renderTracking();
-}
-// ฟอร์มเล็กเลือกผู้รับผิดชอบหลายคนสำหรับลูกค้า 1 ราย — เปิดจากคลิกคอลัมน์ "ผู้รับผิดชอบ" ในหน้ารายเดือน
-// (อีกทางคือหน้ากริด "ผู้รับผิดชอบ" ด้านบนที่คลิกทีละช่อง toggle ทันที — ทั้งคู่เรียก toggleClientAssignee_
-// ตัวเดียวกัน ไม่มี logic เขียน DB ซ้ำสองชุด) LV1-3 เท่านั้นที่แก้ได้ ตรงกับ canManageTeams ที่ใช้กันหน้า
-// กริดด้านบนอยู่แล้ว — assigneeCellHtml() ไม่ใส่ onclick นี้ให้ตั้งแต่แรกถ้า !canManageTeams() (LV4-5 กดไม่ได้)
+// ฟอร์มเล็กเลือกผู้รับผิดชอบหลายคนสำหรับลูกค้า 1 ราย — เปิดจากคลิกคอลัมน์ "ผู้รับผิดชอบ" ทั้งในหน้า
+// รายเดือน (assigneeCellHtml) และหน้า "มอบหมายงาน" (assignAssigneeSpanHtml_) จุดเดียวกันตัวเดียวกัน
+// (ทั้งคู่เรียก toggleClientAssignee_ ตัวเดียวกัน ไม่มี logic เขียน DB ซ้ำสองชุด) LV1-3 เท่านั้นที่แก้ได้
+// ตรงกับ canManageTeams — ทั้งสองจุดที่เรียกจะไม่ใส่ onclick นี้ให้ตั้งแต่แรกถ้า !canManageTeams() (LV4-5
+// กดไม่ได้) หรือลูกค้ายังไม่มีทีม (ต้องเลือกทีมก่อนเสมอ ดูคอมเมนต์หัวไฟล์ส่วนนี้)
 async function openAssigneeModal(clientId) {
   if (!canManageTeams()) return;
   const c = clients.find(x => x.id === clientId);
   if (!c) return;
+  if (c.team_id == null) {
+    // เซลล์ที่ไม่มีทีมจะไม่มี onclick นี้อยู่แล้ว (ดู assigneeCellHtml/assignAssigneeSpanHtml_) — เช็คซ้ำ
+    // ตรงนี้เป็นชั้นป้องกันสำรอง เผื่อมีจุดอื่นเรียกฟังก์ชันนี้ตรงๆ ในอนาคต
+    showToast('ลูกค้ารายนี้ยังไม่มีทีม กรุณาเลือกทีมที่หน้า "มอบหมายงาน" ก่อน', 'error');
+    return;
+  }
   if (!staffList.length) await loadStaff();
   const activeStaff = staffList.filter(s => s.is_active);
   const assignedIds = new Set(clientStaffMap[clientId] || []);
-  const checks = activeStaff.map(s => `
+  // "คนในทีม" = สมาชิกใน org_team_members + หัวหน้าทีมจาก org_teams.lead_id เสมอ (ดู
+  // teamMemberIdsIncludingLead) — ไม่งั้นหัวหน้าทีมจะเลือกเป็นผู้รับผิดชอบลูกค้าในทีมตัวเองไม่ได้เลย
+  const candidateIds = new Set(teamMemberIdsIncludingLead(c.team_id));
+  const teamStaff = activeStaff.filter(s => candidateIds.has(s.id));
+  // คนที่เคยเป็นผู้รับผิดชอบอยู่แล้ว แต่ตอนนี้ไม่ได้อยู่ในทีมของลูกค้ารายนี้แล้ว (ย้ายออกจากทีม/ลูกค้า
+  // เปลี่ยนทีม) — ต้องยังโชว์ไว้พร้อมป้าย ห้ามหายไปจากฟอร์มเงียบๆ (พิสูจน์แล้วว่าเป็นบั๊กจริงมาก่อนกับกรณี
+  // พนักงานลาออก ดูคอมเมนต์ saveAssigneeModal ด้านล่าง — เงื่อนไขทีมเสี่ยงแบบเดียวกันทุกประการ) ผู้ใช้
+  // เอาออกเองได้ด้วยการติ๊กออกแล้วบันทึก
+  const legacyStaff = activeStaff.filter(s => !candidateIds.has(s.id) && assignedIds.has(s.id));
+  const assigneeRowHtml_ = (s, legacy) => `
     <label class="flex items-center gap-2.5 py-1.5 px-1 text-sm text-[var(--ink)] cursor-pointer">
       <input type="checkbox" class="assignee-chk w-4 h-4 rounded text-[var(--accent)]" value="${s.id}" ${assignedIds.has(s.id) ? 'checked' : ''}>
-      ${e(s.display_name)} <span class="text-[var(--ink-muted)] text-xs">(${e(ROLE_LABEL[s.role]||s.role)})</span>
-    </label>`).join('');
+      ${e(s.display_name)} <span class="text-[var(--ink-muted)] text-xs">(${e(ROLE_LABEL[s.role]||s.role)})</span>${legacy ? ' <span class="text-amber-600 text-xs font-medium">(ไม่อยู่ในทีมแล้ว)</span>' : ''}
+    </label>`;
+  const checks = teamStaff.map(s => assigneeRowHtml_(s, false)).join('') + legacyStaff.map(s => assigneeRowHtml_(s, true)).join('');
+  const team = teams.find(t => t.id === c.team_id);
   openModal(`
     <h3 class="text-base font-bold text-[var(--ink)] mb-1">ผู้รับผิดชอบ</h3>
-    <p class="text-xs text-[var(--ink-muted)] mb-4">${e(c.thai_name)}</p>
-    <div class="border border-[var(--border)] rounded-lg max-h-64 overflow-y-auto px-2 py-1">${checks || '<div class="text-xs text-[var(--ink-muted)] py-2">ไม่มีพนักงาน</div>'}</div>
+    <p class="text-xs text-[var(--ink-muted)] mb-4">${e(c.thai_name)}${team ? ` · ทีม${e(team.name)}` : ''}</p>
+    <div class="border border-[var(--border)] rounded-lg max-h-64 overflow-y-auto px-2 py-1">${checks || '<div class="text-xs text-[var(--ink-muted)] py-2">ทีมนี้ยังไม่มีสมาชิก</div>'}</div>
     <div class="flex justify-end gap-2 mt-5">
       <button onclick="closeModal()" class="px-4 py-2 text-sm text-[var(--ink-muted)] font-medium hover:text-[var(--ink)]">ยกเลิก</button>
       <button onclick="saveAssigneeModal(${clientId})" class="px-4 py-2 bg-[var(--accent)] text-white text-sm font-semibold rounded-lg hover:bg-[color-mix(in_oklab,var(--accent)_85%,black)]">บันทึก</button>
     </div>`);
 }
 // บันทึกจากฟอร์มเลือกผู้รับผิดชอบหลายคน — เทียบรายชื่อที่ติ๊กไว้ตอนนี้กับของเดิม (clientStaffMap) แล้ว
-// toggle เฉพาะคนที่สถานะเปลี่ยนจริงผ่าน toggleClientAssignee_ (ตัวเดียวกับที่หน้ากริดใช้) ทีละคนที่เปลี่ยน
-// เท่านั้น ไม่ใช่ลบทั้งหมดแล้วเขียนใหม่ทั้งชุด — ยิงพร้อมกันได้ปลอดภัย (ดูคอมเมนต์ lost-update ใน
-// toggleClientAssignee_) รวม error เป็น toast เดียวก้อนเดียว ไม่ยิงทีละอันเวลามีหลายคนเปลี่ยนพร้อมกัน
-// (toast ไม่ใช่คิว เรียกรัวๆ จะกระพริบทับกันเอง — แพทเทิร์นเดียวกับ createBatchInvoices)
+// toggle เฉพาะคนที่สถานะเปลี่ยนจริงผ่าน toggleClientAssignee_ ทีละคนที่เปลี่ยนเท่านั้น ไม่ใช่ลบทั้งหมดแล้ว
+// เขียนใหม่ทั้งชุด — ยิงพร้อมกันได้ปลอดภัย (ดูคอมเมนต์ lost-update ใน toggleClientAssignee_) รวม error
+// เป็น toast เดียวก้อนเดียว ไม่ยิงทีละอันเวลามีหลายคนเปลี่ยนพร้อมกัน (toast ไม่ใช่คิว เรียกรัวๆ จะกระพริบ
+// ทับกันเอง — แพทเทิร์นเดียวกับ createBatchInvoices)
 async function saveAssigneeModal(clientId) {
   if (!canManageTeams()) return;
   // staff id เป็น UUID (org_staff.id ผูกกับ auth.users) ไม่ใช่ตัวเลข — เก็บเป็น string ตรงๆ ห้าม parseInt()
@@ -6261,11 +6299,14 @@ async function saveAssigneeModal(clientId) {
   const checkEls = [...document.querySelectorAll('.assignee-chk')];
   const checked = new Set(checkEls.filter(el => el.checked).map(el => el.value));
   const before = new Set(clientStaffMap[clientId] || []);
-  // เทียบกับ "renderedIds" (คนที่มีช่องติ๊กจริงในฟอร์มนี้ — คือ activeStaff เท่านั้น ดู openAssigneeModal)
-  // ไม่ใช่ allIds ที่รวม before ทั้งชุดแบบเดิม — ลูกค้าที่มีพนักงานลาออกแล้วแต่ยังค้างเป็นผู้รับผิดชอบอยู่
-  // (แถวเก่าใน clientStaffMap) จะไม่มีช่องติ๊กให้เห็นเลยเพราะ openAssigneeModal กรองเฉพาะ is_active — ถ้าเทียบ
-  // กับ before ทั้งชุด คนที่ "ไม่มีช่องติ๊ก" จะถูกตีความว่า "ผู้ใช้ติ๊กออกแล้ว" และโดนลบออกจาก crm_staff_clients
-  // ทันทีที่กดบันทึก แม้ผู้ใช้จะไม่เคยเห็น/ไม่เคยแตะชื่อนั้นเลยก็ตาม (พิสูจน์แล้วว่าเกิดจริง)
+  // เทียบกับ "renderedIds" (คนที่มีช่องติ๊กจริงในฟอร์มนี้ — คือ teamStaff+legacyStaff เท่านั้น ดู
+  // openAssigneeModal) ไม่ใช่ allIds ที่รวม before ทั้งชุดแบบเดิม — ทุกคนที่เคยเป็นผู้รับผิดชอบอยู่แล้ว
+  // (แถวเก่าใน clientStaffMap) มีช่องติ๊กให้เห็นเสมอ ไม่ว่าจะยังอยู่ในทีมของลูกค้ารายนี้หรือไม่ก็ตาม
+  // (legacyStaff คุ้มครองเคสนี้ไว้แล้ว) เหลือแค่พนักงานที่ปิดใช้งานไปแล้ว (is_active=false) เท่านั้นที่ไม่มี
+  // ช่องติ๊ก (ของเดิมตั้งแต่ก่อนงานนี้) ถ้าเทียบกับ before ทั้งชุดตรงๆ คนที่ "ไม่มีช่องติ๊ก" จะถูกตีความว่า
+  // "ผู้ใช้ติ๊กออกแล้ว" และโดนลบออกจาก crm_staff_clients ทันทีที่กดบันทึก แม้ผู้ใช้จะไม่เคยเห็น/ไม่เคยแตะ
+  // ชื่อนั้นเลยก็ตาม (พิสูจน์แล้วว่าเกิดจริงกับกรณีพนักงานลาออก — เงื่อนไขทีมเสี่ยงแบบเดียวกัน จึงป้องกันด้วย
+  // วิธีเดิม)
   const renderedIds = new Set(checkEls.map(el => el.value));
   const changed = [...renderedIds].filter(id => checked.has(id) !== before.has(id));
   if (!changed.length) { closeModal(); return; }
@@ -6277,7 +6318,45 @@ async function saveAssigneeModal(clientId) {
   if (failCount) showToast(`บันทึกผู้รับผิดชอบไม่สำเร็จ ${failCount}/${changed.length} รายการ — ลองใหม่อีกครั้ง`, 'error');
   else showToast('บันทึกผู้รับผิดชอบแล้ว');
   if (curPage === 'tracking') renderTracking();
-  if (curPage === 'assigneegrid') renderAssigneeGrid();
+  if (curPage === 'assign') renderAssignPage();
+}
+
+// เนื้อหาคอลัมน์ "ผู้รับผิดชอบ" ของหน้า "มอบหมายงาน" (ห่อด้วย <span>, ต่างจาก assigneeCellHtml ของหน้า
+// รายเดือนที่ห่อด้วย <td>) — ใช้ assigneeCellInnerHtml_ ตัวเดียวกันเพื่อกันเขียนตรรกะแสดงชื่อซ้ำสองที่
+function assignAssigneeSpanHtml_(c) {
+  const hasTeam = c.team_id != null;
+  const editable = canManageTeams() && hasTeam;
+  const { html, title } = assigneeCellInnerHtml_(c.id, hasTeam);
+  const placeholder = editable ? '<span class="text-[var(--ink-muted)]">คลิกเพื่อเลือก</span>' : '';
+  return `<span class="w-48 flex-shrink-0 text-xs overflow-hidden text-ellipsis whitespace-nowrap ${editable ? 'cursor-pointer hover:text-[var(--accent)]' : ''}" title="${e(title)}"${editable ? ` onclick="openAssigneeModal(${c.id})"` : ''}>${html || placeholder}</span>`;
+}
+function assignRowHtml(c) {
+  const team = c.team_id != null ? teams.find(t => t.id === c.team_id) : null;
+  const teamEditable = canManageTeams();
+  const teamLabel = team ? e(team.name) : '<span class="text-[var(--ink-muted)]">— ไม่มีทีม —</span>';
+  return `<div class="flex items-center gap-3 px-4 py-2.5 border-b border-[var(--border)] last:border-b-0">
+      <span class="flex-1 min-w-0 text-sm text-[var(--ink)] overflow-hidden text-ellipsis whitespace-nowrap"><span class="text-xs font-bold text-[var(--ink-muted)] mr-1.5">${e(c.code)}</span>${e(c.thai_name)}</span>
+      <span class="w-40 flex-shrink-0 text-xs ${teamEditable ? 'cursor-pointer hover:text-[var(--accent)]' : ''}"${teamEditable ? ` onclick="openEditTeam(${c.id})" title="เปลี่ยนทีม"` : ''}>${teamLabel}${teamEditable ? ' <span class="text-[var(--ink-muted)]">✎</span>' : ''}</span>
+      ${assignAssigneeSpanHtml_(c)}
+    </div>`;
+}
+// รายการหลักของหน้า "มอบหมายงาน" — 1 แถวต่อลูกค้า 1 ราย เรียงตามรหัส "#" เหมือนหน้าอื่น (ค่าบริการ/
+// การเก็บเงิน) ค้นหาได้ (code/ชื่อไทย/ชื่ออังกฤษ) เหมือนหน้าเหล่านั้นเช่นกัน
+function renderAssignPage() {
+  const subEl = document.getElementById('assign-subtitle');
+  if (subEl) subEl.textContent = canManageTeams()
+    ? 'เลือกทีมของลูกค้าแต่ละราย แล้วเลือกผู้รับผิดชอบจากคนในทีมนั้น (คลิกที่ช่องทีม/ผู้รับผิดชอบเพื่อเปลี่ยน)'
+    : 'ทีมและผู้รับผิดชอบของลูกค้าแต่ละราย — ดูได้อย่างเดียว แก้ไขได้เฉพาะเจ้าของ/ผู้จัดการ/พนักงานอาวุโส';
+  const q = (document.getElementById('assign-search')?.value || '').toLowerCase();
+  let rows = clients.filter(c => c.is_active && !c.is_own_company);
+  if (q) rows = rows.filter(c =>
+    (c.code || '').toLowerCase().includes(q) ||
+    (c.thai_name || '').toLowerCase().includes(q) ||
+    (c.eng_name || '').toLowerCase().includes(q));
+  rows = rows.slice().sort((a, b) => computeClientNo(a.billing_type, a.seq_num).localeCompare(computeClientNo(b.billing_type, b.seq_num)));
+  const el = document.getElementById('assign-list');
+  if (!el) return;
+  el.innerHTML = rows.length ? rows.map(assignRowHtml).join('') : '<div class="text-[var(--ink-muted)] text-sm py-8 text-center">ไม่พบลูกค้า</div>';
 }
 
 const ACTIVITY_ACTION_LABEL = {
