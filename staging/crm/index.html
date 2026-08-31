@@ -913,7 +913,6 @@
               <span class="flex-1">NAME</span>
               <span class="w-24 flex-shrink-0 text-right">ค่าบริการ</span>
               <span class="w-36 flex-shrink-0 text-center">สถานะ</span>
-              <span class="w-28 flex-shrink-0 text-center">FlowAccount</span>
             </div>
             <!-- height (fixed, not max-height) = 6 rows at the shared 49px row height:
                  6 × 49px = 294px. Same fixed-not-elastic rationale as #client-list above. -->
@@ -1249,7 +1248,6 @@ const SB_ANON = 'sb_publishable_4U_v9BIrQjKppfchaevA6Q_zWj3zkxE';
 // client without a way to actually test the change live.
 const sb = supabase.createClient(SB_URL, SB_ANON);
 const ADMIN_STAFF_FN = 'swift-handler'; // Edge Function slug for admin-staff/index.ts (Supabase keeps the original slug even after renaming "Name" in the dashboard)
-const FLOWACCOUNT_SYNC_FN = 'flowaccount-sync'; // Edge Function slug for flowaccount-sync/index.ts
 
 const THAI_MONTHS = ['','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม',
   'มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
@@ -4222,7 +4220,6 @@ async function renderPanelBilling() {
           </div>
         </div>
         ${inv.payment_received_at ? `<div class="text-xs text-green-700 mb-2">รับเงิน ${fmtDate(inv.payment_received_at)} — ${fmtMoney(inv.payment_amount)}</div>` : ''}
-        ${faSyncLine(c.id, inv)}
         ${actions.length ? `<div class="flex gap-2 flex-wrap">${actions.join('')}</div>` : ''}
       </div>`;
   }
@@ -4265,23 +4262,17 @@ async function loadBillingHistory(clientId) {
   if (!data?.length) { el.innerHTML = '<div class="text-xs text-[var(--ink-muted)] mt-1">ยังไม่มีประวัติ</div>'; return; }
 
   el.innerHTML = `<h4 class="text-sm font-bold text-[var(--ink)] mb-2">ประวัติใบแจ้งหนี้</h4>` +
-    data.map(inv => {
-      const faBits = [];
-      if (inv.fa_invoice_no) faBits.push('ใบกำกับ ' + inv.fa_invoice_no);
-      if (inv.fa_receipt_no) faBits.push('ใบเสร็จ ' + inv.fa_receipt_no);
-      return `
+    data.map(inv => `
     <div class="flex items-center justify-between py-2 border-b border-[var(--border)] last:border-0">
       <div>
         <span class="text-xs font-semibold text-[var(--ink)]">${THAI_MONTHS[inv.month]} ${inv.year}</span>
         <span class="ml-2 text-xs text-[var(--ink-muted)]">${fmtMoney(inv.expected_payment)}</span>
-        ${faBits.length ? `<div class="text-[10px] text-[var(--ink-muted)]">${e(faBits.join(' · '))}</div>` : ''}
       </div>
       <div class="flex items-center gap-2">
         ${invBadge(inv.status)}
         ${isOwner() ? `<button onclick="deleteInvoice(${inv.id})" class="text-[var(--ink-muted)] hover:text-red-500 transition-colors text-xs" title="ลบ">✕</button>` : ''}
       </div>
-    </div>`;
-    }).join('');
+    </div>`).join('');
 }
 
 async function loadBillingContracts(clientId) {
@@ -4310,83 +4301,7 @@ async function loadBillingContracts(clientId) {
     </div>`).join('');
 }
 
-// ── FlowAccount sync (tax invoice / receipt) ──
-// Local crm_invoices writes are always the source of truth: these helpers are
-// called AFTER a local draft/paid write already succeeded, never before, and
-// their failure never undoes or blocks that local write — they only report a
-// separate toast so staff know a FlowAccount retry is needed later. Mirrors
-// the sb.functions.invoke(...) → {data,error} → invokeErrorMessage() pattern
-// already used for ADMIN_STAFF_FN calls elsewhere in this file.
-async function flowAccountInvoke_(action, invoiceId) {
-  const { data, error } = await sb.functions.invoke(FLOWACCOUNT_SYNC_FN, {
-    body: { action, invoice_id: invoiceId },
-  });
-  if (error || data?.error) {
-    return { ok: false, message: data?.error || await invokeErrorMessage(error) || 'เชื่อมต่อ FlowAccount ไม่สำเร็จ' };
-  }
-  return { ok: true, data };
-}
-async function syncInvoiceToFlowAccount(clientId, invoiceId) {
-  const res = await flowAccountInvoke_('create_invoice', invoiceId);
-  if (!res.ok) {
-    showToast(`บันทึกใบแจ้งหนี้ในระบบแล้ว แต่ส่งไป FlowAccount ไม่สำเร็จ: ${res.message} (ลองใหม่ได้ภายหลัง)`, 'error');
-    return false;
-  }
-  if (invoiceMap[clientId]?.id === invoiceId) invoiceMap[clientId] = res.data.invoice || invoiceMap[clientId];
-  showToast(`ส่งใบกำกับภาษีไป FlowAccount สำเร็จ (เลขที่ ${res.data.fa_invoice_no || res.data.fa_invoice_id})`);
-  return true;
-}
-async function syncReceiptToFlowAccount(clientId, invoiceId) {
-  const res = await flowAccountInvoke_('create_receipt_and_email', invoiceId);
-  if (!res.ok) {
-    showToast(`บันทึกรับเงินในระบบแล้ว แต่ออกใบเสร็จ/ส่งอีเมล FlowAccount ไม่สำเร็จ: ${res.message} (ลองใหม่ได้ภายหลัง)`, 'error');
-    return false;
-  }
-  if (invoiceMap[clientId]?.id === invoiceId) invoiceMap[clientId] = res.data.invoice || invoiceMap[clientId];
-  showToast(`ออกใบเสร็จและส่งอีเมลลูกค้าสำเร็จ (เลขที่ ${res.data.fa_receipt_no || res.data.fa_receipt_id})`);
-  return true;
-}
-async function retryFlowAccountInvoice(clientId) {
-  const inv = invoiceMap[clientId];
-  if (!inv) return;
-  const btn = document.getElementById('fa-inv-retry-' + clientId);
-  if (btn) { btn.disabled = true; btn.textContent = 'กำลังส่ง…'; }
-  await syncInvoiceToFlowAccount(clientId, inv.id);
-  renderPanelBilling();
-}
-async function retryFlowAccountReceipt(clientId) {
-  const inv = invoiceMap[clientId];
-  if (!inv) return;
-  const btn = document.getElementById('fa-rcpt-retry-' + clientId);
-  if (btn) { btn.disabled = true; btn.textContent = 'กำลังส่ง…'; }
-  await syncReceiptToFlowAccount(clientId, inv.id);
-  renderPanelBilling();
-}
-// Small status line shown inside the current invoice box: FA doc number once
-// synced, or an inline retry button while it's missing (expected/common until
-// FlowAccount secrets are configured — see flowaccount-sync's README).
-function faSyncLine(clientId, inv) {
-  const rows = [];
-  if (inv.fa_invoice_no || inv.fa_invoice_id) {
-    rows.push(`<div class="text-xs text-[var(--ink-muted)]">ใบกำกับภาษี FlowAccount: <span class="font-semibold text-[var(--ink)]">${e(inv.fa_invoice_no || inv.fa_invoice_id)}</span></div>`);
-  } else {
-    rows.push(`<div class="flex items-center gap-2 text-xs text-amber-600">
-      <span>ยังไม่ได้ส่งใบกำกับภาษีไป FlowAccount</span>
-      ${canEdit() ? `<button onclick="retryFlowAccountInvoice(${clientId})" id="fa-inv-retry-${clientId}" class="text-xs bg-[var(--surface-2)] hover:bg-[var(--surface-2)] text-[var(--ink-muted)] font-semibold px-2.5 py-1 rounded-lg transition-colors">↻ ลองใหม่</button>` : ''}
-    </div>`);
-  }
-  if (inv.status === 'paid') {
-    if (inv.fa_receipt_no || inv.fa_receipt_id) {
-      rows.push(`<div class="text-xs text-[var(--ink-muted)]">ใบเสร็จ FlowAccount: <span class="font-semibold text-[var(--ink)]">${e(inv.fa_receipt_no || inv.fa_receipt_id)}</span>${inv.receipt_sent_at ? ` · ส่งอีเมลแล้ว ${fmtDate(inv.receipt_sent_at)}` : ''}</div>`);
-    } else {
-      rows.push(`<div class="flex items-center gap-2 text-xs text-amber-600">
-        <span>ยังไม่ได้ออกใบเสร็จ/ส่งอีเมล FlowAccount</span>
-        ${canEdit() ? `<button onclick="retryFlowAccountReceipt(${clientId})" id="fa-rcpt-retry-${clientId}" class="text-xs bg-[var(--surface-2)] hover:bg-[var(--surface-2)] text-[var(--ink-muted)] font-semibold px-2.5 py-1 rounded-lg transition-colors">↻ ลองใหม่</button>` : ''}
-      </div>`);
-    }
-  }
-  return `<div class="space-y-1 mb-2">${rows.join('')}</div>`;
-}
+// FlowAccount sync (ใบกำกับภาษี/ใบเสร็จอัตโนมัติ) ถูกถอดออกทั้งหมดแล้วตามคำสั่งเจ้าของระบบ (2026-08-31) — เชื่อมต่อไว้แต่ไม่เคยตั้งค่าใช้งานจริง ฟีเจอร์ใบแจ้งหนี้/รับเงินของ CRM เองยังทำงานปกติทุกจุด (ดู createSingleInvoice/createBatchInvoices/markInvoicePaidCore_ ด้านล่าง)
 
 async function createSingleInvoice(clientId) {
   const c = clients.find(x => x.id === clientId);
@@ -4409,10 +4324,6 @@ async function createSingleInvoice(clientId) {
   showToast('สร้างใบแจ้งหนี้สำเร็จ');
   renderPanelBilling();
   renderTrackingSummary();
-  // Local draft is already committed above — FlowAccount sync is best-effort
-  // and its failure must not roll back or block anything already done.
-  await syncInvoiceToFlowAccount(clientId, data.id);
-  renderPanelBilling();
 }
 
 async function updateInvStatus(clientId, newStatus) {
@@ -4453,9 +4364,8 @@ function openMarkPaid(clientId) {
 
 // ── แกนกลาง "บันทึกรับเงิน" — ใช้ร่วมกันทั้ง modal เดิม (confirmMarkPaid ด้านล่าง พิมพ์ยอดเองได้) และปุ่ม
 // คลิกเดียวในแท็บการเก็บเงิน (toggleFinCollected, auto-fill ยอด — ดูหัวข้อ PAGE: FINANCE) ต่างกันแค่ "ยอดมา
-// จากไหน" เท่านั้น ตัวเขียน DB (status/payment_amount/payment_received_at + อัปเดต Acct Fee) และการ trigger
-// FlowAccount receipt sync เหมือนกันทุกจุด ไม่มี logic แยกกันสองชุด คืนค่าใบแจ้งหนี้ที่อัปเดตแล้ว หรือ null
-// ถ้าบันทึกไม่สำเร็จ (แสดง toast ให้แล้วในนี้)
+// จากไหน" เท่านั้น ตัวเขียน DB (status/payment_amount/payment_received_at + อัปเดต Acct Fee) เหมือนกันทุกจุด
+// ไม่มี logic แยกกันสองชุด คืนค่าใบแจ้งหนี้ที่อัปเดตแล้ว หรือ null ถ้าบันทึกไม่สำเร็จ (แสดง toast ให้แล้วในนี้)
 async function markInvoicePaidCore_(clientId, inv, amount, updateTask) {
   const { data, error } = await sb.from('crm_invoices').update({
     status: 'paid',
@@ -4494,11 +4404,6 @@ async function confirmMarkPaid(clientId) {
   renderTrackingSummary();
   if (curPage === 'tracking') renderTracking();
   if (curPage === 'finance' && data.year === finYear && data.month === finMonth) renderFinanceCollection();
-
-  // "Paid" is already recorded above — receipt/email is a fact-independent
-  // best-effort follow-up; its failure must never undo the paid status.
-  await syncReceiptToFlowAccount(clientId, data.id);
-  renderPanelBilling();
 }
 
 // ── Creds Tab ──
@@ -4637,7 +4542,7 @@ function openAddCredItem() {
     <div class="space-y-3">
       <div>
         <label class="block text-sm font-semibold text-[var(--ink)] mb-1.5">ชื่อระบบ</label>
-        <input id="ci-label" type="text" placeholder="เช่น ระบบ e-Filing, FlowAccount"
+        <input id="ci-label" type="text" placeholder="เช่น ระบบ e-Filing, ธนาคารออนไลน์"
           class="w-full px-3.5 py-2.5 rounded-lg border border-[var(--border)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]">
       </div>
       <div>
@@ -5232,7 +5137,7 @@ async function createBatchInvoices(year, month) {
   const payloads = selected.map(cid => {
     const c = clients.find(x => x.id === cid);
     // ยอด/ประเภทที่เขียนจริงต้อง resolve ตามประวัติสัญญา ณ เดือนที่ออกใบ ให้ตรงกับตัวเลขที่พรีวิวไว้ใน
-    // openBatchInvoice เป๊ะ (ใบนี้ถูกส่งต่อไป FlowAccount เป็นใบกำกับภาษีจริง ตัวเลขผิดเดือน = เก็บเงินผิด)
+    // openBatchInvoice เป๊ะ (ตัวเลขผิดเดือน = เก็บเงินผิด)
     const resolved = resolveEffectiveFee(c, year, month, billingContractsByClient[cid]);
     const fee = resolved.fee_amount || 0;
     const wht = resolved.has_wht ? Math.round(fee * 0.03 * 100) / 100 : 0;
@@ -5256,32 +5161,6 @@ async function createBatchInvoices(year, month) {
   if (year === curYear && month === curMonth) renderTrackingSummary();
   if (curPage === 'clients') renderClientList();
   if (curPage === 'finance' && year === finYear && month === finMonth) renderFinanceCollection();
-
-  // Local drafts are already committed above. Sync each to FlowAccount as a
-  // best-effort follow-up — one aggregate toast instead of one per invoice
-  // (this toast element isn't a queue; N rapid calls would just flicker).
-  const newInvoices = data || [];
-  if (newInvoices.length) {
-    const results = await Promise.all(newInvoices.map(async inv => {
-      const res = await flowAccountInvoke_('create_invoice', inv.id);
-      if (res.ok) {
-        const updated = res.data.invoice || inv;
-        if (updated.year === curYear && updated.month === curMonth) invoiceMap[updated.client_id] = updated;
-        if (updated.year === finYear && updated.month === finMonth) finInvoiceMap[updated.client_id] = updated;
-      }
-      return res.ok;
-    }));
-    const okCount = results.filter(Boolean).length;
-    if (okCount === newInvoices.length) {
-      showToast(`ส่งใบแจ้งหนี้ไป FlowAccount สำเร็จครบทั้ง ${okCount} ใบ`);
-    } else if (okCount === 0) {
-      showToast(`สร้างใบแจ้งหนี้ในระบบแล้ว แต่ส่งไป FlowAccount ไม่สำเร็จทั้งหมด (${newInvoices.length} ใบ) — ข้อมูลไม่หาย ลองส่งใหม่ได้ภายหลัง`, 'error');
-    } else {
-      showToast(`ส่งไป FlowAccount สำเร็จ ${okCount}/${newInvoices.length} ใบ ที่เหลือลองส่งใหม่ได้ภายหลัง`, 'error');
-    }
-    if (curPage === 'clients') renderClientList();
-    if (curPage === 'finance' && year === finYear && month === finMonth) renderFinanceCollection();
-  }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -5311,19 +5190,6 @@ function financeNoAccessHtml_() {
     <div class="text-sm font-semibold text-[var(--ink-muted)]">ไม่มีสิทธิ์ดูข้อมูลการเงิน</div>
     <div class="text-xs text-[var(--ink-muted)] mt-1">หน้านี้เห็นได้เฉพาะเจ้าของ/ผู้จัดการ/พนักงานอาวุโสเท่านั้น</div>
   </div>`;
-}
-
-// สรุปสถานะ FlowAccount แบบสั้น สำหรับแสดงในรายการ (รายละเอียด/ปุ่มลองใหม่เต็มๆ อยู่ในแผงลูกค้า แท็บ "ใบแจ้งหนี้" — faSyncLine())
-function faStatusBadge(inv) {
-  if (!inv) return '<span class="text-xs text-[var(--ink-muted)]">—</span>';
-  if (inv.status === 'paid') {
-    return inv.fa_receipt_no || inv.fa_receipt_id
-      ? `<span class="text-xs text-green-600 font-semibold" title="ใบเสร็จ ${e(inv.fa_receipt_no || inv.fa_receipt_id)}">✓ ใบเสร็จ</span>`
-      : `<span class="text-xs text-amber-600">ยังไม่ออกใบเสร็จ</span>`;
-  }
-  return inv.fa_invoice_no || inv.fa_invoice_id
-    ? `<span class="text-xs text-[var(--ink-muted)]" title="ใบกำกับ ${e(inv.fa_invoice_no || inv.fa_invoice_id)}">✓ ส่งแล้ว</span>`
-    : `<span class="text-xs text-amber-600">ยังไม่ส่ง</span>`;
 }
 
 // ค่าบริการ/หัก ณ ที่จ่าย "ปัจจุบัน" ของลูกค้า — ย้ายออกจาก crm_clients.monthly_fee/has_wht มาอยู่ตาราง
@@ -5471,7 +5337,6 @@ function financeCollectionRowHtml(c) {
       <span class="flex-1 min-w-0 text-sm font-semibold text-[var(--ink)] overflow-hidden text-ellipsis whitespace-nowrap">${e(c.thai_name)}</span>
       <span class="w-24 flex-shrink-0 text-right text-xs font-mono text-[var(--ink)]">${fmtMoney(amount)}</span>
       <span class="w-36 flex-shrink-0 text-center">${finStatusCellHtml(c, inv)}</span>
-      <span class="w-28 flex-shrink-0 text-center">${faStatusBadge(inv)}</span>
     </div>`;
 }
 function renderFinanceCollection() {
@@ -5508,8 +5373,8 @@ function renderFinanceCollection() {
     : '<div class="text-[var(--ink-muted)] text-sm py-8 text-center">ไม่มีลูกค้าในเดือนนี้</div>';
 }
 
-// ── คลิกเซลล์สถานะ: mark ว่าเก็บเงินแล้ว (auto-fill ยอด, trigger FlowAccount receipt sync ตัวเดียวกับ
-// confirmMarkPaid) หรือกดซ้ำเพื่อ undo ถ้าตอนนี้ "เก็บแล้ว" อยู่ — ไม่มี modal/ฟอร์มทั้งสองทาง ──
+// ── คลิกเซลล์สถานะ: mark ว่าเก็บเงินแล้ว (auto-fill ยอด) หรือกดซ้ำเพื่อ undo ถ้าตอนนี้ "เก็บแล้ว" อยู่ —
+// ไม่มี modal/ฟอร์มทั้งสองทาง ──
 async function toggleFinCollected(clientId) {
   if (!canEdit()) return;
   const c = clients.find(x => x.id === clientId);
@@ -5527,9 +5392,7 @@ async function toggleFinCollected(clientId) {
   if (!inv) {
     // ยังไม่เคยมีใบแจ้งหนี้เดือนนี้เลย — สร้างร่างใหม่ก่อนด้วยค่าบริการที่ resolve ตามประวัติสัญญา ณ เดือน
     // ที่กำลังดูอยู่ (แบบเดียวกับ createSingleInvoice/createBatchInvoices แต่ใช้ fee ที่ resolve ตามประวัติ
-    // แทน monthly_fee ตรงๆ เพราะเดือนที่เลือกดูอาจเป็นเดือนย้อนหลังที่ fee ไม่เท่าปัจจุบันแล้ว) ไม่เรียก
-    // FlowAccount create_invoice ที่นี่โดยเจตนา — นั่นเป็นคนละ business event (ออกใบกำกับภาษี) จาก "บันทึกว่า
-    // เก็บเงินแล้ว" ซึ่งเป็นแค่ receipt/payment-confirmation sync เหมือน confirmMarkPaid ทำอยู่แล้ว
+    // แทน monthly_fee ตรงๆ เพราะเดือนที่เลือกดูอาจเป็นเดือนย้อนหลังที่ fee ไม่เท่าปัจจุบันแล้ว)
     const resolved = resolveEffectiveFee(c, finYear, finMonth, billingContractsByClient[clientId]);
     const wht = resolved.has_wht ? Math.round(resolved.fee_amount * 0.03 * 100) / 100 : 0;
     const payload = {
@@ -5559,18 +5422,12 @@ async function toggleFinCollected(clientId) {
   renderTrackingSummary();
   if (curPage === 'tracking') renderTracking();
   if (panelClientId === clientId) renderPanelBilling();
-
-  await syncReceiptToFlowAccount(clientId, updated.id);
-  renderFinanceCollection();
-  if (panelClientId === clientId) renderPanelBilling();
 }
 
 // Undo: คืนสถานะกลับไปก่อนหน้า — เดาจาก invoice_sent_at ว่าเคยถูกส่ง (sent) มาก่อนไหม เพราะ schema ไม่มี
 // คอลัมน์เก็บ "สถานะก่อนหน้า" ตรงๆ ให้อ่าน (ถ้าใบนี้เพิ่งถูกสร้างจากคลิกเดียวกันนี้เอง invoice_sent_at จะยัง
-// ว่างอยู่ → กลับไปเป็น draft พอดี ถูกต้องตามจริง) ล้างตัวชี้ใบเสร็จ/การรับเงินทั้งหมดด้วย เพื่อให้กด "เก็บแล้ว"
-// รอบใหม่ภายหลังออกใบเสร็จ FlowAccount รอบใหม่ได้จริง (create_receipt_and_email ปฏิเสธถ้า fa_receipt_id ยัง
-// ค้างอยู่จากรอบก่อน) — ไม่เรียก FlowAccount ให้ยกเลิก/ลบอะไรระยะไกลเลย ตามธรรมเนียมเดิมของโปรเจกต์นี้ (local
-// state คือความจริงหลัก ฝั่ง FlowAccount sync เป็น best-effort ทางเดียวเท่านั้น)
+// ว่างอยู่ → กลับไปเป็น draft พอดี ถูกต้องตามจริง) ล้างการรับเงินทั้งหมดด้วย เพื่อให้กด "เก็บแล้ว" รอบใหม่
+// บันทึกยอด/วันที่รับเงินใหม่ได้ถูกต้อง
 async function undoFinCollected_(clientId, inv, cell) {
   if (cell) cell.classList.add('saving');
   const revertStatus = inv.invoice_sent_at ? 'sent' : 'draft';
@@ -5578,9 +5435,6 @@ async function undoFinCollected_(clientId, inv, cell) {
     status: revertStatus,
     payment_amount: null,
     payment_received_at: null,
-    fa_receipt_id: null,
-    fa_receipt_no: null,
-    receipt_sent_at: null,
   }).eq('id', inv.id).select().single();
   if (error) {
     if (cell) cell.classList.remove('saving');
