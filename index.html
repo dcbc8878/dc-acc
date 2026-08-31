@@ -139,7 +139,7 @@
   .nav-item.pending .dot { display: block; }
   .nav-sep { width: 32px; height: 1px; background: var(--border); margin: 8px 0 12px; }
   .nav-spacer { flex-grow: 1; }
-  .nav-item.settings { margin-bottom: 4px; }
+  .nav-item-wrap { position: relative; margin-bottom: 4px; }
 
   .nav-tooltip {
     position: absolute; left: 62px; top: 50%; transform: translateY(-50%);
@@ -152,6 +152,35 @@
     z-index: 30;
   }
   .nav-item:hover .nav-tooltip { opacity: 1; }
+  /* Settings is now a parent with 3 children (ส่วนตัว/โปรแกรม/พนักงาน-ทีม) instead
+     of one destination -- clicking it toggles this flyout instead of navigating
+     directly. Anchored to the wrap's bottom edge (not the icon's vertical
+     center, like .nav-tooltip) because the settings icon sits at the very
+     bottom of the rail -- growing upward keeps it from spilling past the
+     viewport on short screens. */
+  .settings-flyout {
+    position: absolute; left: 62px; bottom: 0;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    box-shadow: var(--shadow-lg); padding: 6px; min-width: 172px;
+    display: flex; flex-direction: column; gap: 2px;
+    z-index: 35;
+    transform: translateX(-6px) scale(0.98);
+    opacity: 0; pointer-events: none;
+    transition: transform 0.14s ease, opacity 0.14s ease;
+  }
+  .settings-flyout.open { transform: translateX(0) scale(1); opacity: 1; pointer-events: auto; }
+  .nav-item-wrap:has(.settings-flyout.open) .nav-tooltip { opacity: 0; }
+  .flyout-item {
+    display: flex; align-items: center; gap: 10px;
+    width: 100%; padding: 9px 10px; border-radius: 8px;
+    border: none; background: transparent; color: var(--ink);
+    font-family: inherit; font-size: 0.84rem; font-weight: 500;
+    cursor: pointer; text-align: left;
+  }
+  .flyout-item svg { width: 17px; height: 17px; color: var(--ink-muted); flex-shrink: 0; }
+  .flyout-item:hover { background: var(--surface-2); }
+  .flyout-item.active { background: var(--surface-2); color: var(--accent); }
+  .flyout-item.active svg { color: var(--accent); }
 
   /* ── main content ── */
   .main {
@@ -260,7 +289,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .nav-item, .ai-fab, .ai-panel, .ai-panel-backdrop, .nav-tooltip, .ai-fab-label { transition: none; }
+    .nav-item, .ai-fab, .ai-panel, .ai-panel-backdrop, .nav-tooltip, .ai-fab-label, .settings-flyout { transition: none; }
   }
 
   /* ── login gate ── */
@@ -353,7 +382,7 @@
   <header class="topbar">
     <div class="mark">DC</div>
     <span class="name">เด็กชายบัญชี</span>
-    <span class="page-title" id="pageTitle">CRM ลูกค้า</span>
+    <span class="page-title" id="pageTitle">CRM</span>
     <span class="staff-name" id="shellStaffName"></span>
     <button class="logout-btn" id="logoutBtn" aria-label="ออกจากระบบ" title="ออกจากระบบ">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
@@ -361,25 +390,49 @@
   </header>
 
   <nav class="sidenav">
-    <button class="nav-item active" data-page="crm" aria-label="CRM ลูกค้า">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-      <span class="nav-tooltip">CRM ลูกค้า</span>
+    <button class="nav-item active" data-key="crm" data-target="crm" data-section="crm" aria-label="CRM">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      <span class="nav-tooltip">CRM</span>
     </button>
-    <button class="nav-item" data-page="calendar" aria-label="ปฏิทินงาน">
+    <button class="nav-item" data-key="calendar" data-target="calendar" aria-label="ปฏิทินงาน">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
       <span class="nav-tooltip">ปฏิทินงาน</span>
     </button>
+    <button class="nav-item" data-key="customer" data-target="crm" data-section="customer" aria-label="ลูกค้า">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span class="nav-tooltip">ลูกค้า</span>
+    </button>
+    <button class="nav-item" data-key="service" data-target="crm" data-section="service" aria-label="ค่าบริการ">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+      <span class="nav-tooltip">ค่าบริการ</span>
+    </button>
     <div class="nav-sep"></div>
     <div class="nav-spacer"></div>
-    <button class="nav-item settings" data-page="staff" aria-label="พนักงาน/ทีม">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-      <span class="nav-tooltip">พนักงาน/ทีม</span>
-    </button>
+    <div class="nav-item-wrap" id="settingsWrap">
+      <button class="nav-item settings" id="settingsToggle" data-key="settings" aria-label="ตั้งค่า" aria-haspopup="true" aria-expanded="false" aria-controls="settingsFlyout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span class="nav-tooltip">ตั้งค่า</span>
+      </button>
+      <div class="settings-flyout" id="settingsFlyout" role="menu" aria-label="เมนูตั้งค่า">
+        <button class="flyout-item" data-key="personal" data-target="crm" data-section="personal" role="menuitem">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span>ส่วนตัว</span>
+        </button>
+        <button class="flyout-item" data-key="program" data-target="crm" data-section="program" role="menuitem">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+          <span>โปรแกรม</span>
+        </button>
+        <button class="flyout-item" data-key="staff" data-target="staff" role="menuitem">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+          <span>พนักงาน/ทีม</span>
+        </button>
+      </div>
+    </div>
   </nav>
 
   <main class="main">
     <div class="page active" id="page-crm">
-      <iframe data-src="./staging/crm/index.html" title="CRM ลูกค้า"></iframe>
+      <iframe id="crmIframe" data-src="./staging/crm/index.html" title="CRM"></iframe>
     </div>
     <div class="page" id="page-calendar">
       <iframe data-src="./staging/calendar/index.html" title="ปฏิทินงาน"></iframe>
@@ -450,6 +503,13 @@
   });
 
   let iframesLoaded = false;
+  // Which CRM-hosted section (crm/customer/service/personal/program) the CRM
+  // iframe should open on -- baked into its src as a #section= hash the first
+  // time it loads (loadIframes below), kept in sync via postMessage after
+  // that (see goToSection near the nav-item handlers). Reset to 'crm' on
+  // sign-out so the next person to log in on this device doesn't land
+  // wherever the previous person left off.
+  let currentCrmSection = 'crm';
   function loadIframes() {
     if (iframesLoaded) return;
     iframesLoaded = true;
@@ -458,7 +518,7 @@
     // otherwise each iframe loads too early, sees no session yet, and gets
     // stuck showing its own login screen even after the shell logs in.
     document.querySelectorAll('#app iframe[data-src]').forEach(f => {
-      f.src = f.dataset.src;
+      f.src = f.id === 'crmIframe' ? f.dataset.src + '#section=' + currentCrmSection : f.dataset.src;
     });
   }
   const shellStaffName = document.getElementById('shellStaffName');
@@ -509,6 +569,11 @@
     // leaving the previous user's fully-rendered data on screen.
     iframesLoaded = false;
     document.querySelectorAll('#app iframe[data-src]').forEach(f => { f.src = ''; });
+    // Same reasoning as the iframe reset above -- put the menu back to its
+    // default (CRM, settings flyout closed) so the next person to sign in on
+    // this device doesn't land on whatever page/section the previous person
+    // was looking at.
+    resetNavToDefault();
   }
 
   async function checkSession() {
@@ -568,19 +633,71 @@
 
   logoutBtn.addEventListener('click', () => sb.auth.signOut());
 
-  const navItems = document.querySelectorAll('.nav-item');
   const pages = document.querySelectorAll('.page');
   const pageTitle = document.getElementById('pageTitle');
-  const TITLES = { crm: 'CRM ลูกค้า', calendar: 'ปฏิทินงาน', staff: 'พนักงาน/ทีม' };
+  // .nav-item = the 5 icons on the rail (CRM/ปฏิทิน/ลูกค้า/ค่าบริการ/ตั้งค่า);
+  // .flyout-item = the 3 rows inside the ตั้งค่า flyout (ส่วนตัว/โปรแกรม/
+  // พนักงาน-ทีม). [data-target] covers every actual navigable destination (7)
+  // -- the settings toggle itself has no data-target, since clicking it only
+  // opens/closes the flyout rather than navigating anywhere.
+  const railItems = document.querySelectorAll('.nav-item');
+  const flyoutItems = document.querySelectorAll('.flyout-item');
+  const leafButtons = document.querySelectorAll('[data-target]');
+  const settingsWrap = document.getElementById('settingsWrap');
+  const settingsToggle = document.getElementById('settingsToggle');
+  const settingsFlyout = document.getElementById('settingsFlyout');
+  const crmIframe = document.getElementById('crmIframe');
+  const TITLES = {
+    crm: 'CRM', calendar: 'ปฏิทินงาน', customer: 'ลูกค้า', service: 'ค่าบริการ',
+    personal: 'ตั้งค่า · ส่วนตัว', program: 'ตั้งค่า · โปรแกรม', staff: 'พนักงาน/ทีม'
+  };
+  const SETTINGS_CHILDREN = ['personal', 'program', 'staff'];
 
-  navItems.forEach(btn => {
+  function closeSettingsFlyout() {
+    settingsFlyout.classList.remove('open');
+    settingsToggle.setAttribute('aria-expanded', 'false');
+  }
+  function openSettingsFlyout() {
+    settingsFlyout.classList.add('open');
+    settingsToggle.setAttribute('aria-expanded', 'true');
+  }
+  settingsToggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    settingsFlyout.classList.contains('open') ? closeSettingsFlyout() : openSettingsFlyout();
+  });
+  document.addEventListener('click', (e) => {
+    if (!settingsWrap.contains(e.target)) closeSettingsFlyout();
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSettingsFlyout(); });
+
+  // CRM/ลูกค้า/ค่าบริการ/ตั้งค่า>ส่วนตัว/ตั้งค่า>โปรแกรม all render inside the
+  // SAME CRM iframe (data-target="crm") -- only ปฏิทิน and ตั้งค่า>พนักงาน/ทีม
+  // point at their own separate iframes. Switching within the CRM iframe never
+  // touches its src (that would reload it and lose its state) -- it's told
+  // which section to show via postMessage instead, using the protocol agreed
+  // with the CRM app: { type: 'dcacc-nav', section }.
+  function goToSection(key, target, section) {
+    pages.forEach(p => p.classList.toggle('active', p.id === 'page-' + target));
+    pageTitle.textContent = TITLES[key] || '';
+    const railKey = SETTINGS_CHILDREN.includes(key) ? 'settings' : key;
+    railItems.forEach(b => b.classList.toggle('active', b.dataset.key === railKey));
+    flyoutItems.forEach(b => b.classList.toggle('active', b.dataset.key === key));
+    if (section) {
+      currentCrmSection = section;
+      if (crmIframe.src) crmIframe.contentWindow.postMessage({ type: 'dcacc-nav', section }, location.origin);
+    }
+  }
+  leafButtons.forEach(btn => {
     btn.addEventListener('click', () => {
-      const key = btn.dataset.page;
-      navItems.forEach(b => b.classList.toggle('active', b === btn));
-      pages.forEach(p => p.classList.toggle('active', p.id === 'page-' + key));
-      pageTitle.textContent = TITLES[key] || '';
+      goToSection(btn.dataset.key, btn.dataset.target, btn.dataset.section || null);
+      if (btn.classList.contains('flyout-item')) closeSettingsFlyout();
     });
   });
+  function resetNavToDefault() {
+    currentCrmSection = 'crm';
+    closeSettingsFlyout();
+    goToSection('crm', 'crm', null);
+  }
 
   const aiFab = document.getElementById('aiFab');
   const aiPanel = document.getElementById('aiPanel');

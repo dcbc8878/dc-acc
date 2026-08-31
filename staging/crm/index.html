@@ -341,7 +341,12 @@
 <div id="app" class="hidden flex flex-col h-screen w-full overflow-hidden">
 
   <!-- Top Navigation -->
-  <header class="flex-shrink-0 flex items-center gap-2 bg-[var(--surface)] border-b border-[var(--border)] px-4 h-13" style="height:52px">
+  <!-- เมนูนำทางหลัก (nav bar เดิม 4 หน้า + เมนูดรอปดาวน์ "ตั้งค่า") ย้ายไปอยู่ที่หน้ารวม (shell) แล้ว —
+       ซ่อนทั้ง <header> นี้ทิ้ง (ไม่ลบ องค์ประกอบ/ฟังก์ชันข้างในยังอยู่ครบ เผื่อมีจุดอื่นอ้างอิงอยู่ เช่น
+       toggleSettingsMenu()/settings-menu ที่ไม่มีใครเรียกใช้อีกแล้วแต่ทิ้งไว้เฉยๆ ไม่กระทบอะไร) แทนที่ด้วย
+       แถบแท็บย่อยระดับ section ด้านล่าง (crm-section-subnav / program-section-subnav) ที่รับคำสั่งจาก shell
+       ผ่าน location.hash/postMessage แทน (ดู SECTION ROUTING ใกล้ navigate()) -->
+  <header class="hidden flex-shrink-0 flex items-center gap-2 bg-[var(--surface)] border-b border-[var(--border)] px-4 h-13" style="height:52px">
     <!-- ไม่มีโลโก้/ชื่อบริษัทที่นี่: หน้ารวม (shell) แสดงตรา "DC" + "เด็กชายบัญชี" อยู่แล้วตลอดเวลาเหนือ iframe
          นี้ ถ้าใส่ซ้ำจะเห็นโลโก้ 2 อันและชื่อบริษัท 2 ที่พร้อมกันในจอเดียว (เหตุผลเดียวกับที่เอาปุ่มออกจาก
          ระบบและชื่อพนักงานที่ซ้ำกับ shell ออกไปก่อนหน้านี้) — ส่วนนำทาง/เมนูตั้งค่าด้านล่างยังอยู่ครบเหมือนเดิม -->
@@ -392,6 +397,29 @@
 
   <!-- Main -->
   <main class="flex-1 overflow-auto">
+
+    <!-- แถบแท็บย่อยระดับ section ที่ shell (หน้ารวม) สั่งมา — แสดงเฉพาะตอนอยู่ใน section ที่มีมากกว่า 1
+         หน้าให้เลือก (crm: รายเดือน/รายปี, program: 6 หน้าย่อย) ซ่อน/แสดงและไฮไลต์ปุ่ม active ควบคุมจาก
+         navigate() ทั้งหมด (ดู PAGE_SECTION ใกล้ navigate()) ไม่ sticky โดยตั้งใจ (เลื่อนตามเนื้อหาไปพร้อม
+         กัน แล้วให้ sticky header ของแต่ละหน้าด้านล่างค้างที่บนสุดแทน กันปัญหา sticky ซ้อนกัน 2 ชั้น) —
+         customer/service/personal ไม่มีบาร์แบบนี้ เพราะมีแค่หน้าเดียวต่อ section หรือมีแท็บย่อยของตัวเอง
+         อยู่แล้วในตัวหน้า (เช่นหน้า clients: ลูกค้า/ลูกค้าเก่า, หน้า finance: การเก็บเงิน/ค่าบริการ) -->
+    <div id="crm-section-subnav" class="hidden bg-[var(--surface)] border-b border-[var(--border)] px-6">
+      <div class="flex border-b-0">
+        <button class="tab-btn section-tab" data-page="tracking" onclick="navigate('tracking')">รายเดือน</button>
+        <button class="tab-btn section-tab" data-page="yearend" onclick="navigate('yearend')">รายปี</button>
+      </div>
+    </div>
+    <div id="program-section-subnav" class="hidden bg-[var(--surface)] border-b border-[var(--border)] px-6 overflow-x-auto" style="scrollbar-width:none">
+      <div class="flex border-b-0" style="width:max-content">
+        <button class="tab-btn section-tab" id="program-tab-appsettings" data-page="appsettings" onclick="navigate('appsettings')">ตั้งค่าโปรแกรม</button>
+        <button class="tab-btn section-tab" id="program-tab-owncompany" data-page="owncompany" onclick="navigate('owncompany')">บริษัทภายใน</button>
+        <button class="tab-btn section-tab" id="program-tab-teamgrid" data-page="teamgrid" onclick="navigate('teamgrid')">จัดการทีม</button>
+        <button class="tab-btn section-tab" id="program-tab-assigneegrid" data-page="assigneegrid" onclick="navigate('assigneegrid')">ผู้รับผิดชอบ</button>
+        <button class="tab-btn section-tab" id="program-tab-activitylog" data-page="activitylog" onclick="navigate('activitylog')">ประวัติการแก้ไข</button>
+        <button class="tab-btn section-tab" id="program-tab-employees" data-page="employees" onclick="navigate('employees')">พนักงาน</button>
+      </div>
+    </div>
 
     <!-- PAGE: tracking -->
     <div id="page-tracking">
@@ -951,7 +979,7 @@
     <!-- PAGE: settings -->
     <div id="page-settings" class="hidden">
       <div class="bg-[var(--surface)] border-b border-[var(--border)] px-6 py-4">
-        <h2 class="text-base font-bold text-[var(--ink)]">ตั้งค่า</h2>
+        <h2 class="text-base font-bold text-[var(--ink)]">ตั้งค่าข้อมูลส่วนตัว</h2>
       </div>
       <div class="p-6 max-w-3xl">
         <div class="max-w-md">
@@ -1006,9 +1034,17 @@
           </div>
 
         </div>
+      </div>
+    </div>
 
-        <div id="activity-log-section" class="hidden bg-[var(--surface)] border border-[var(--border)] rounded-xl p-6 mt-6">
-          <h3 class="font-bold text-[var(--ink)] mb-1">ประวัติการแก้ไข</h3>
+    <!-- PAGE: activitylog (ย้ายมาจากที่เคยฝังอยู่ในหน้า page-settings — ตอนนี้เป็นหน้าของตัวเองใน
+         section "program" ตามที่กำหนด ไม่ใช่ "personal" อีกต่อไป) -->
+    <div id="page-activitylog" class="hidden">
+      <div class="bg-[var(--surface)] border-b border-[var(--border)] px-6 py-4">
+        <h2 class="text-base font-bold text-[var(--ink)]">ประวัติการแก้ไข</h2>
+      </div>
+      <div class="p-6 max-w-3xl">
+        <div class="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-6">
           <p class="text-xs text-[var(--ink-muted)] mb-4">บันทึกกิจกรรมการแก้ไขในระบบ (รายการเปลี่ยนค่าบริการ/ประเภทลูกค้า เห็นได้เฉพาะเจ้าของ/ผู้จัดการ/พนักงานอาวุโส)</p>
           <div id="activity-log-list" class="space-y-2"></div>
         </div>
@@ -1441,6 +1477,10 @@ let finYear      = new Date().getFullYear();
 let finMonth     = new Date().getMonth() + 1;
 let finInvoiceMap = {};            // เหมือน invoiceMap แต่คีย์ด้วย finYear/finMonth แทน
 let billingContractsByClient = {}; // ประวัติ crm_billing_contracts ทุกแถวทุกลูกค้า จัดกลุ่มตาม client_id — ใช้โดย resolveEffectiveFee()
+// ค่าบริการ/หัก ณ ที่จ่ายปัจจุบันของลูกค้าแต่ละราย จากตาราง crm_client_billing (client_id -> {monthly_fee,
+// has_wht}) — แยกออกมาจาก crm_clients ต่างหาก โหลดเฉพาะ LV1-3 เท่านั้น (ดู loadClientBillingMap/curFee_/
+// curWht_ ใกล้ resolveEffectiveFee) ปิดช่องข้อมูลรั่วที่ยอดค่าบริการเคยหลุดไปถึงเบราว์เซอร์ทุกระดับ
+let clientBillingMap = {};
 let financeDataLoaded = false;     // โหลด finInvoiceMap ครั้งแรกตอนเข้าแท็บ "การเงิน" เท่านั้น
 let billingContractsLoaded = false; // แยกจาก financeDataLoaded โดยตั้งใจ — โหลดตอน init() เสมอ (ดู loadAllBillingContracts)
                                      // ไม่ผูกกับการเข้าแท็บ "การเงิน" เพราะ renderTracking() ก็ต้องใช้ตั้งแต่หน้าแรกที่เปิดแอป
@@ -1723,9 +1763,7 @@ async function init() {
   }
 
   if (isOwner()) document.getElementById('add-client-btn').classList.remove('hidden');
-  if (canSeeAuditLog()) document.getElementById('activity-log-section').classList.remove('hidden');
   if (canManageOwnCompany()) document.getElementById('add-owncompany-btn').classList.remove('hidden');
-  if (!canManageOwnCompany()) document.getElementById('settings-menu-company-group').classList.add('hidden');
   // เมนู "พนักงาน" ใช้เกณฑ์เดียวกับ "จัดการทีม" (canManageTeams, LV1-3) เพราะหน้านี้เป็นทางเดียวในระบบที่
   // สร้าง/แก้ไขทีมได้จริง (ปุ่ม "+ สร้างทีม" อยู่ในแท็บย่อย "ทีม" ของหน้านี้) — LV3 มีสิทธิ์จัดการทีมอยู่แล้ว
   // ตามนิยามเดิม จึงต้องเปิดหน้านี้ให้ถึงได้ ส่วนสิทธิ์ที่แคบกว่านั้นยังกันไว้ในหน้าเองเหมือนเดิมทุกจุด
@@ -1733,8 +1771,10 @@ async function init() {
   // คอลัมน์ "ผู้รับผิดชอบ" ของหน้ารายเดือน — เดิมถอด <col>+<th> ออกจาก DOM สำหรับ LV3-5 (ตอนที่ RLS ของ
   // crm_staff_clients ยังจำกัดไว้แค่ owner/manager) ตอนนี้ RLS เปิด SELECT ให้ทุกระดับเห็นได้แล้ว จึงไม่ต้อง
   // ถอดอะไรออกอีก คอลัมน์นี้แสดงให้ทุกระดับเห็นเหมือนคอลัมน์อื่นตามปกติ (ดู canSeeAssignees)
-  if (!canManageTeams()) document.getElementById('settings-menu-employees').classList.add('hidden');
-  if (!canManageTeams()) document.getElementById('settings-menu-teamgrid').classList.add('hidden');
+  // เดิมซ่อน/โชว์รายการในเมนูดรอปดาวน์ "ตั้งค่า" (settings-menu-*, activity-log-section) ทีละรายการตรงนี้ —
+  // ย้ายไปรวมไว้ที่ renderProgramSubnavVisibility_() แทน (ซ่อน/โชว์ปุ่มแท็บใน section "program" แทน
+  // เมนูดรอปดาวน์เดิมที่ถูกซ่อนไปแล้ว ดู <header>) เกณฑ์สิทธิ์เหมือนเดิมทุกจุด ดู programPageAllowed_()
+  renderProgramSubnavVisibility_();
   if (canManageTeams()) document.getElementById('add-team-btn').classList.remove('hidden');
   if (canEdit()) document.getElementById('fin-create-invoices-btn').classList.remove('hidden');
   if (!canApproveRequest()) document.getElementById('empTab-requests').classList.add('hidden');
@@ -1757,11 +1797,16 @@ async function init() {
     Promise.all([loadStaff(), loadStaffAssignments()]).then(() => { staffListLoaded = true; }),
     loadTeams().then(() => { teamsLoaded = true; }),
     loadAllBillingContracts(),
+    canSeeFinance() ? loadClientBillingMap() : Promise.resolve(),
   ]);
 
   document.getElementById('loading').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
-  navigate('tracking');
+  // เดิม navigate('tracking') ตรงๆ เสมอ — ตอนนี้รับคำสั่ง section เริ่มต้นจาก shell ผ่าน location.hash
+  // "#section=xxx" แทน (ดู SECTION ROUTING ใกล้ navigate() ด้านล่าง) ไม่มี/ไม่รู้จัก sectionFromHash_()
+  // จะ fallback เป็น 'crm' เอง ซึ่งเข้าหน้า tracking เหมือนพฤติกรรมเดิมทุกประการ
+  const initialSection = sectionFromHash_();
+  navigate(initialSection === 'program' ? firstAccessibleProgramPage_() : SECTION_DEFAULT_PAGE[initialSection]);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1987,17 +2032,29 @@ async function saveAppSettings() {
 // ─────────────────────────────────────────────────────────────
 // NAVIGATION
 // ─────────────────────────────────────────────────────────────
-const ALL_PAGES = ['tracking','yearend','clients','finance','settings','owncompany','employees','teamgrid','assigneegrid','appsettings'];
+const ALL_PAGES = ['tracking','yearend','clients','finance','settings','owncompany','employees','teamgrid','assigneegrid','appsettings','activitylog'];
 function navigate(p) {
   document.getElementById('settings-menu')?.classList.add('hidden');
-  // assigneegrid เพิ่มเข้ารายการที่ LV4-5 เข้าถึงได้ด้วย (ต่างจาก teamgrid ที่ยังจำกัดแค่ LV1-3 เหมือนเดิม —
-  // หน้านี้เปิดให้ทุกระดับดูได้ แค่แก้ไม่ได้ ดู canEditGrid ใน renderAssigneeGrid)
-  if (myLevel() > 3 && !['tracking','yearend','clients','finance','settings','employees','assigneegrid'].includes(p)) p = 'tracking';
+  // assigneegrid/activitylog เพิ่มเข้ารายการที่ LV4-5 เข้าถึงได้ด้วย (ต่างจาก teamgrid/owncompany/
+  // appsettings/employees ที่ยังจำกัดแค่สิทธิ์เดิม) — หน้าเหล่านี้เปิดให้ทุกระดับดูได้ (assigneegrid: ดู
+  // ได้ แก้ไม่ได้ ดู canEditGrid ใน renderAssigneeGrid, activitylog: canSeeAuditLog() คืน true เสมอ RLS
+  // กรองแถวการเงินให้เองแล้วที่ฐานข้อมูล)
+  if (myLevel() > 3 && !['tracking','yearend','clients','finance','settings','employees','assigneegrid','activitylog'].includes(p)) p = 'tracking';
   curPage = p;
   ALL_PAGES.forEach(pg => {
     document.getElementById(`page-${pg}`).classList.toggle('hidden', pg !== p);
   });
   document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.page === p);
+  });
+  // แถบแท็บย่อยระดับ section ที่ shell สั่งมา (รายเดือน|รายปี ของ crm, ตั้งค่าโปรแกรม|บริษัทภายใน|จัดการ
+  // ทีม|ผู้รับผิดชอบ|ประวัติการแก้ไข|พนักงาน ของ program) — โชว์เฉพาะบาร์ของ section ที่ p สังกัดอยู่ อีกบาร์
+  // ซ่อนไว้ ส่วน customer/service/personal ไม่มีบาร์แบบนี้ (ใช้แท็บย่อยที่มีอยู่แล้วในตัวหน้าเอง เช่นหน้า
+  // clients/finance) ไฮไลต์ปุ่ม .section-tab ที่ active ตาม p ด้วยกลไกเดียวกับ .nav-item ด้านบน
+  const sect = PAGE_SECTION[p];
+  document.getElementById('crm-section-subnav').classList.toggle('hidden', sect !== 'crm');
+  document.getElementById('program-section-subnav').classList.toggle('hidden', sect !== 'program');
+  document.querySelectorAll('.section-tab').forEach(el => {
     el.classList.toggle('active', el.dataset.page === p);
   });
   if (p === 'tracking') renderTracking();
@@ -2011,10 +2068,10 @@ function navigate(p) {
     if (canSeeFinance()) ensureFinanceDataLoaded().then(() => showFinanceSubTab('collection'));
     else showFinanceSubTab('collection');
   }
-  else if (p === 'settings') {
-    renderOwnProfile();
-    if (canSeeAuditLog()) renderActivityLog();
-  }
+  // เดิม renderActivityLog() เรียกที่นี่ด้วย — ย้ายไปแท็บ "ประวัติการแก้ไข" ของตัวเองแยกต่างหากแล้ว (page
+  // 'activitylog' ด้านล่าง ย้ายไปอยู่ใน section "program" ตามที่กำหนด ไม่ใช่ "personal" อีกต่อไป)
+  else if (p === 'settings') renderOwnProfile();
+  else if (p === 'activitylog') { if (canSeeAuditLog()) renderActivityLog(); }
   else if (p === 'owncompany') { if (canManageOwnCompany()) renderOwnCompanies(); }
   else if (p === 'employees') showEmployeeSubTab(employeeSubTab);
   else if (p === 'teamgrid') { if (!teamsLoaded) { loadTeams().then(() => { teamsLoaded = true; renderTeamGrid(); }); } else renderTeamGrid(); }
@@ -2030,6 +2087,75 @@ document.addEventListener('click', (ev) => {
   if (menu && !menu.classList.contains('hidden') && !menu.contains(ev.target) && ev.target.id !== 'settings-btn') {
     menu.classList.add('hidden');
   }
+});
+
+// ─────────────────────────────────────────────────────────────
+// SECTION ROUTING — รับคำสั่งจาก shell (หน้ารวม) ว่าจะให้โชว์ "section" ไหน แทนที่เมนูนำทางเดิมของ CRM
+// เอง (nav bar เดิม/เมนูดรอปดาวน์ตั้งค่าเดิม ถูกซ่อนไปแล้ว ดู <header> ด้านบน) ชื่อ section ตายตัว ตกลง
+// กับฝั่ง shell ไว้แล้ว ห้ามเปลี่ยน: crm, customer, service, personal, program — CRM ยังใช้ navigate()/
+// page-* เดิมทุกจุดสำหรับนำทางจริงภายในตัวเอง โค้ดส่วนนี้แค่แปลง "section" เป็น "page" ที่เหมาะสมแล้ว
+// เรียก navigate() ต่อเท่านั้น ไม่มีระบบนำทางคู่ขนาน
+// ─────────────────────────────────────────────────────────────
+const PAGE_SECTION = {
+  tracking: 'crm', yearend: 'crm',
+  clients: 'customer',
+  finance: 'service',
+  settings: 'personal',
+  owncompany: 'program', appsettings: 'program', teamgrid: 'program', assigneegrid: 'program',
+  activitylog: 'program', employees: 'program',
+};
+const SECTION_DEFAULT_PAGE = { crm: 'tracking', customer: 'clients', service: 'finance', personal: 'settings', program: 'appsettings' };
+const KNOWN_SECTIONS = Object.keys(SECTION_DEFAULT_PAGE);
+
+// สิทธิ์เข้าถึงแต่ละหน้าใน section "program" — เกณฑ์เดียวกับที่เคยใช้ซ่อน/โชว์รายการในเมนูดรอปดาวน์เดิม
+// ทุกประการ (canManageOwnCompany สำหรับทั้งบริษัทภายใน+ตั้งค่าโปรแกรมด้วยกัน เหมือนเดิมที่ทั้งคู่ผูกกับ
+// settings-menu-company-group เดียวกัน, canManageTeams สำหรับทั้งจัดการทีม+พนักงาน, ผู้รับผิดชอบเปิดให้
+// ทุกระดับเสมอ, ประวัติการแก้ไขตาม canSeeAuditLog) ใช้ทั้งซ่อน/โชว์ปุ่มแท็บ
+// (renderProgramSubnavVisibility_) และเลือกหน้า default ที่เข้าถึงได้จริงตอน shell สั่ง section='program'
+// (firstAccessibleProgramPage_)
+function programPageAllowed_(p) {
+  if (p === 'appsettings' || p === 'owncompany') return canManageOwnCompany();
+  if (p === 'teamgrid' || p === 'employees') return canManageTeams();
+  if (p === 'activitylog') return canSeeAuditLog();
+  if (p === 'assigneegrid') return true;
+  return false;
+}
+function firstAccessibleProgramPage_() {
+  const order = ['appsettings', 'owncompany', 'teamgrid', 'assigneegrid', 'activitylog', 'employees'];
+  return order.find(programPageAllowed_) || 'assigneegrid';
+}
+// เรียกครั้งเดียวใน init() (แทนที่การซ่อน/โชว์ settings-menu-* เดิม) — ซ่อนปุ่มแท็บใน
+// program-section-subnav ที่สิทธิ์ปัจจุบันเข้าไม่ถึง ด้วยคลาส .tab-btn.hidden ตัวเดิมที่ไฟล์นี้ใช้อยู่แล้ว
+// (เช่น empTab-requests)
+function renderProgramSubnavVisibility_() {
+  document.getElementById('program-tab-appsettings').classList.toggle('hidden', !programPageAllowed_('appsettings'));
+  document.getElementById('program-tab-owncompany').classList.toggle('hidden', !programPageAllowed_('owncompany'));
+  document.getElementById('program-tab-teamgrid').classList.toggle('hidden', !programPageAllowed_('teamgrid'));
+  document.getElementById('program-tab-activitylog').classList.toggle('hidden', !programPageAllowed_('activitylog'));
+  document.getElementById('program-tab-employees').classList.toggle('hidden', !programPageAllowed_('employees'));
+  // program-tab-assigneegrid: ไม่ต้องซ่อน เปิดให้ทุกระดับเข้าถึงได้เสมอ (เหมือนเดิม)
+}
+// สั่งให้ CRM แสดง section ที่ระบุ — ถ้าอยู่ใน section นั้นอยู่แล้ว คงหน้า/แท็บย่อยที่กำลังดูอยู่ไว้ ไม่
+// กระโดดกลับหน้า default (กันตัวเลือกที่ผู้ใช้เลือกอยู่ เช่นแท็บย่อยของรายปี/ลูกค้า/การเงิน หายไปเวลา shell
+// ส่งคำสั่งซ้ำ) section ที่ไม่รู้จัก (พิมพ์ผิด/เวอร์ชันไม่ตรงกับฝั่ง shell) จะถูกเพิกเฉย ไม่เปลี่ยนอะไรเลย
+function goToSection(section) {
+  if (!KNOWN_SECTIONS.includes(section)) return;
+  if (PAGE_SECTION[curPage] === section) return;
+  navigate(section === 'program' ? firstAccessibleProgramPage_() : SECTION_DEFAULT_PAGE[section]);
+}
+// อ่าน section เริ่มต้นจาก location.hash รูปแบบ "#section=xxx" (เรียกครั้งเดียวตอนโหลดหน้าใน init()) —
+// ไม่มี/รูปแบบไม่ตรง/ไม่รู้จัก → default เป็น 'crm' (เข้าหน้ารายเดือนเหมือนพฤติกรรมเดิมของไฟล์นี้ทุกประการ)
+function sectionFromHash_() {
+  const m = /(?:^|[#&])section=([a-zA-Z]+)/.exec(location.hash || '');
+  return m && KNOWN_SECTIONS.includes(m[1]) ? m[1] : 'crm';
+}
+// รับคำสั่งนำทางจาก shell ระหว่างใช้งาน (หน้ารวมกับ CRM คนละ iframe คนละ window แต่ same-origin เสมอ) —
+// ต้องเช็ค origin ก่อนทำอะไรทั้งหมด กันหน้าเว็บอื่น (ไม่ใช่ shell ต้นทางเดียวกัน) สั่งงานปลอมได้
+window.addEventListener('message', (ev) => {
+  if (ev.origin !== location.origin) return;
+  const msg = ev.data;
+  if (!msg || msg.type !== 'dcacc-nav' || typeof msg.section !== 'string') return;
+  goToSection(msg.section);
 });
 
 // ─────────────────────────────────────────────────────────────
@@ -3811,7 +3937,8 @@ async function applyClientChange() {
 }
 
 // แกนกลาง "เปลี่ยนค่าบริการ" — เขียน DB 3 จุดเดียวกันทุกครั้ง ไม่ว่าจะเรียกจากที่ไหน: crm_client_change_log
-// (ประวัติ), crm_clients.monthly_fee (ค่าปัจจุบัน), ปิดแถว crm_billing_contracts เดิม + เปิดแถวใหม่ (ให้
+// (ประวัติ), crm_client_billing.monthly_fee (ค่าปัจจุบัน — ย้ายมาจาก crm_clients.monthly_fee แล้ว ดู curFee_/
+// curWht_ ใกล้ resolveEffectiveFee), ปิดแถว crm_billing_contracts เดิม + เปิดแถวใหม่ (ให้
 // resolveEffectiveFee() ย้อนดูราคาตามช่วงเวลาได้ถูกต้อง) คืนค่า true/false ว่าสำเร็จหรือไม่ ผู้เรียกตัดสินใจเอง
 // ว่าจะรีเฟรช/ปิด modal ไหนต่อ (เหมือน markInvoicePaidCore_)
 async function applyFeeChangeCore_(clientId, newFee, effectiveDate, note) {
@@ -3824,12 +3951,17 @@ async function applyFeeChangeCore_(clientId, newFee, effectiveDate, note) {
   });
   if (logErr) { showToast('บันทึกไม่สำเร็จ: ' + logErr.message, 'error'); return false; }
 
-  const { error: updErr } = await sb.from('crm_clients').update({ monthly_fee: newFee }).eq('id', clientId);
+  // เดิม UPDATE crm_clients.monthly_fee ตรงๆ — ย้ายมา upsert ตาราง crm_client_billing แยกต่างหากแทน (RLS
+  // จำกัดไว้แค่ LV1-3 เท่านั้น) เพื่อปิดช่องข้อมูลรั่วที่ select('*') บน crm_clients เคยส่งยอดค่าบริการไปถึง
+  // เบราว์เซอร์ของพนักงานทุกระดับ ไม่ว่าจะมีสิทธิ์ดูหรือไม่ — ไม่ใช้ .select().single() อ่านค่ากลับ (RLS
+  // อาจกรอง RETURNING ทิ้งถ้าคนเขียนไม่ตรงเงื่อนไข SELECT เอง เคยเป็นบั๊กจริงมาก่อนที่ crm_clients.insert)
+  const { error: updErr } = await sb.from('crm_client_billing')
+    .upsert({ client_id: clientId, monthly_fee: newFee, has_wht: curWht_(clientId), updated_at: new Date().toISOString() });
   if (updErr) { showToast('อัปเดตข้อมูลไม่สำเร็จ: ' + updErr.message, 'error'); return false; }
-  // ตั้งค่าในหน่วยความจำทันทีที่ DB เขียนสำเร็จจริง (ย้ายมาจากท้ายฟังก์ชันเดิม) — กันไม่ให้ค่าที่แคชไว้ใน
-  // เบราว์เซอร์ค้างเป็นค่าเก่าถ้าขั้นตอนบันทึกประวัติสัญญาด้านล่าง (ที่แยกจาก crm_clients คนละคำสั่ง) ล้มเหลว
-  // ทีหลัง — ไม่กระทบ payload ที่ insert ประวัติสัญญาด้านล่าง เพราะใช้ newFee (พารามิเตอร์) ไม่ใช่ c.monthly_fee
-  c.monthly_fee = newFee;
+  // ตั้งค่าใน clientBillingMap ทันทีที่ DB เขียนสำเร็จจริง (ย้ายมาจากท้ายฟังก์ชันเดิม) — กันไม่ให้ค่าที่แคชไว้
+  // ในเบราว์เซอร์ค้างเป็นค่าเก่าถ้าขั้นตอนบันทึกประวัติสัญญาด้านล่าง (แยกคนละคำสั่ง) ล้มเหลวทีหลัง — ไม่กระทบ
+  // payload ที่ insert ประวัติสัญญาด้านล่าง เพราะใช้ newFee (พารามิเตอร์) ไม่ใช่ curFee_(clientId)
+  clientBillingMap[clientId] = { monthly_fee: newFee, has_wht: curWht_(clientId) };
 
   // เดิมจุดนี้ไม่เช็ค error เลยทั้ง 2 คำสั่ง (update ปิดสัญญาเก่า + insert เปิดสัญญาใหม่) ทำให้ถ้าล้มเหลว
   // (เช่นเน็ตหลุด/RLS ปฏิเสธ) โค้ดยังเดินหน้าต่อจนถึง return true แล้ว caller โชว์ toast "สำเร็จ" ทับ ทั้งที่
@@ -3843,7 +3975,7 @@ async function applyFeeChangeCore_(clientId, newFee, effectiveDate, note) {
     client_id: clientId,
     billing_type: c.billing_type || 'monthly',
     fee_amount: newFee,
-    has_wht: c.has_wht !== false,
+    has_wht: curWht_(clientId),
     effective_from: effectiveDate,
     notes: `เปลี่ยนค่าบริการ: ${newFee} บาท (${effectiveDate})`,
   }).select().single();
@@ -3998,8 +4130,8 @@ async function applyTypeChangeCore_(clientId, newType, effectiveDate) {
   const { data: newContract, error: contractErr } = await sb.from('crm_billing_contracts').insert({
     client_id: clientId,
     billing_type: newType,
-    fee_amount: c.monthly_fee || 0,
-    has_wht: c.has_wht !== false,
+    fee_amount: curFee_(clientId),
+    has_wht: curWht_(clientId),
     effective_from: effectiveDate,
     notes: `เปลี่ยนประเภท: ${oldNo} → ${newNo} (${effectiveDate})`,
   }).select().single();
@@ -4045,8 +4177,8 @@ async function renderPanelBilling() {
   if (!c) return;
 
   const inv = invoiceMap[panelClientId];
-  const fee = c.monthly_fee || 0;
-  const wht = c.has_wht !== false ? Math.round(fee * 0.03 * 100) / 100 : 0;
+  const fee = curFee_(c.id);
+  const wht = curWht_(c.id) ? Math.round(fee * 0.03 * 100) / 100 : 0;
   const expected = fee - wht;
 
   let invBox = '';
@@ -5194,6 +5326,18 @@ function faStatusBadge(inv) {
     : `<span class="text-xs text-amber-600">ยังไม่ส่ง</span>`;
 }
 
+// ค่าบริการ/หัก ณ ที่จ่าย "ปัจจุบัน" ของลูกค้า — ย้ายออกจาก crm_clients.monthly_fee/has_wht มาอยู่ตาราง
+// crm_client_billing แยกต่างหาก (RLS จำกัดไว้แค่ LV1-3 เท่านั้น) เพราะเดิม loadClients()/renderOldClients()
+// ใช้ select('*') บน crm_clients ซึ่งรวม 2 คอลัมน์นี้ ทำให้ยอดค่าบริการของลูกค้าทุกรายถูกส่งไปถึงเบราว์เซอร์
+// ของพนักงานทุกระดับตั้งแต่เปิดแอป (เปิดดูได้จาก network tab) ไม่ว่าจะมีสิทธิ์เห็นหน้า "การเงิน" หรือไม่ก็ตาม
+// clientBillingMap โหลดเฉพาะ LV1-3 เท่านั้น (ดู loadClientBillingMap ด้านล่าง เรียกใน init() คู่กับ
+// loadClients()) — LV4-5 จะไม่มี key นี้เลย ฟังก์ชัน 2 ตัวนี้จึงคืนค่าเริ่มต้นปลอดภัย (0/true) ให้แทน ซึ่ง
+// ไม่กระทบอะไรเพราะทุกจุดที่อ่านค่าจริง (การเงิน/แผงลูกค้า) กันสิทธิ์ไว้ก่อนแล้วด้วย canSeeFinance()/canEdit()
+// เหมือนกัน (LV4-5 ไม่มีทางรันโค้ดที่ต้องใช้ตัวเลขจริงจาก 2 ฟังก์ชันนี้อยู่แล้ว) — crm_clients.monthly_fee/
+// has_wht เดิมยังไม่ถูกลบออกจากตาราง (ผู้ดูแลระบบจะลบเองทีหลัง) ไฟล์นี้แค่เลิกอ่าน/เขียนคอลัมน์เดิมแล้ว
+function curFee_(clientId) { return clientBillingMap[clientId]?.monthly_fee || 0; }
+function curWht_(clientId) { return clientBillingMap[clientId]?.has_wht !== false; }
+
 // ── ตัว resolve ค่าบริการ "ที่มีผลจริง ณ ช่วงเดือนนั้น" จากประวัติ crm_billing_contracts ──
 // ใช้ร่วมกันทั้งการเก็บเงิน (ตามเดือนที่เลือกดู) และค่าบริการ (ตามวันนี้) — เกณฑ์: แถวสัญญาที่
 // effective_from <= วันสุดท้ายของเดือนนั้น AND (effective_to ว่าง OR effective_to >= วันแรกของเดือนนั้น)
@@ -5217,8 +5361,8 @@ function resolveEffectiveFee(client, year, month, contractsForClient) {
     };
   }
   return {
-    fee_amount: client?.monthly_fee || 0,
-    has_wht: client?.has_wht !== false,
+    fee_amount: curFee_(client?.id),
+    has_wht: curWht_(client?.id),
     billing_type: client?.billing_type || 'monthly',
     source: 'client_default',
   };
@@ -5229,6 +5373,16 @@ async function loadAllBillingContracts() {
   billingContractsByClient = {};
   (data || []).forEach(ct => { (billingContractsByClient[ct.client_id] ||= []).push(ct); });
   billingContractsLoaded = true;
+}
+// โหลด crm_client_billing เข้า clientBillingMap ครั้งเดียวตอน init() (คู่กับ loadClients()) — ยิงเฉพาะ
+// LV1-3 เท่านั้น (canSeeFinance()) LV4-5 ไม่ยิงเลย จึงไม่มีทางเห็นข้อมูลนี้ในเบราว์เซอร์ได้อีกต่อไป (RLS ของ
+// ตารางนี้ก็จำกัดไว้แค่ LV1-3 เหมือนกันอยู่แล้ว เป็นการกันซ้ำสองชั้น ไม่ใช่กันแค่ชั้นเดียว)
+async function loadClientBillingMap() {
+  clientBillingMap = {};
+  if (!canSeeFinance()) return;
+  const { data, error } = await sb.from('crm_client_billing').select('client_id, monthly_fee, has_wht');
+  if (error) return;
+  (data || []).forEach(row => { clientBillingMap[row.client_id] = { monthly_fee: row.monthly_fee, has_wht: row.has_wht }; });
 }
 async function loadFinInvoices() {
   const { data } = await sb.from('crm_invoices').select('*').eq('year', finYear).eq('month', finMonth);
