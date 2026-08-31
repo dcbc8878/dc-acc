@@ -604,6 +604,13 @@ const HOLIDAYS = [
 /* ========================= STORAGE HELPERS ========================= */
 const CAL_FILTER_KEY = 'cal_default_filter';        // ตัวกรองปฏิทินเริ่มต้นที่ผู้ใช้ตั้งไว้ในหน้าตั้งค่า
 const LOCAL_PROFILE_BACKUP_KEY = 'dcbc_profile_local'; // โปรไฟล์โหมด Local เดิม เก็บไว้ระหว่างล็อกอิน CRM เพื่อคืนค่าตอนออกจากระบบ
+// dcbc_events/dcbc_tasks เป็น "ถังเดียว" ใช้ร่วมกันทั้งเครื่อง ไม่ได้แยกตามบัญชี — ถ้าบัญชี A ล็อกอินบนเครื่องนี้
+// (ย้ายข้อมูลขึ้นคลาวด์ หรือปฏิเสธก็ตาม) แล้วออกจากระบบ จากนั้นบัญชี B ล็อกอินบนเครื่องเดียวกันเป็นครั้งแรก โดยไม่มี
+// key นี้กัน enterCloudMode() จะเห็น dcbc_events/dcbc_tasks ก้อนเดิมของ A ค้างอยู่ (ไม่เคยถูกลบ) แล้วเสนอย้ายให้ B
+// เหมือนเป็นข้อมูลของ B เอง — ถ้า B กดตกลง ข้อมูลส่วนตัวของ A จะถูกก็อปปี้เข้าไปอยู่ใน cal_events ของบัญชี B จริง
+// (รั่วข้ามบัญชี) key นี้บันทึกว่าข้อมูล local ที่เหลืออยู่บนเครื่องนี้ "เป็นของ" บัญชีไหน ตั้งครั้งเดียวตอนบัญชีแรก
+// มาถึงจุดตัดสินใจนี้ (ไม่ว่าจะเลือกย้ายหรือไม่) แล้วจะไม่ย้ายไปเป็นของบัญชีอื่นอีกจนกว่าจะ "ล้างข้อมูลทั้งหมด"
+const CAL_LOCAL_CLAIM_KEY = 'cal_local_data_claimed_by';
 function lsGet(k, def){ try{ const v = JSON.parse(localStorage.getItem(k)); return (v===null||v===undefined) ? def : v; }catch(e){ return def; } }
 function lsSet(k, v){ localStorage.setItem(k, JSON.stringify(v)); }
 function lsId(){ return 'id_' + Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
@@ -717,6 +724,11 @@ else { const normRole = normalizeRoleLabel(profile.role); if(normRole !== profil
 
 let view = 'month';           // 'month' | 'week' | 'agenda'
 let curDate = new Date();
+// จำสัปดาห์ล่าสุดที่เพิ่งบังคับเลื่อนไปตำแหน่งเริ่มต้น (07:00) ไว้ — renderCalendar() ถูกเรียกซ้ำได้จากหลายสาเหตุ
+// ที่ไม่เกี่ยวกับการเปลี่ยนสัปดาห์เลย (เช่น บันทึก/ลบกิจกรรมแล้ว renderCalendar() ท้ายฟังก์ชัน, แท็กกิจกรรมโหลด
+// เสร็จเบื้องหลังแล้ว re-render ทับ) ถ้าไม่จำไว้ ทุกครั้งที่ render ซ้ำจะเลื่อนกลับไป 07:00 ทับตำแหน่งที่ผู้ใช้
+// เพิ่งเลื่อนเองไปดูช่วงอื่น (เช่นตอนเย็น) แบบไม่ได้ตั้งใจ — เลื่อนอัตโนมัติเฉพาะตอนเข้าสัปดาห์นี้ครั้งแรกเท่านั้น
+let lastWeekScrollKey = null;
 // ตัวกรองปฏิทินเริ่มต้น เก็บไว้ใน localStorage เหมือนค่าตั้งค่าอื่นๆ ของแอพนี้ (calTheme/g_client_id ฯลฯ)
 // ค่าที่กู้คืนมายังต้องผ่าน enforceFilterAccess() ตอน render อยู่ดี ('all' จะถูกลดเป็น 'personal' เองถ้าสิทธิ์ไม่ถึง)
 let calFilter = (function(){
@@ -831,11 +843,18 @@ function renderCalendar(){
   } else if(view==='week'){
     const s = startOfWeek(curDate), e = addDays(s,6);
     label.textContent = s.getDate()+' '+TH_MONTHS[s.getMonth()]+' - '+e.getDate()+' '+TH_MONTHS[e.getMonth()]+' '+beYear(e.getFullYear());
+    const weekKey = toISODate(s);
+    // จำตำแหน่งเลื่อนเดิมไว้ก่อนแทนที่ innerHTML (การตั้ง body.innerHTML ใหม่ทำให้ .week-body กลายเป็น element
+    // ใหม่ทั้งอัน scrollTop จะรีเซ็ตเป็น 0 เองโดยอัตโนมัติไม่ว่าจะตั้งใจหรือไม่) ถ้ายังอยู่สัปดาห์เดิมกับที่ render
+    // ล่าสุด (re-render จากสาเหตุอื่น ไม่ใช่เปลี่ยนสัปดาห์) จะคืนตำแหน่งนี้กลับให้แทนการเลื่อนไป 07:00 ทับ
+    const prevWb = body.querySelector('.week-body');
+    const keepScroll = (weekKey === lastWeekScrollKey && prevWb) ? prevWb.scrollTop : null;
     body.innerHTML = renderWeekGrid();
-    // ตารางครอบทั้งวัน (00:00–24:00) แล้ว — เลื่อนกล่อง .week-body ไปช่วงเช้าเป็นค่าเริ่มต้นทุกครั้งที่ render
-    // (ไม่ตัดชั่วโมงทิ้ง แค่ไม่ต้องเลื่อนเองตอนเปิดหน้า ยังเลื่อนขึ้น/ลงไปดูช่วงอื่นได้ตามปกติ)
+    // ตารางครอบทั้งวัน (00:00–24:00) แล้ว — เลื่อนกล่อง .week-body ไปช่วงเช้าเป็นค่าเริ่มต้นเฉพาะตอนเข้าสัปดาห์นี้
+    // ครั้งแรก/เปลี่ยนสัปดาห์เท่านั้น (ไม่ตัดชั่วโมงทิ้ง แค่ไม่ต้องเลื่อนเองตอนเปิดหน้า ยังเลื่อนขึ้น/ลงไปดูช่วงอื่นได้ตามปกติ)
     const wb = body.querySelector('.week-body');
-    if(wb) wb.scrollTop = (WEEK_DEFAULT_SCROLL_HOUR - WEEK_DAY_START_HOUR) * WEEK_HOUR_H;
+    if(wb) wb.scrollTop = (keepScroll !== null) ? keepScroll : (WEEK_DEFAULT_SCROLL_HOUR - WEEK_DAY_START_HOUR) * WEEK_HOUR_H;
+    lastWeekScrollKey = weekKey;
   } else {
     label.textContent = TH_MONTHS[curDate.getMonth()] + ' ' + beYear(curDate.getFullYear());
     body.innerHTML = renderAgendaList();
@@ -867,7 +886,7 @@ function renderMonthGrid(){
       <div class="daynum"><span class="num">${d.getDate()}</span></div>
       ${hol ? `<span class="holiday-tag" title="${hol.name}">${hol.name}</span>` : ''}
       ${taxDl ? `<span class="tax-tag" title="${taxDl.name}">📋 ${taxDl.short}</span>` : ''}
-      ${shown.map(ev=>`<div class="event-pill" style="background:${catOf(ev.category).color}" data-action="edit-event" data-id="${ev.id}">${ev.all_day?'':(ev.time+' ')}${escapeHtml(ev.title)}</div>`).join('')}
+      ${shown.map(ev=>`<div class="event-pill" style="background:${catOf(ev.category).color}" data-action="edit-event" data-id="${ev.id}">${ev.all_day?'':((ev.time||'')+' ')}${escapeHtml(ev.title)}</div>`).join('')}
       ${extra>0 ? `<div class="more-link" data-action="show-day" data-date="${iso}">+${extra} เพิ่มเติม</div>` : ''}
       ${calActivityTagsHtml(iso)}
     </div>`;
@@ -1070,7 +1089,7 @@ async function saveEventForm(e){
         // owner-manager ที่แก้ team event ได้) โดยไม่คืน error แต่คืนแถวว่างเปล่าแทน (เป็น "no-op เงียบๆ" ไม่ใช่
         // ข้อยกเว้นแบบ .single() ที่ต้องระวัง) เช็ค data.length ควบคู่ error เสมอ ไม่งั้นจะขึ้นว่าสำเร็จทั้งที่ไม่ได้แก้จริง
         const { data: updData, error } = await client.from('cal_events').update({
-          title: data.title, client_id: data.client_id, date: data.date,
+          title: data.title, client_id: data.client_id, client_name: data.client || null, date: data.date,
           all_day: data.all_day, time: data.time || null, end_time: data.end_time || null,
           category: data.category, is_team: data.is_team, note: data.note || null,
           updated_at: new Date().toISOString()
@@ -1087,7 +1106,7 @@ async function saveEventForm(e){
       } else {
         const nowIso = new Date().toISOString();
         const row = {
-          user_id: authUser.id, title: data.title, client_id: data.client_id, date: data.date,
+          user_id: authUser.id, title: data.title, client_id: data.client_id, client_name: data.client || null, date: data.date,
           all_day: data.all_day, time: data.time || null, end_time: data.end_time || null,
           category: data.category, is_team: data.is_team, note: data.note || null, source:'local',
           created_at: nowIso, updated_at: nowIso
@@ -1819,17 +1838,24 @@ async function loadCrmClients(){
    ล็อกอิน หรือแม้ล็อกอินแล้วก็ตาม (ใช้เป็นแค่ "ต้นทาง" ตอนย้ายข้อมูลครั้งแรก แล้วก็ปล่อยค้างไว้เฉยๆ) — ดู
    enterCloudMode()/migrateLocalDataToCloud() ด้านล่าง */
 
-// cal_events ไม่มีคอลัมน์ "client" (ชื่อลูกค้าเป็นข้อความ) มีแค่ client_id (FK ไป crm_clients) — โค้ด render/แบบฟอร์ม
-// เดิมทั้งไฟล์ใช้ ev.client เป็นชื่อที่แสดงผล จึงต้อง join กับ cloudClients (โหลดไว้แล้วจาก loadCrmClients) สร้าง
-// ฟิลด์นี้ขึ้นมาเองทุกครั้งที่โหลดแถวจาก cal_events เข้า state — ถ้าหา client_id ไม่เจอใน cloudClients (เช่น ลูกค้า
-// ถูกปิดใช้งานไปแล้ว) จะได้ช่องว่างแทน ไม่ error
+// cal_events มีคอลัมน์ client_id (FK ไป crm_clients สำหรับกรณีจับคู่ลูกค้าจริงในระบบได้) และ client_name (ข้อความ
+// อิสระที่ผู้ใช้พิมพ์เอง เก็บคู่กันไว้เผื่อไม่ตรงกับลูกค้ารายไหนเลย — ดูคอมเมนต์ที่ saveEventForm/migrateLocalDataToCloud
+// ที่เขียนคอลัมน์นี้) โค้ด render/แบบฟอร์มเดิมทั้งไฟล์ใช้ ev.client เป็นชื่อที่แสดงผลฟิลด์เดียว จึงต้องรวม 2 คอลัมน์นี้
+// เข้าเป็นฟิลด์เดียวกันทุกครั้งที่โหลดแถวจาก cal_events เข้า state — ใช้ client_name ก่อนเสมอถ้ามีค่า (คือสิ่งที่
+// ผู้ใช้พิมพ์ไว้จริงตอนบันทึก) ถ้าไม่มี (แถวเก่าก่อนมีคอลัมน์นี้) ค่อย fallback ไปหาชื่อจาก client_id ผ่าน cloudClients
+// เหมือนเดิม (ถ้าหาไม่เจอ เช่น ลูกค้าถูกปิดใช้งานไปแล้ว จะได้ช่องว่างแทน ไม่ error)
 function clientNameForId(id){
   if(id===null || id===undefined) return '';
   const hit = cloudClients.find(c=>c.id===id);
   return hit ? hit.thai_name : '';
 }
 function cloudEventToLocal(row){
-  return Object.assign({}, row, { client: clientNameForId(row.client_id) });
+  // ลำดับความสำคัญ: ถ้ากิจกรรมผูกกับลูกค้าจริงในระบบ (client_id) ให้ใช้ "ชื่อสด" จาก crm_clients เสมอ —
+  // ลูกค้าเปลี่ยนชื่อบริษัททีหลัง กิจกรรมเก่าจะได้อัปเดตตามเหมือนพฤติกรรมเดิมของแอพ ส่วน client_name
+  // (ข้อความที่ผู้ใช้พิมพ์เอง) เป็นตัวสำรองสำหรับกิจกรรมที่จับคู่กับลูกค้าจริงไม่ได้ ซึ่งเดิมไม่มีที่เก็บเลย
+  // จึงหายทุกครั้งที่บันทึก
+  const client = clientNameForId(row.client_id) || row.client_name || '';
+  return Object.assign({}, row, { client });
 }
 // แปล error จาก Supabase เป็นข้อความที่บอกสาเหตุจริงให้ผู้ใช้เข้าใจ (ห้ามล้มเหลวเงียบๆ) — เคสที่สำคัญที่สุดคือ
 // RLS ปฏิเสธเพราะพยายามเขียนแถว is_team=true (ปฏิทินทีม) ทั้งที่ role ไม่ใช่ owner/manager (cal_events RLS
@@ -1871,6 +1897,9 @@ async function loadCloudEventsAndTasks(client){
 // จำนวนสำเร็จ/ไม่สำเร็จ แล้วสรุปให้ผู้ใช้ทราบเป็นก้อนเดียว (ไม่ toast ทีละแถวซึ่งจะรกเกินไปถ้ามีหลายสิบรายการ)
 async function migrateLocalDataToCloud(client, localEvents, localTasks){
   const total = localEvents.length + localTasks.length;
+  // เดิมกล่องนี้เคยเตือนว่าชื่อลูกค้าที่พิมพ์เป็นข้อความอิสระจะหายหลังย้าย เพราะตอนนั้น cal_events ยังไม่มีคอลัมน์
+  // เก็บข้อความนี้เลย (มีแค่ client_id) — ตอนนี้เพิ่มคอลัมน์ client_name แล้ว (ดูคอมเมนต์ที่ cloudEventToLocal ด้านบน
+  // และแถว row ด้านล่างที่ส่ง client_name ไปด้วย) ชื่อลูกค้าจึงไม่หายอีกต่อไป ไม่ต้องเตือนแล้ว — เอาคำเตือนนี้ออก
   const ok = confirm(
     'พบข้อมูลในเครื่องนี้ ' + localEvents.length + ' กิจกรรม และ ' + localTasks.length + ' งาน (รวม ' + total + ' รายการ)\n' +
     'ต้องการย้ายขึ้นระบบคลาวด์ (ผูกกับบัญชีนี้ ให้ทีมเห็นนัดหมายที่ติ๊ก "ปฏิทินทีม" ได้จริง) หรือไม่?\n\n' +
@@ -1882,7 +1911,7 @@ async function migrateLocalDataToCloud(client, localEvents, localTasks){
   for(const ev of localEvents){
     const nowIso = new Date().toISOString();
     const row = {
-      user_id: authUser.id, title: ev.title, client_id: ev.client_id || null,
+      user_id: authUser.id, title: ev.title, client_id: ev.client_id || null, client_name: ev.client || null,
       date: ev.date, time: ev.time || null, end_time: ev.end_time || null,
       category: ev.category || 'other', all_day: !!ev.all_day, note: ev.note || null,
       is_team: !!ev.is_team, source: ev.source || 'local', external_id: ev.external_id || null,
@@ -1907,25 +1936,45 @@ async function migrateLocalDataToCloud(client, localEvents, localTasks){
 // เรียกหลังล็อกอิน CRM สำเร็จเสมอ (ทั้งตอนเปิดหน้าเจอ session เดิม และตอนกดล็อกอินเอง) — ตัดสินใจว่าต้องถามย้าย
 // ข้อมูลไหม (ครั้งแรกที่ล็อกอินบัญชีนี้บนเครื่องนี้เท่านั้น ใช้ flag ต่อ-บัญชีกันถามซ้ำ) แล้วโหลดข้อมูลคลาวด์ + สลับ
 // dataMode เป็น 'cloud' เสมอไม่ว่าจะย้ายหรือไม่ก็ตาม (ผู้ใช้ปฏิเสธการย้าย ≠ ปฏิเสธการใช้ปฏิทินทีม)
+let enterCloudModeInFlight = null;   // กันเรียกซ้อนกัน (เช่น กดปุ่มเข้าสู่ระบบรัวๆ หรือชนกับ initAuthOnLoad() ที่
+// กำลังเช็ค session ค้างอยู่พอดีแล้วผู้ใช้ดันกดล็อกอินเองทัน) ถ้าไม่กันไว้ ทั้งสองจะเห็น migKey/CAL_LOCAL_CLAIM_KEY
+// ว่างพร้อมกันแล้วเสนอย้ายข้อมูล 2 กล่องโต้ตอบซ้อนกัน + insert ข้อมูลเดิมซ้ำสองชุดเข้า cal_events/cal_tasks จริง
 async function enterCloudMode(){
   if(!authUser) return;
+  if(enterCloudModeInFlight) return enterCloudModeInFlight;
+  enterCloudModeInFlight = enterCloudModeImpl();
+  try{ await enterCloudModeInFlight; } finally{ enterCloudModeInFlight = null; }
+}
+async function enterCloudModeImpl(){
   try{
     const client = await getSupabaseClient();
     const migKey = 'cal_cloud_migrated_' + authUser.id;
     if(localStorage.getItem(migKey) === null){
-      const localEvents = lsGet('dcbc_events', []) || [];
-      const localTasks = lsGet('dcbc_tasks', []) || [];
-      if(localEvents.length || localTasks.length){
-        const result = await migrateLocalDataToCloud(client, localEvents, localTasks);
-        if(!result.declined){
-          localStorage.setItem(migKey, '1');
-          const summary = 'กิจกรรม ' + result.okEvents + '/' + (result.okEvents+result.failEvents) + ', งาน ' + result.okTasks + '/' + (result.okTasks+result.failTasks);
-          if(result.failEvents || result.failTasks) toast('ย้ายข้อมูลขึ้นคลาวด์บางส่วนไม่สำเร็จ (' + summary + ') — ที่เหลือยังอยู่ในเครื่องเดิม ลองย้ายอีกครั้งได้ตอนล็อกอินครั้งหน้า');
-          else toast('ย้ายข้อมูลขึ้นคลาวด์สำเร็จ (' + summary + ')');
-        }
-        // ผู้ใช้กด "ยกเลิก" — ไม่ตั้ง flag ว่าย้ายแล้ว จะถามใหม่อีกครั้งตอนล็อกอินครั้งหน้า (ข้อมูลเดิมยังอยู่ในเครื่องครบ)
+      const claimedBy = localStorage.getItem(CAL_LOCAL_CLAIM_KEY);
+      if(claimedBy && claimedBy !== authUser.id){
+        // ข้อมูล local ที่เหลืออยู่บนเครื่องนี้เป็นของอีกบัญชีไปแล้ว (ดูคอมเมนต์ที่ CAL_LOCAL_CLAIM_KEY ด้านบน) —
+        // ไม่เสนอย้ายให้บัญชีนี้ ถือว่า "ไม่มีอะไรให้ย้าย" สำหรับบัญชีนี้ไปเลย กันข้อมูลส่วนตัวของบัญชีก่อนหน้ารั่ว
+        // เข้าบัญชีนี้ (ถ้าไม่กันไว้ บัญชีนี้จะเห็นกล่องโต้ตอบเสนอย้าย "ข้อมูลในเครื่องนี้" ทั้งที่จริงเป็นของคนอื่น)
+        localStorage.setItem(migKey, '1');
       } else {
-        localStorage.setItem(migKey, '1'); // ไม่มีอะไรให้ย้าย ไม่ต้องถามอีกบนเครื่องนี้
+        localStorage.setItem(CAL_LOCAL_CLAIM_KEY, authUser.id);
+        const localEvents = lsGet('dcbc_events', []) || [];
+        const localTasks = lsGet('dcbc_tasks', []) || [];
+        if(localEvents.length || localTasks.length){
+          const result = await migrateLocalDataToCloud(client, localEvents, localTasks);
+          if(!result.declined){
+            localStorage.setItem(migKey, '1');
+            const summary = 'กิจกรรม ' + result.okEvents + '/' + (result.okEvents+result.failEvents) + ', งาน ' + result.okTasks + '/' + (result.okTasks+result.failTasks);
+            // หมายเหตุ: รายการที่ย้ายไม่สำเร็จจะไม่ถูกลองใหม่อัตโนมัติอีก (migKey ถูกตั้งไปแล้วข้างบน กันไม่ให้ถาม
+            // ย้ายซ้ำทุกครั้งที่ล็อกอิน) ข้อความจึงต้องบอกตามจริงว่า "ไม่ถูกย้ายอัตโนมัติอีก" ไม่ใช่สัญญาการลองใหม่
+            // อัตโนมัติที่ไม่เกิดขึ้นจริง (เดิมข้อความบอกว่า "ลองย้ายอีกครั้งได้ตอนล็อกอินครั้งหน้า" ซึ่งไม่จริง)
+            if(result.failEvents || result.failTasks) toast('ย้ายข้อมูลขึ้นคลาวด์บางส่วนไม่สำเร็จ (' + summary + ') — รายการที่ย้ายไม่สำเร็จจะไม่ถูกย้ายอัตโนมัติอีก (ยังอยู่ในเครื่องนี้ครบ ไม่หาย)');
+            else toast('ย้ายข้อมูลขึ้นคลาวด์สำเร็จ (' + summary + ')');
+          }
+          // ผู้ใช้กด "ยกเลิก" — ไม่ตั้ง flag ว่าย้ายแล้ว จะถามใหม่อีกครั้งตอนล็อกอินครั้งหน้า (ข้อมูลเดิมยังอยู่ในเครื่องครบ)
+        } else {
+          localStorage.setItem(migKey, '1'); // ไม่มีอะไรให้ย้าย ไม่ต้องถามอีกบนเครื่องนี้
+        }
       }
     }
     const ok = await loadCloudEventsAndTasks(client);
@@ -2036,6 +2085,10 @@ function clearAllData(){
   // ตัวสำรองโปรไฟล์โหมด Local ก็เป็น "โปรไฟล์" ที่กล่องยืนยันบอกว่าจะล้าง — ถ้าไม่ลบด้วย โปรไฟล์เก่า
   // (รวมบทบาทเดิม) จะย้อนกลับมาเองตอนออกจากระบบบัญชี CRM ครั้งถัดไป ทั้งที่ผู้ใช้สั่งล้างไปแล้ว
   localStorage.removeItem(LOCAL_PROFILE_BACKUP_KEY);
+  // ล้าง "เจ้าของ" ข้อมูล local เดิมด้วย (ดูคอมเมนต์ที่ CAL_LOCAL_CLAIM_KEY) — ผู้ใช้เพิ่งยืนยันล้างกิจกรรม/งาน
+  // ทั้งหมดในเครื่องนี้ไปแล้ว จึงไม่มี "ข้อมูลของบัญชีก่อนหน้า" เหลือให้ต้องกันรั่วอีกต่อไป ปล่อยให้บัญชีถัดไปที่
+  // ล็อกอินบนเครื่องนี้ (ถ้ามีข้อมูลใหม่ที่สร้างเพิ่มระหว่างนี้) เคลมข้อมูล local รอบใหม่ได้ตามปกติ
+  localStorage.removeItem(CAL_LOCAL_CLAIM_KEY);
   events = seedEvents(); lsSet('dcbc_events', events);
   tasks = seedTasks(); lsSet('dcbc_tasks', tasks);
   profile = {name:'ผู้ใช้งาน', role: ROLES[4].label}; lsSet('dcbc_profile', profile);
