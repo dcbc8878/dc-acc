@@ -368,6 +368,9 @@
           </div>
           <div id="settings-menu-employees" class="settings-menu-item" onclick="navigate('employees')">พนักงาน</div>
           <div id="settings-menu-teamgrid" class="settings-menu-item" onclick="navigate('teamgrid')">จัดการทีม</div>
+          <!-- ทุกระดับเห็นรายการนี้ได้เสมอ (ไม่ gate ด้วย canManageTeams เหมือน teamgrid ข้างบน) — หน้านี้
+               รองรับโหมดดูอย่างเดียวสำหรับ LV4-5 อยู่แล้ว (ดู canEditGrid ใน renderAssigneeGrid) -->
+          <div class="settings-menu-item" onclick="navigate('assigneegrid')">ผู้รับผิดชอบ</div>
           <div class="border-t border-[var(--border)] my-1.5"></div>
           <div class="settings-menu-item" onclick="navigate('settings')">ตั้งค่าข้อมูลส่วนตัว</div>
         </div>
@@ -465,7 +468,7 @@
               <col style="width:40px"> <!-- ลำดับ -->
               <col style="width:80px"> <!-- CODE -->
               <col style="width:350px"><!-- NAME -->
-              <col id="trk-col-owner" style="width:120px"><!-- ผู้รับผิดชอบ (LV1-2 เท่านั้น — init() ถอด <col>+<th> นี้ออกสำหรับ LV3-5 ดู canSeeAssignees) -->
+              <col id="trk-col-owner" style="width:120px"><!-- ผู้รับผิดชอบ (ทุกระดับเห็นได้ — RLS เปิด SELECT ให้ทุกระดับแล้ว ดู canSeeAssignees) -->
               <col> <!-- NOTE: ไม่กำหนดความกว้าง ยืดเต็มพื้นที่ที่เหลือ -->
               <col style="width:116px"><!-- รับเอกสาร -->
               <col style="width:116px"><!-- TAX1 -->
@@ -994,7 +997,7 @@
 
         <div id="activity-log-section" class="hidden bg-[var(--surface)] border border-[var(--border)] rounded-xl p-6 mt-6">
           <h3 class="font-bold text-[var(--ink)] mb-1">ประวัติการแก้ไข</h3>
-          <p class="text-xs text-[var(--ink-muted)] mb-4">บันทึกกิจกรรมการแก้ไขในระบบ (เจ้าของ/ผู้จัดการเท่านั้น)</p>
+          <p class="text-xs text-[var(--ink-muted)] mb-4">บันทึกกิจกรรมการแก้ไขในระบบ (รายการเปลี่ยนค่าบริการ/ประเภทลูกค้า เห็นได้เฉพาะเจ้าของ/ผู้จัดการ/พนักงานอาวุโส)</p>
           <div id="activity-log-list" class="space-y-2"></div>
         </div>
       </div>
@@ -1080,6 +1083,19 @@
       </div>
       <div class="p-6 overflow-x-auto">
         <div id="team-grid-container" class="bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden"></div>
+      </div>
+    </div>
+
+    <!-- PAGE: assigneegrid — โครงเดียวกับ teamgrid ด้านบนเป๊ะ (ตารางกริด ลูกค้า × พนักงาน คลิกช่องเพื่อ
+         toggle) ต่างกันตรงที่ผู้รับผิดชอบมีได้หลายคนต่อลูกค้า 1 ราย (ทีมมีได้แค่ทีมเดียว) และหน้านี้เปิดให้
+         ทุกระดับเข้าดูได้ (ไม่ซ่อนเมนูเหมือน teamgrid) — ดูโหมดอ่านอย่างเดียวใน renderAssigneeGrid -->
+    <div id="page-assigneegrid" class="hidden">
+      <div class="bg-[var(--surface)] border-b border-[var(--border)] px-6 py-4 sticky top-0 z-10">
+        <h2 class="text-base font-bold text-[var(--ink)]">ผู้รับผิดชอบ</h2>
+        <p id="assigneegrid-subtitle" class="text-xs text-[var(--ink-muted)] mt-0.5">—</p>
+      </div>
+      <div class="p-6 overflow-x-auto">
+        <div id="assignee-grid-container" class="bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden"></div>
       </div>
     </div>
 
@@ -1189,7 +1205,9 @@ const FLOWACCOUNT_SYNC_FN = 'flowaccount-sync'; // Edge Function slug for flowac
 
 const THAI_MONTHS = ['','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม',
   'มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
-const ROLE_LABEL = { owner:'เจ้าของ (LV1)', manager:'ผู้จัดการ (LV2)', senior:'พนักงานอาวุโส (LV3)', junior:'พนักงาน (LV4)', parttime:'นักศึกษาฝึกงาน (LV5)' };
+// parttime: ป้ายที่แสดงผลเปลี่ยนเป็น "นักศึกษาฝึกงาน / ทดลองงาน" ตามที่ผู้ใช้ยืนยันความหมายจริงของระดับ 5
+// (คีย์ 'parttime' เอง/ค่า <option value>/ตัวเทียบสิทธิ์ทั้งหมด "ไม่ถูกแตะ" — เปลี่ยนแค่ข้อความที่คนอ่านเห็น)
+const ROLE_LABEL = { owner:'เจ้าของ (LV1)', manager:'ผู้จัดการ (LV2)', senior:'พนักงานอาวุโส (LV3)', junior:'พนักงาน (LV4)', parttime:'นักศึกษาฝึกงาน / ทดลองงาน (LV5)' };
 const PREFIX_OPTIONS = ['นาย','นาง','นางสาว'];
 const FIELDS = ['rd_download','rd_keyed'];
 // รายปี แยกเป็น 2 แท็บย่อย: "งานรายปี" กับ "งบการเงิน" — แต่ละหัวข้อ (group) มีหลายขั้นตอนย่อย (steps)
@@ -1420,8 +1438,20 @@ const ROLE_LEVEL = { owner: 1, manager: 2, senior: 3, junior: 4, parttime: 5 };
 const role      = () => profile?.role || 'parttime';
 const myLevel   = () => ROLE_LEVEL[role()] || 5;
 const isOwner   = () => myLevel() <= 1;                 // LV1
-const canSeeAuditLog = () => myLevel() <= 2;             // LV1-2
+// ทุกระดับเห็นหน้า "ประวัติการแก้ไข" ได้แล้ว (เดิม LV1-2) — เพราะ RLS ของ crm_activity_log กรองแถวการเงิน
+// (action client_fee_change/client_type_change) ให้เหลือแค่ LV1-3 เห็นเองแล้วที่ฐานข้อมูล ไม่ต้องกรองซ้ำที่นี่
+// (ฟังก์ชันนี้ใช้แค่ 3 จุด: แสดง/ซ่อนแถบเมนูในหน้าตั้งค่า, สั่ง renderActivityLog ตอน navigate, และการ์ดกัน
+// ในตัว renderActivityLog เอง — ทั้ง 3 จุดเป็นเรื่องเดียวกันหมดคือ "เห็นหน้าประวัติการแก้ไขได้ไหม" จึงไม่ต้อง
+// แยกเป็นคนละฟังก์ชัน)
+const canSeeAuditLog = () => true;
 const canEdit   = () => myLevel() <= 3;                  // LV1-3: tax tasks, invoices, changes tab
+// LV1-3: เห็นหน้า "การเงิน" ได้ทั้งหน้า (ทั้ง 2 แท็บย่อย การเก็บเงิน/ค่าบริการ) — LV4-5 ไม่มีสิทธิ์เห็นข้อมูล
+// การเงินเลย ตรงกับ RLS ของ crm_invoices/crm_billing_contracts ที่จำกัดไว้แค่ LV1-3 อยู่แล้ว (alias ของ
+// canEdit() ตรงๆ เพราะเป็นขอบเขตเดียวกันเป๊ะ — ทุกจุดที่แก้ไขข้อมูลการเงินในไฟล์นี้ก็เช็ค canEdit() อยู่แล้ว
+// เดิม) แยกชื่อออกมาต่างหากเพื่อให้อ่านเจตนาที่จุดเรียกใช้ง่ายขึ้น ไม่ได้เปลี่ยนขอบเขตสิทธิ์จริงเลย —
+// renderFinanceCollection()/renderFinanceFees() เช็คตัวนี้เป็นด่านแรกแล้ว "ไม่ยิง query" เข้า crm_invoices
+// เลยสำหรับ LV4-5 (กันไว้ตั้งแต่ฝั่ง JS ไม่ใช่แค่พึ่ง RLS อย่างเดียว) โชว์ข้อความแทนเนื้อหาทั้งหน้าแทนเลข 0
+const canSeeFinance = () => canEdit();
 const canEditBasic  = () => myLevel() <= 3;              // LV1-3: basic info + credentials edit
 const canSeeServiceDates = () => myLevel() <= 3;          // LV1-3: registration/start/end date fields
 const canCred   = () => true;                            // everyone can view credentials (read-only below LV3)
@@ -1431,14 +1461,14 @@ const canManageStaffAuth = () => myLevel() <= 2;          // LV1-2: รีเซ
 const canManageTeams = () => myLevel() <= 3;              // LV1-3: สร้าง/แก้ไข/ลบทีม, มอบหมายทีมให้ลูกค้า
 const canManageProgramSettings = () => myLevel() <= 2;    // LV1-2: ตั้งค่าโปรแกรม
 const canSeeAllTeamClients = () => myLevel() <= 2;        // LV1-2: ไม่ถูกจำกัดตามทีมในหน้ารายเดือน/ปลายปี
-// LV1-2: คอลัมน์ "ผู้รับผิดชอบ" ในหน้ารายเดือน — เกณฑ์นี้ไม่ได้ตั้งขึ้นใหม่ แต่ล้อตาม RLS ของตาราง
-// crm_staff_clients ตรงๆ: policy crm_sc_sel อนุญาต SELECT เมื่อ org_get_role() IN ('owner','manager')
-// หรือ staff_id = auth.uid() เท่านั้น แปลว่า LV3-5 จะได้ข้อมูลกลับมา "เฉพาะแถวของตัวเอง" ทำให้คอลัมน์นี้
-// ว่างเกือบทั้งคอลัมน์สำหรับพวกเขา ซึ่งอ่านผิดความหมายได้ทันที (ช่องว่างในไฟล์นี้แปลว่า "ไม่มีคนรับผิดชอบ"
-// ตามธรรมเนียมเดียวกับ computeClientNo ที่คืนค่าว่าง) จึงซ่อนทั้งคอลัมน์สำหรับ LV3-5 แทนที่จะโชว์ข้อมูล
-// ที่ไม่ครบแล้วปล่อยให้เข้าใจผิด — ตรงกับ canSeeAuditLog (LV1-2) ที่ใช้หลักการเดียวกันอยู่แล้วในไฟล์นี้
-// *ไม่ได้* แก้ RLS ฝั่งฐานข้อมูลเพื่อให้เห็นครบ (เป็นการแตะ production ที่เจ้าของยังไม่อนุมัติ)
-const canSeeAssignees = () => myLevel() <= 2;
+// ทุกระดับเห็นคอลัมน์ "ผู้รับผิดชอบ" ในหน้ารายเดือนได้แล้ว (เดิม LV1-2 เท่านั้น) — เดิม policy crm_sc_sel
+// ของตาราง crm_staff_clients อนุญาต SELECT เฉพาะ org_get_role() IN ('owner','manager') หรือแถวของตัวเอง
+// เท่านั้น ทำให้คอลัมน์นี้ว่างเกือบทั้งคอลัมน์สำหรับ LV3-5 (อ่านผิดความหมายได้ว่า "ไม่มีคนรับผิดชอบ") จึงต้อง
+// ซ่อนทั้งคอลัมน์แทน — ตอนนี้ RLS เปิด SELECT ให้ทุกระดับเห็นได้ครบแล้ว จึงเปิดคอลัมน์นี้ให้ทุกคนเหมือนกัน
+// การ "แก้ไข" ผู้รับผิดชอบ (toggle) ยังจำกัดสิทธิ์แยกต่างหากอยู่ — ใช้ canManageTeams() (LV1-3) ตรงกับ RLS
+// insert/delete ของตารางนี้ที่เพิ่งเปิดให้ LV1-3 แก้ได้ (เดิม owner เท่านั้น) ดู toggleClientAssignee_()/
+// หน้า "ผู้รับผิดชอบ" (page-assigneegrid)
+const canSeeAssignees = () => true;
 function myTeamIds() {
   return teams.filter(t => t.lead_id === profile.id || (teamMembersMap[t.id] || []).includes(profile.id)).map(t => t.id);
 }
@@ -1672,14 +1702,9 @@ async function init() {
   // สร้าง/แก้ไขทีมได้จริง (ปุ่ม "+ สร้างทีม" อยู่ในแท็บย่อย "ทีม" ของหน้านี้) — LV3 มีสิทธิ์จัดการทีมอยู่แล้ว
   // ตามนิยามเดิม จึงต้องเปิดหน้านี้ให้ถึงได้ ส่วนสิทธิ์ที่แคบกว่านั้นยังกันไว้ในหน้าเองเหมือนเดิมทุกจุด
   // (แท็บ "คำขอ" = canApproveRequest LV1-2, ปุ่มรีเซ็ทรหัสผ่าน = canManageStaffAuth LV1-2)
-  // คอลัมน์ "ผู้รับผิดชอบ" ของหน้ารายเดือน — ถอด <col>+<th> ออกจาก DOM ไปเลยสำหรับ LV3-5 (ไม่ใช่แค่
-  // ซ่อนด้วย class) เพราะตารางนี้เป็น table-layout:fixed ที่อ่านความกว้างจาก <colgroup> — display:none
-  // ใช้กับ <col> ไม่ได้จริง ต้องเอาตัว <col> ออกความกว้างถึงจะจัดใหม่ถูก renderTracking() ก็ไม่สร้าง <td>
-  // ของคอลัมน์นี้ตามไปด้วย (เช็ค canSeeAssignees ซ้ำอีกจุด) จำนวนคอลัมน์จึงตรงกันทั้งสองฝั่งเสมอ
-  if (!canSeeAssignees()) {
-    document.getElementById('trk-col-owner')?.remove();
-    document.getElementById('trk-th-owner')?.remove();
-  }
+  // คอลัมน์ "ผู้รับผิดชอบ" ของหน้ารายเดือน — เดิมถอด <col>+<th> ออกจาก DOM สำหรับ LV3-5 (ตอนที่ RLS ของ
+  // crm_staff_clients ยังจำกัดไว้แค่ owner/manager) ตอนนี้ RLS เปิด SELECT ให้ทุกระดับเห็นได้แล้ว จึงไม่ต้อง
+  // ถอดอะไรออกอีก คอลัมน์นี้แสดงให้ทุกระดับเห็นเหมือนคอลัมน์อื่นตามปกติ (ดู canSeeAssignees)
   if (!canManageTeams()) document.getElementById('settings-menu-employees').classList.add('hidden');
   if (!canManageTeams()) document.getElementById('settings-menu-teamgrid').classList.add('hidden');
   if (canManageTeams()) document.getElementById('add-team-btn').classList.remove('hidden');
@@ -1698,10 +1723,10 @@ async function init() {
     canEdit() ? loadInvoices() : Promise.resolve(),
     canApproveRequest() ? loadStaffRequests() : Promise.resolve(),
     // ชื่อพนักงาน + ตารางผู้รับผิดชอบ ใช้คู่กันเสมอ (map เก็บแค่ staff_id ต้องพึ่ง staffList แปลงเป็นชื่อ)
-    // ตั้ง staffListLoaded ไปด้วยเพื่อไม่ให้หน้า "พนักงาน" โหลด org_staff ซ้ำอีกรอบทีหลัง
-    canSeeAssignees()
-      ? Promise.all([loadStaff(), loadStaffAssignments()]).then(() => { staffListLoaded = true; })
-      : Promise.resolve(),
+    // ตั้ง staffListLoaded ไปด้วยเพื่อไม่ให้หน้า "พนักงาน" โหลด org_staff ซ้ำอีกรอบทีหลัง — โหลดให้ทุกระดับ
+    // เสมอแล้ว (เดิมกันไว้แค่ LV1-2 เพราะ RLS ของ crm_staff_clients ตอนนั้นยังไม่คืนข้อมูลให้ระดับอื่น
+    // ตอนนี้เปิด SELECT ให้ทุกระดับเห็นได้แล้ว ดู canSeeAssignees)
+    Promise.all([loadStaff(), loadStaffAssignments()]).then(() => { staffListLoaded = true; }),
     loadTeams().then(() => { teamsLoaded = true; }),
     loadAllBillingContracts(),
   ]);
@@ -1785,8 +1810,8 @@ async function loadStaff() {
   const { data } = await sb.from('org_staff').select('*').order('display_name');
   staffList = data || [];
 }
-// ผู้รับผิดชอบลูกค้า — เรียกเฉพาะ LV1-2 เท่านั้น (ดู canSeeAssignees) เพื่อไม่ให้ยิง query ที่ RLS จะ
-// คืนค่าไม่ครบอยู่แล้วโดยเปล่าประโยชน์ แพทเทิร์นเดียวกับ canEdit() ? loadInvoices() : ... ใน init()
+// ผู้รับผิดชอบลูกค้า — โหลดให้ทุกระดับเสมอตอน init() แล้ว (เดิมโหลดเฉพาะ LV1-2 เพราะ RLS ตอนนั้นคืนค่า
+// ไม่ครบให้ระดับอื่นอยู่ดี ตอนนี้ RLS เปิด SELECT ให้ทุกระดับเห็นครบแล้ว ดู canSeeAssignees)
 async function loadStaffAssignments() {
   const { data } = await sb.from('crm_staff_clients').select('staff_id,client_id');
   clientStaffMap = {};
@@ -1934,10 +1959,12 @@ async function saveAppSettings() {
 // ─────────────────────────────────────────────────────────────
 // NAVIGATION
 // ─────────────────────────────────────────────────────────────
-const ALL_PAGES = ['tracking','yearend','clients','finance','settings','owncompany','employees','teamgrid','appsettings'];
+const ALL_PAGES = ['tracking','yearend','clients','finance','settings','owncompany','employees','teamgrid','assigneegrid','appsettings'];
 function navigate(p) {
   document.getElementById('settings-menu')?.classList.add('hidden');
-  if (myLevel() > 3 && !['tracking','yearend','clients','finance','settings','employees'].includes(p)) p = 'tracking';
+  // assigneegrid เพิ่มเข้ารายการที่ LV4-5 เข้าถึงได้ด้วย (ต่างจาก teamgrid ที่ยังจำกัดแค่ LV1-3 เหมือนเดิม —
+  // หน้านี้เปิดให้ทุกระดับดูได้ แค่แก้ไม่ได้ ดู canEditGrid ใน renderAssigneeGrid)
+  if (myLevel() > 3 && !['tracking','yearend','clients','finance','settings','employees','assigneegrid'].includes(p)) p = 'tracking';
   curPage = p;
   ALL_PAGES.forEach(pg => {
     document.getElementById(`page-${pg}`).classList.toggle('hidden', pg !== p);
@@ -1948,7 +1975,14 @@ function navigate(p) {
   if (p === 'tracking') renderTracking();
   else if (p === 'yearend') { if (!yearEndLoaded) loadYearEndTasks().then(renderYearEnd); else renderYearEnd(); }
   else if (p === 'clients') showClientsSubTab('current');
-  else if (p === 'finance') { ensureFinanceDataLoaded().then(() => showFinanceSubTab('collection')); }
+  // LV4-5 ไม่มีสิทธิ์ดูข้อมูลการเงินเลย (canSeeFinance = canEdit, LV1-3) — ไม่ยิง ensureFinanceDataLoaded()
+  // (จะไปเรียก loadFinInvoices() ยิง query เข้า crm_invoices) เลยสำหรับระดับนี้ ยังคงเรียก
+  // showFinanceSubTab('collection') เพื่อตั้งค่า tab ที่ active ให้ถูกต้อง แต่ renderFinanceCollection()/
+  // renderFinanceFees() จะเช็ค canSeeFinance() เป็นด่านแรกแล้วโชว์ข้อความแทนเนื้อหาทั้งหน้าเอง
+  else if (p === 'finance') {
+    if (canSeeFinance()) ensureFinanceDataLoaded().then(() => showFinanceSubTab('collection'));
+    else showFinanceSubTab('collection');
+  }
   else if (p === 'settings') {
     renderOwnProfile();
     if (canSeeAuditLog()) renderActivityLog();
@@ -1956,6 +1990,7 @@ function navigate(p) {
   else if (p === 'owncompany') { if (canManageOwnCompany()) renderOwnCompanies(); }
   else if (p === 'employees') showEmployeeSubTab(employeeSubTab);
   else if (p === 'teamgrid') { if (!teamsLoaded) { loadTeams().then(() => { teamsLoaded = true; renderTeamGrid(); }); } else renderTeamGrid(); }
+  else if (p === 'assigneegrid') renderAssigneeGrid();
   else if (p === 'appsettings') renderAppSettings();
 }
 function toggleSettingsMenu(ev) {
@@ -1984,10 +2019,13 @@ function assigneeNames(clientId) {
 // ทุกชื่อ) เพื่อการันตีว่าเนื้อหาอยู่บรรทัดเดียวเสมอ ความสูงแถวจึงยังเป็น 49px เท่ากันทุกหน้าตามที่ตั้งใจ
 // ไว้ ชื่อครบทุกคนอยู่ใน title (hover ดูได้) ไม่มีผู้รับผิดชอบ = ช่องว่าง ไม่ใช่ขีด (ธรรมเนียมเดียวกับ
 // computeClientNo)
+// LV1-3 คลิกเซลล์นี้ได้เพื่อเปิดฟอร์มเลือกผู้รับผิดชอบหลายคน (openAssigneeModal ดู canManageTeams) — LV4-5
+// เห็นได้อย่างเดียว ไม่มี onclick/cursor-pointer ให้เลย (กดไม่ได้จริง ไม่ใช่แค่ปุ่มเงียบ)
 function assigneeCellHtml(clientId) {
   const names = assigneeNames(clientId);
   const label = names.length ? (names.length > 1 ? `${names[0]} +${names.length - 1}` : names[0]) : '';
-  return `<td class="px-2 py-0.5 text-left" style="overflow:hidden" title="${e(names.join(', '))}">
+  const editable = canManageTeams();
+  return `<td class="px-2 py-0.5 text-left ${editable ? 'cursor-pointer hover:bg-[var(--surface-2)]' : ''}" style="overflow:hidden" title="${e(names.join(', '))}"${editable ? ` onclick="openAssigneeModal(${clientId})"` : ''}>
             <div class="text-xs text-[var(--ink)] leading-tight overflow-hidden text-ellipsis whitespace-nowrap">${e(label)}</div>
           </td>`;
 }
@@ -3732,7 +3770,12 @@ async function applyClientChange() {
     if (idx !== -1) Object.assign(clients[idx], updates);
   }
 
-  await logActivity('client_change_add', 'client', panelClientId, `บันทึกการเปลี่ยนแปลง: ${CHANGE_TYPES.find(t=>t.key===ct)?.label||ct}${newValue?` → ${newValue}`:''}`);
+  // RLS ของ crm_activity_log กรองแถวการเงิน (ค่าบริการ/ประเภทลูกค้า) ให้เห็นเฉพาะ LV1-3 โดยเช็คจากชื่อ
+  // action ตรงๆ — ฟอร์มนี้ใช้ ct ทั่วไปตาม CHANGE_TYPES เป็นหลัก (ไม่มี 'fee'/'type' ให้เลือกอยู่แล้ว
+  // เพราะ 2 ประเภทนี้ถูกดักไปที่ applyFeeChangeCore_ ตั้งแต่บรรทัดก่อนหน้าในฟังก์ชันนี้) แต่กันไว้เผื่ออนาคต
+  // ให้ action ตรงกับ RLS เสมอไม่ว่า ct จะมาจากทางไหน
+  const genericLogAction = ct === 'fee' ? 'client_fee_change' : ct === 'type' ? 'client_type_change' : 'client_change_add';
+  await logActivity(genericLogAction, 'client', panelClientId, `บันทึกการเปลี่ยนแปลง: ${CHANGE_TYPES.find(t=>t.key===ct)?.label||ct}${newValue?` → ${newValue}`:''}`);
 
   refreshPageAfterClientSave_();
   showToast('บันทึกการเปลี่ยนแปลงสำเร็จ');
@@ -3776,7 +3819,9 @@ async function applyFeeChangeCore_(clientId, newFee, effectiveDate, note) {
   if (newContract) feeCache.push(newContract);
   c.monthly_fee = newFee;
 
-  await logActivity('client_change_add', 'client', clientId, `บันทึกการเปลี่ยนแปลง: เปลี่ยนค่าบริการ → ${newFee}`);
+  // action ต้องเป็น client_fee_change ตรงๆ (ไม่ใช่ client_change_add ทั่วไป) — RLS ของ crm_activity_log
+  // กรองแถวที่มียอดเงินให้เห็นเฉพาะ LV1-3 โดยเช็คจากชื่อ action นี้เป๊ะๆ
+  await logActivity('client_fee_change', 'client', clientId, `บันทึกการเปลี่ยนแปลง: เปลี่ยนค่าบริการ → ${newFee}`);
   return true;
 }
 
@@ -3920,7 +3965,9 @@ async function applyTypeChangeCore_(clientId, newType, effectiveDate) {
   if (newContract) typeCache.push(newContract);
   c.billing_type = newType;
 
-  await logActivity('client_info_update', 'client', clientId, `เปลี่ยนประเภทลูกค้า → ${newNo}`);
+  // action ต้องเป็น client_type_change ตรงๆ (ไม่ใช่ client_info_update ทั่วไป) — RLS ของ crm_activity_log
+  // กรองแถวที่เกี่ยวกับประเภทลูกค้า/ค่าบริการให้เห็นเฉพาะ LV1-3 โดยเช็คจากชื่อ action นี้เป๊ะๆ
+  await logActivity('client_type_change', 'client', clientId, `เปลี่ยนประเภทลูกค้า → ${newNo}`);
   return true;
 }
 
@@ -5073,6 +5120,15 @@ function showFinanceSubTab(tab) {
   else renderFinanceFees();
 }
 
+// ข้อความแทนตารางทั้งก้อนสำหรับ LV4-5 (ไม่มีสิทธิ์ดูข้อมูลการเงิน) — ใช้ร่วมกันทั้ง 2 แท็บย่อย แทนที่จะ
+// ปล่อยให้การ์ดสรุป/ตารางขึ้นเลข 0 เฉยๆ ซึ่งอ่านผิดความหมายเป็น "ไม่มีข้อมูล" ได้ ดู canSeeFinance
+function financeNoAccessHtml_() {
+  return `<div class="text-center py-10 px-4">
+    <div class="text-sm font-semibold text-[var(--ink-muted)]">ไม่มีสิทธิ์ดูข้อมูลการเงิน</div>
+    <div class="text-xs text-[var(--ink-muted)] mt-1">หน้านี้เห็นได้เฉพาะเจ้าของ/ผู้จัดการ/พนักงานอาวุโสเท่านั้น</div>
+  </div>`;
+}
+
 // สรุปสถานะ FlowAccount แบบสั้น สำหรับแสดงในรายการ (รายละเอียด/ปุ่มลองใหม่เต็มๆ อยู่ในแผงลูกค้า แท็บ "ใบแจ้งหนี้" — faSyncLine())
 function faStatusBadge(inv) {
   if (!inv) return '<span class="text-xs text-[var(--ink-muted)]">—</span>';
@@ -5144,11 +5200,21 @@ function isFinAtProgramLatest() {
 function updateFinNavButtons() {
   const prevBtn = document.getElementById('finPrevBtn');
   const nextBtn = document.getElementById('finNextBtn');
+  // LV4-5 ไม่มีสิทธิ์ดูข้อมูลการเงินเลย — ปิดปุ่มเปลี่ยนเดือนไปด้วย (เนื้อหาที่เห็นเป็นข้อความ "ไม่มีสิทธิ์
+  // ดู" อยู่แล้วไม่ว่าจะเลือกเดือนไหน ไม่มีประโยชน์ให้กดเปลี่ยนเดือนต่อ)
+  if (!canSeeFinance()) {
+    if (prevBtn) prevBtn.disabled = true;
+    if (nextBtn) nextBtn.disabled = true;
+    return;
+  }
   if (prevBtn) prevBtn.disabled = isFinAtProgramStart();
   if (nextBtn) nextBtn.disabled = isFinAtProgramLatest();
 }
 // ปุ่มเดือนก่อนหน้า/ถัดไปของแท็บนี้เอง — ไม่แตะ curYear/curMonth (ตัวแปรของหน้ารายเดือน) เลย
 async function changeFinMonth(delta) {
+  // LV4-5 ไม่มีสิทธิ์ดูข้อมูลการเงินเลย — ไม่ต้องยิง loadFinInvoices() เลย (ปุ่มถูกปิดไว้แล้วจาก
+  // updateFinNavButtons() ด้วย แต่กันไว้อีกชั้นเผื่อถูกเรียกจากทางอื่น)
+  if (!canSeeFinance()) return;
   let m = finMonth + delta, y = finYear;
   if (m > 12) { m = 1;  y++; }
   if (m <  1) { m = 12; y--; }
@@ -5206,6 +5272,17 @@ function renderFinanceCollection() {
   const monthLabel = document.getElementById('fin-collection-month');
   if (monthLabel) monthLabel.textContent = `${THAI_MONTHS[finMonth]} ${finYear}`;
   updateFinNavButtons();
+
+  // LV4-5 ไม่มีสิทธิ์ดูข้อมูลการเงินเลย — ไม่แตะ finInvoiceMap (ไม่เคยถูกโหลดสำหรับระดับนี้อยู่แล้ว เพราะ
+  // ensureFinanceDataLoaded ถูกข้ามไปตั้งแต่ navigate()) โชว์ข้อความแทนการ์ดสรุป+ตารางทั้งก้อน แทนเลข 0
+  if (!canSeeFinance()) {
+    document.getElementById('fin-paid-count').textContent = '—';
+    document.getElementById('fin-pending-count').textContent = '—';
+    document.getElementById('fin-paid-total').textContent = '—';
+    const noAccessEl = document.getElementById('fin-collection-list');
+    if (noAccessEl) noAccessEl.innerHTML = financeNoAccessHtml_();
+    return;
+  }
 
   const visible = financeCollectionClients();
   let paidCount = 0, pendingCount = 0, paidTotal = 0;
@@ -5348,6 +5425,18 @@ function financeFeeRowHtml(c) {
     </div>`;
 }
 function renderFinanceFees() {
+  // LV4-5 ไม่มีสิทธิ์ดูข้อมูลการเงินเลย — โชว์ข้อความแทนการ์ดสรุป+ตารางทั้งก้อน แทนเลข 0 (ต่างจากแท็บ
+  // การเก็บเงินตรงที่ตัวเลขของแท็บนี้คำนวณจาก clients[]/billingContractsByClient (โหลดให้ทุกระดับอยู่แล้ว
+  // เพราะหน้ารายเดือนก็ใช้) ไม่ได้ผูกกับ query ที่ถูกข้ามไปเหมือนแท็บการเก็บเงิน — แต่ผู้ใช้ต้องการให้ปฏิบัติ
+  // เหมือนกันทั้ง 2 แท็บย่อย (ข้อมูลการเงินทั้งหน้าถือเป็นเรื่องเดียวกัน) จึงกั้นไว้เหมือนกันตรงนี้ด้วย
+  if (!canSeeFinance()) {
+    document.getElementById('fee-total').textContent = '—';
+    document.getElementById('fee-avg').textContent = '—';
+    document.getElementById('fee-count').textContent = '—';
+    const noAccessEl = document.getElementById('fin-fee-list');
+    if (noAccessEl) noAccessEl.innerHTML = financeNoAccessHtml_();
+    return;
+  }
   const q = (document.getElementById('fin-fee-search')?.value || '').toLowerCase();
   // base = full active-client set — same non-flicker rationale as renderClientList() above.
   const base = clients.filter(c => c.is_active && !c.is_own_company);
@@ -6006,9 +6095,124 @@ async function toggleClientTeamGrid(clientId, teamId) {
   renderTeamGrid();
 }
 
+// ── ผู้รับผิดชอบ (crm_staff_clients) — โครงเดียวกับทีมด้านบนเป๊ะ (ตารางกริด ลูกค้า × พนักงาน คลิกช่อง
+// เพื่อ toggle) ต่างกันตรงที่ลูกค้า 1 รายมีผู้รับผิดชอบได้หลายคน (ทีมมีได้แค่ทีมเดียว บนคอลัมน์
+// crm_clients.team_id) จึงต้อง insert/delete แถวในตาราง crm_staff_clients แทนการ update คอลัมน์เดียว
+// เห็นได้ทุกระดับ (ดู canSeeAssignees) แต่แก้ได้เฉพาะ LV1-3 (canManageTeams ตรงกับ RLS insert/delete จริง) ──
+async function toggleClientAssignee_(clientId, staffId) {
+  if (!canManageTeams()) return { ok: false, error: 'ไม่มีสิทธิ์แก้ไข' };
+  const has = (clientStaffMap[clientId] || []).includes(staffId);
+  if (has) {
+    const { error } = await sb.from('crm_staff_clients').delete().eq('client_id', clientId).eq('staff_id', staffId);
+    if (error) return { ok: false, error: error.message };
+    // อ่าน clientStaffMap[clientId] ใหม่ ณ ตอนเขียนกลับเสมอ (ไม่ใช้ any ตัวแปรที่จับสถานะไว้ก่อน await) —
+    // ฟังก์ชันนี้ถูกเรียกพร้อมกันหลายครั้งรวดผ่าน Promise.all ได้ (จากฟอร์มติ๊กหลายคนแล้วบันทึกทีเดียวใน
+    // saveAssigneeModal) ถ้าจับ snapshot ไว้ตั้งแต่ก่อน await จะเกิด "lost update" — ตัวที่ resolve ทีหลัง
+    // เขียนทับผลของตัวที่ resolve ก่อนหน้าโดยไม่ตั้งใจ อ่านสดทุกครั้งจึงปลอดภัยไม่ว่าจะ resolve ก่อน-หลังกัน
+    clientStaffMap[clientId] = (clientStaffMap[clientId] || []).filter(id => id !== staffId);
+  } else {
+    // ห้ามใช้ .select().single()/.select() อ่านค่ากลับหลัง insert — เคยเจอบั๊กที่ RLS กรองแถวที่ RETURNING
+    // ส่งกลับทิ้ง ทำให้ขึ้นว่าบันทึกไม่สำเร็จทั้งที่สำเร็จแล้วจริง (ดู saveOwnCompanyVisibility)
+    const { error } = await sb.from('crm_staff_clients').insert({ client_id: clientId, staff_id: staffId });
+    if (error) return { ok: false, error: error.message };
+    clientStaffMap[clientId] = [...(clientStaffMap[clientId] || []), staffId];
+  }
+  return { ok: true };
+}
+function renderAssigneeGrid() {
+  const el = document.getElementById('assignee-grid-container');
+  if (!el) return;
+  const canEditGrid = canManageTeams();
+  const subEl = document.getElementById('assigneegrid-subtitle');
+  if (subEl) subEl.textContent = canEditGrid
+    ? 'กำหนดว่าพนักงานคนไหนรับผิดชอบลูกค้ารายใด (เลือกได้หลายคนต่อลูกค้า 1 ราย) คลิกในตารางเพื่อเปลี่ยน'
+    : 'พนักงานคนไหนรับผิดชอบลูกค้ารายใด (เลือกได้หลายคนต่อลูกค้า 1 ราย) — ดูได้อย่างเดียว แก้ไขได้เฉพาะเจ้าของ/ผู้จัดการ/พนักงานอาวุโส';
+  const activeStaff = staffList.filter(s => s.is_active);
+  if (!activeStaff.length) {
+    el.innerHTML = '<div class="p-8 text-center text-sm text-[var(--ink-muted)]">ยังไม่มีพนักงาน</div>';
+    return;
+  }
+  const rows = clients.filter(c => c.is_active && !c.is_own_company).slice().sort((a, b) => a.code.localeCompare(b.code));
+  if (!rows.length) {
+    el.innerHTML = '<div class="p-8 text-center text-sm text-[var(--ink-muted)]">ยังไม่มีลูกค้า</div>';
+    return;
+  }
+  const header = `<tr>
+    <th class="col-fav text-left px-3 text-xs font-semibold text-[var(--ink-muted)] border-b-2 border-[var(--border)]" style="min-width:220px;position:sticky;left:0;background:var(--surface-2);z-index:2">ลูกค้า</th>
+    ${activeStaff.map(s => `<th class="px-3 text-xs font-semibold text-[var(--ink-muted)] border-b-2 border-l border-[var(--border)] text-center" style="min-width:110px">${e(s.display_name)}</th>`).join('')}
+  </tr>`;
+  const body = rows.map(c => {
+    const assigned = new Set(clientStaffMap[c.id] || []);
+    return `<tr>
+    <td class="px-3 py-2 text-sm text-[var(--ink)] border-b border-[var(--border)]" style="position:sticky;left:0;background:var(--surface)"><span class="text-xs font-bold text-[var(--ink-muted)] mr-1.5">${e(c.code)}</span>${e(c.thai_name)}</td>
+    ${activeStaff.map(s => `<td class="px-3 py-2 text-center border-b border-l border-[var(--border)] ${canEditGrid ? 'cursor-pointer hover:bg-[var(--surface-2)]' : ''}" ${canEditGrid ? `onclick="toggleClientAssigneeGrid(${c.id},'${s.id}')"` : ''}>${assigned.has(s.id) ? '<span class="dot done">✓</span>' : '<span class="dot todo"></span>'}</td>`).join('')}
+  </tr>`;
+  }).join('');
+  el.innerHTML = `<table class="w-full text-center" style="border-collapse:collapse"><thead>${header}</thead><tbody>${body}</tbody></table>`;
+}
+async function toggleClientAssigneeGrid(clientId, staffId) {
+  if (!canManageTeams()) return;
+  const res = await toggleClientAssignee_(clientId, staffId);
+  if (!res.ok) { showToast('บันทึกผู้รับผิดชอบไม่สำเร็จ: ' + res.error, 'error'); return; }
+  renderAssigneeGrid();
+  if (curPage === 'tracking') renderTracking();
+}
+// ฟอร์มเล็กเลือกผู้รับผิดชอบหลายคนสำหรับลูกค้า 1 ราย — เปิดจากคลิกคอลัมน์ "ผู้รับผิดชอบ" ในหน้ารายเดือน
+// (อีกทางคือหน้ากริด "ผู้รับผิดชอบ" ด้านบนที่คลิกทีละช่อง toggle ทันที — ทั้งคู่เรียก toggleClientAssignee_
+// ตัวเดียวกัน ไม่มี logic เขียน DB ซ้ำสองชุด) LV1-3 เท่านั้นที่แก้ได้ ตรงกับ canManageTeams ที่ใช้กันหน้า
+// กริดด้านบนอยู่แล้ว — assigneeCellHtml() ไม่ใส่ onclick นี้ให้ตั้งแต่แรกถ้า !canManageTeams() (LV4-5 กดไม่ได้)
+async function openAssigneeModal(clientId) {
+  if (!canManageTeams()) return;
+  const c = clients.find(x => x.id === clientId);
+  if (!c) return;
+  if (!staffList.length) await loadStaff();
+  const activeStaff = staffList.filter(s => s.is_active);
+  const assignedIds = new Set(clientStaffMap[clientId] || []);
+  const checks = activeStaff.map(s => `
+    <label class="flex items-center gap-2.5 py-1.5 px-1 text-sm text-[var(--ink)] cursor-pointer">
+      <input type="checkbox" class="assignee-chk w-4 h-4 rounded text-[var(--accent)]" value="${s.id}" ${assignedIds.has(s.id) ? 'checked' : ''}>
+      ${e(s.display_name)} <span class="text-[var(--ink-muted)] text-xs">(${e(ROLE_LABEL[s.role]||s.role)})</span>
+    </label>`).join('');
+  openModal(`
+    <h3 class="text-base font-bold text-[var(--ink)] mb-1">ผู้รับผิดชอบ</h3>
+    <p class="text-xs text-[var(--ink-muted)] mb-4">${e(c.thai_name)}</p>
+    <div class="border border-[var(--border)] rounded-lg max-h-64 overflow-y-auto px-2 py-1">${checks || '<div class="text-xs text-[var(--ink-muted)] py-2">ไม่มีพนักงาน</div>'}</div>
+    <div class="flex justify-end gap-2 mt-5">
+      <button onclick="closeModal()" class="px-4 py-2 text-sm text-[var(--ink-muted)] font-medium hover:text-[var(--ink)]">ยกเลิก</button>
+      <button onclick="saveAssigneeModal(${clientId})" class="px-4 py-2 bg-[var(--accent)] text-white text-sm font-semibold rounded-lg hover:bg-[color-mix(in_oklab,var(--accent)_85%,black)]">บันทึก</button>
+    </div>`);
+}
+// บันทึกจากฟอร์มเลือกผู้รับผิดชอบหลายคน — เทียบรายชื่อที่ติ๊กไว้ตอนนี้กับของเดิม (clientStaffMap) แล้ว
+// toggle เฉพาะคนที่สถานะเปลี่ยนจริงผ่าน toggleClientAssignee_ (ตัวเดียวกับที่หน้ากริดใช้) ทีละคนที่เปลี่ยน
+// เท่านั้น ไม่ใช่ลบทั้งหมดแล้วเขียนใหม่ทั้งชุด — ยิงพร้อมกันได้ปลอดภัย (ดูคอมเมนต์ lost-update ใน
+// toggleClientAssignee_) รวม error เป็น toast เดียวก้อนเดียว ไม่ยิงทีละอันเวลามีหลายคนเปลี่ยนพร้อมกัน
+// (toast ไม่ใช่คิว เรียกรัวๆ จะกระพริบทับกันเอง — แพทเทิร์นเดียวกับ createBatchInvoices)
+async function saveAssigneeModal(clientId) {
+  if (!canManageTeams()) return;
+  // staff id เป็น UUID (org_staff.id ผูกกับ auth.users) ไม่ใช่ตัวเลข — เก็บเป็น string ตรงๆ ห้าม parseInt()
+  // (แพทเทิร์นเดียวกับ saveTeam()'s memberIds ที่ก็เก็บ el.value เป็น string ไม่แปลงเป็นเลขเหมือนกัน ต่างจาก
+  // client id ใน createBatchInvoices ที่เป็นเลขจริงจึง parseInt ได้)
+  const checked = new Set([...document.querySelectorAll('.assignee-chk:checked')].map(el => el.value));
+  const before = new Set(clientStaffMap[clientId] || []);
+  const allIds = new Set([...checked, ...before]);
+  const changed = [...allIds].filter(id => checked.has(id) !== before.has(id));
+  if (!changed.length) { closeModal(); return; }
+
+  const results = await Promise.all(changed.map(staffId => toggleClientAssignee_(clientId, staffId)));
+  const failCount = results.filter(r => !r.ok).length;
+
+  closeModal();
+  if (failCount) showToast(`บันทึกผู้รับผิดชอบไม่สำเร็จ ${failCount}/${changed.length} รายการ — ลองใหม่อีกครั้ง`, 'error');
+  else showToast('บันทึกผู้รับผิดชอบแล้ว');
+  if (curPage === 'tracking') renderTracking();
+  if (curPage === 'assigneegrid') renderAssigneeGrid();
+}
+
 const ACTIVITY_ACTION_LABEL = {
   client_info_update: 'แก้ไขข้อมูลทั่วไป',
   client_change_add: 'เพิ่มการเปลี่ยนแปลง',
+  client_fee_change: 'เปลี่ยนค่าบริการ',
+  client_type_change: 'เปลี่ยนประเภทลูกค้า',
   client_change_edit: 'แก้ไขการเปลี่ยนแปลง',
   client_change_delete: 'ลบการเปลี่ยนแปลง',
   client_creds_update: 'แก้ไขรหัสผ่านเข้าระบบ',
