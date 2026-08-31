@@ -255,6 +255,18 @@
   </div>
 </div>
 
+<!-- PROFILE LOAD ERROR — มี session แล้ว (ล็อกอินผ่านหน้ารวมสำเร็จ) แต่โหลดโปรไฟล์ org_staff ไม่สำเร็จ
+     (เน็ตสะดุด/RLS ปฏิเสธชั่วคราว/ไม่พบแถว/บัญชีถูกปิดใช้งาน) — ห้ามสั่ง signOut() จากจุดนี้เด็ดขาด เพราะ
+     session นี้ใช้ร่วมกับหน้ารวม/ปฏิทิน/หน้าพนักงานผ่าน localStorage เดียวกัน (ดู init()) ปุ่ม "ลองใหม่"
+     ด้านล่างสั่งแค่ location.reload() เฉยๆ (ไม่แตะ session เลย) และต้องให้ผู้ใช้กดเองเท่านั้น ไม่ auto-reload
+     ซ้ำเอง กันวนลูปไม่รู้จบ -->
+<div id="profile-load-error" class="hidden fixed inset-0 bg-[var(--bg)] flex items-center justify-center z-50">
+  <div class="bg-[var(--surface)] rounded-xl shadow-[0_20px_50px_-12px_rgba(29,27,23,0.25)] border border-[var(--border)] p-8 w-full max-w-sm mx-4 text-center">
+    <p id="profile-load-error-detail" class="text-sm text-[var(--ink)] mb-4">โหลดข้อมูลผู้ใช้ไม่สำเร็จ</p>
+    <button onclick="location.reload()" class="px-4 py-2 bg-[var(--accent)] hover:bg-[color-mix(in_oklab,var(--accent)_85%,black)] text-white text-sm font-semibold rounded-lg transition-colors">ลองใหม่</button>
+  </div>
+</div>
+
 <!-- LOGIN SCREEN -->
 <div id="login-screen" class="hidden fixed inset-0 bg-[var(--bg)] flex items-center justify-center z-50">
   <div class="bg-[var(--surface)] rounded-xl shadow-[0_20px_50px_-12px_rgba(29,27,23,0.25)] border border-[var(--border)] p-8 w-full max-w-sm mx-4">
@@ -1684,7 +1696,23 @@ async function init() {
   }
 
   const { data: prof, error: profErr } = await sb.from('org_staff').select('*').eq('id', session.user.id).single();
-  if (profErr || !prof || !prof.is_active) { await sb.auth.signOut(); location.reload(); return; }
+  // ห้ามสั่ง signOut() ที่นี่ไม่ว่ากรณีไหนเลย (error จริง/ไม่พบแถว/ปิดใช้งาน) — session นี้ใช้ร่วมกับหน้ารวม/
+  // ปฏิทิน/หน้าพนักงานผ่าน localStorage เดียวกัน การ signOut() จากไฟล์นี้จะเตะผู้ใช้ออกจากทุกแอปพร้อมกัน
+  // ไม่ใช่แค่ CRM (เคยเป็นต้นเหตุอาการ "ล็อกอินแล้วเด้งกลับหน้าล็อกอิน" ที่ตามหากันมาหลายวัน — ต้นเหตุตอนนั้น
+  // คือ org_get_role()/org_complete_first_login() อ้างตารางชื่อเก่าทำให้ query ทุกจุด error แล้วโค้ดนี้เคย
+  // ตีความ error ใดๆ ว่า "ต้องออกจากระบบ" — แก้ต้นเหตุนั้นไปแล้ว แต่โค้ดเดิมตรงนี้ยังพร้อมทำงานซ้ำได้อีกถ้ามี
+  // error จากสาเหตุอื่น เช่นเน็ตสะดุด/RLS ปฏิเสธชั่วคราว) เปลี่ยนเป็นแสดงข้อความในหน้านี้เฉยๆ แทน ไม่แตะ session
+  // เลย ให้ผู้ใช้กด "ลองใหม่" เอง (แค่ location.reload() เฉยๆ ไม่มี signOut ปน) ไม่ auto-retry เอง กันวนลูป
+  if (profErr || !prof || !prof.is_active) {
+    document.getElementById('loading').classList.add('hidden');
+    document.getElementById('profile-load-error-detail').textContent = !prof
+      ? 'ไม่พบข้อมูลพนักงานสำหรับบัญชีนี้ กรุณาติดต่อผู้ดูแลระบบ'
+      : !prof.is_active
+      ? 'บัญชีนี้ถูกปิดใช้งานแล้ว กรุณาติดต่อผู้ดูแลระบบ'
+      : 'โหลดข้อมูลผู้ใช้ไม่สำเร็จ กรุณาลองใหม่' + (profErr?.message ? ` (${profErr.message})` : '');
+    document.getElementById('profile-load-error').classList.remove('hidden');
+    return;
+  }
   profile = prof;
 
   if (prof.must_change_password) {
@@ -3798,10 +3826,20 @@ async function applyFeeChangeCore_(clientId, newFee, effectiveDate, note) {
 
   const { error: updErr } = await sb.from('crm_clients').update({ monthly_fee: newFee }).eq('id', clientId);
   if (updErr) { showToast('อัปเดตข้อมูลไม่สำเร็จ: ' + updErr.message, 'error'); return false; }
+  // ตั้งค่าในหน่วยความจำทันทีที่ DB เขียนสำเร็จจริง (ย้ายมาจากท้ายฟังก์ชันเดิม) — กันไม่ให้ค่าที่แคชไว้ใน
+  // เบราว์เซอร์ค้างเป็นค่าเก่าถ้าขั้นตอนบันทึกประวัติสัญญาด้านล่าง (ที่แยกจาก crm_clients คนละคำสั่ง) ล้มเหลว
+  // ทีหลัง — ไม่กระทบ payload ที่ insert ประวัติสัญญาด้านล่าง เพราะใช้ newFee (พารามิเตอร์) ไม่ใช่ c.monthly_fee
+  c.monthly_fee = newFee;
 
-  await sb.from('crm_billing_contracts')
+  // เดิมจุดนี้ไม่เช็ค error เลยทั้ง 2 คำสั่ง (update ปิดสัญญาเก่า + insert เปิดสัญญาใหม่) ทำให้ถ้าล้มเหลว
+  // (เช่นเน็ตหลุด/RLS ปฏิเสธ) โค้ดยังเดินหน้าต่อจนถึง return true แล้ว caller โชว์ toast "สำเร็จ" ทับ ทั้งที่
+  // ประวัติสัญญาไม่ถูกบันทึกจริง (ค่าบริการปัจจุบันเปลี่ยนแล้ว แต่ resolveEffectiveFee() ย้อนดูราคาตามช่วงเวลา
+  // จะผิดไปเรื่อยๆ จนกว่าจะมีคนแก้ค่าบริการอีกครั้ง) — เช็ค error แล้ว คืน false + toast ให้ผู้ใช้รู้ตัวแทน
+  // (แพทเทิร์นเดียวกับอีก 2 จุดข้างบนในฟังก์ชันนี้เป๊ะ)
+  const { error: closeErr } = await sb.from('crm_billing_contracts')
     .update({ effective_to: effectiveDate }).eq('client_id', clientId).is('effective_to', null);
-  const { data: newContract } = await sb.from('crm_billing_contracts').insert({
+  if (closeErr) { showToast('บันทึกประวัติสัญญาไม่สำเร็จ: ' + closeErr.message, 'error'); return false; }
+  const { data: newContract, error: contractErr } = await sb.from('crm_billing_contracts').insert({
     client_id: clientId,
     billing_type: c.billing_type || 'monthly',
     fee_amount: newFee,
@@ -3809,6 +3847,7 @@ async function applyFeeChangeCore_(clientId, newFee, effectiveDate, note) {
     effective_from: effectiveDate,
     notes: `เปลี่ยนค่าบริการ: ${newFee} บาท (${effectiveDate})`,
   }).select().single();
+  if (contractErr) { showToast('บันทึกประวัติสัญญาไม่สำเร็จ: ' + contractErr.message, 'error'); return false; }
   // sync cache ประวัติสัญญาที่โหลดไว้แล้ว ให้ตรงกับ DB ทันที ไม่ต้องรอโหลดใหม่ทั้งหน้า — กัน
   // resolveEffectiveFee() เห็นประวัติเก่าค้างในหน้าเดียวกันนี้ ต้องสร้าง array ให้ด้วยถ้าลูกค้ารายนี้ยังไม่เคยมี
   // ประวัติสัญญาเลย (loadAllBillingContracts สร้าง key เฉพาะลูกค้าที่มีแถวอยู่แล้ว — ตอนนี้ยังไม่มีใครมีเลย
@@ -3817,7 +3856,6 @@ async function applyFeeChangeCore_(clientId, newFee, effectiveDate, note) {
   const feeCache = (billingContractsByClient[clientId] ||= []);
   feeCache.forEach(bc => { if (bc.effective_to == null) bc.effective_to = effectiveDate; });
   if (newContract) feeCache.push(newContract);
-  c.monthly_fee = newFee;
 
   // action ต้องเป็น client_fee_change ตรงๆ (ไม่ใช่ client_change_add ทั่วไป) — RLS ของ crm_activity_log
   // กรองแถวที่มียอดเงินให้เห็นเฉพาะ LV1-3 โดยเช็คจากชื่อ action นี้เป๊ะๆ
@@ -3947,10 +3985,17 @@ async function applyTypeChangeCore_(clientId, newType, effectiveDate) {
 
   const { error: updErr } = await sb.from('crm_clients').update({ billing_type: newType }).eq('id', clientId);
   if (updErr) { showToast('อัปเดตข้อมูลไม่สำเร็จ: ' + updErr.message, 'error'); return false; }
+  // ตั้งค่าในหน่วยความจำทันทีที่ DB เขียนสำเร็จจริง (ย้ายมาจากท้ายฟังก์ชันเดิม) — เหตุผลเดียวกับ
+  // applyFeeChangeCore_ ด้านบน ไม่กระทบ payload ประวัติสัญญาด้านล่าง เพราะใช้ newType (พารามิเตอร์)
+  c.billing_type = newType;
 
-  await sb.from('crm_billing_contracts')
+  // เดิมจุดนี้ไม่เช็ค error เลยทั้ง 2 คำสั่ง — แพทเทิร์น/เหตุผลเดียวกับ applyFeeChangeCore_ ด้านบนเป๊ะ (ถ้า
+  // ล้มเหลวเงียบๆ ประเภทลูกค้าปัจจุบันเปลี่ยนแล้วแต่ประวัติสัญญาไม่ถูกบันทึก resolveEffectiveFee() ย้อนดู
+  // ประเภทตามช่วงเวลาจะผิดไปเรื่อยๆ) เช็ค error แล้วคืน false + toast แทนที่จะปล่อยให้ caller โชว์ "สำเร็จ" ทับ
+  const { error: closeErr } = await sb.from('crm_billing_contracts')
     .update({ effective_to: effectiveDate }).eq('client_id', clientId).is('effective_to', null);
-  const { data: newContract } = await sb.from('crm_billing_contracts').insert({
+  if (closeErr) { showToast('บันทึกประวัติสัญญาไม่สำเร็จ: ' + closeErr.message, 'error'); return false; }
+  const { data: newContract, error: contractErr } = await sb.from('crm_billing_contracts').insert({
     client_id: clientId,
     billing_type: newType,
     fee_amount: c.monthly_fee || 0,
@@ -3958,12 +4003,12 @@ async function applyTypeChangeCore_(clientId, newType, effectiveDate) {
     effective_from: effectiveDate,
     notes: `เปลี่ยนประเภท: ${oldNo} → ${newNo} (${effectiveDate})`,
   }).select().single();
+  if (contractErr) { showToast('บันทึกประวัติสัญญาไม่สำเร็จ: ' + contractErr.message, 'error'); return false; }
   // ต้องสร้าง array ให้ด้วยถ้ายังไม่มี key — เหตุผลเดียวกับ applyFeeChangeCore_ ด้านบน (ถ้าตกหล่น
   // ตัวกรองประเภทของหน้ารายเดือนจะย้อนดูประเภท ณ เดือนก่อนหน้าผิดไปจนกว่าจะโหลดหน้าใหม่)
   const typeCache = (billingContractsByClient[clientId] ||= []);
   typeCache.forEach(bc => { if (bc.effective_to == null) bc.effective_to = effectiveDate; });
   if (newContract) typeCache.push(newContract);
-  c.billing_type = newType;
 
   // action ต้องเป็น client_type_change ตรงๆ (ไม่ใช่ client_info_update ทั่วไป) — RLS ของ crm_activity_log
   // กรองแถวที่เกี่ยวกับประเภทลูกค้า/ค่าบริการให้เห็นเฉพาะ LV1-3 โดยเช็คจากชื่อ action นี้เป๊ะๆ
@@ -4704,8 +4749,15 @@ async function renderPanelHistory() {
     sb.from('crm_tax_tasks')
       .select('*').eq('client_id', panelClientId).or(monthFilter)
       .order('year', { ascending: false }).order('month', { ascending: false }),
+    // .eq('change_type','name') ตั้งใจใส่ — แท็บนี้ ("ประวัติงาน") ใช้แค่ change_type==='name' เท่านั้น
+    // (ดู nameChanges ด้านล่าง) แต่ตารางนี้เก็บ change_type อื่นด้วย รวมถึง 'fee'/'type' ที่ new_value เป็น
+    // ยอดเงิน/รหัสลูกค้าจริง — ต่างจาก crm_activity_log ที่ RLS กรองแถวการเงินให้เหลือ LV1-3 เองแล้ว
+    // (crm_sc_sel ฯลฯ) crm_client_change_log ไม่มี policy กรองตาม change_type เลย (SELECT เปิดให้ staff ที่
+    // ยัง active ทุกระดับ) แท็บนี้เองก็เปิดให้ทุกระดับเข้าถึงได้ (ไม่ได้ซ่อนด้วย isLimited เหมือนกันทุกจุด —
+    // ดู openPanel) ถ้าไม่กรองที่นี่ query จะพา row การเงินทั้งก้อนไปถึงเบราว์เซอร์ของทุกระดับ (รวม LV4-5)
+    // แม้ JS จะกรองอีกทีก่อนแสดงผลก็ตาม — กรองที่ query เลยตัดปัญหานี้ที่ต้นทาง
     sb.from('crm_client_change_log')
-      .select('*').eq('client_id', panelClientId)
+      .select('*').eq('client_id', panelClientId).eq('change_type', 'name')
       .order('change_date', { ascending: false }).order('created_at', { ascending: false }),
   ]);
 
@@ -5807,9 +5859,15 @@ async function saveTeam(teamId) {
     savedTeamId = data.id;
   }
 
-  await sb.from('org_team_members').delete().eq('team_id', savedTeamId);
+  // เดิมไม่เช็ค error ทั้ง delete และ insert ตรงนี้ — ถ้า delete สำเร็จแต่ insert ล้มเหลว (เช่นเน็ตหลุดพอดี
+  // ระหว่างสองคำสั่ง) ทีมจะเหลือสมาชิก 0 คนเงียบๆ ทั้งที่ผู้ใช้เพิ่งติ๊กเลือกไว้ แล้ว toast ยังขึ้น "บันทึกทีม
+  // แล้ว" ทับเหมือนสำเร็จปกติ — เช็ค error แล้วโชว์ที่ #team-err แทน (แพทเทิร์นเดียวกับ 2 จุดข้างบนในฟังก์ชัน
+  // นี้เป๊ะ) ทีม/ชื่อ/หัวหน้าทีมที่บันทึกไปแล้วก่อนหน้านี้ยังอยู่ครบ ไม่ต้องกดใหม่ทั้งหมด แค่กดบันทึกซ้ำอีกครั้ง
+  const { error: delMemErr } = await sb.from('org_team_members').delete().eq('team_id', savedTeamId);
+  if (delMemErr) { errEl.textContent = 'บันทึกรายชื่อสมาชิกไม่สำเร็จ: ' + delMemErr.message; errEl.classList.remove('hidden'); return; }
   if (memberIds.length) {
-    await sb.from('org_team_members').insert(memberIds.map(staff_id => ({ team_id: savedTeamId, staff_id })));
+    const { error: insMemErr } = await sb.from('org_team_members').insert(memberIds.map(staff_id => ({ team_id: savedTeamId, staff_id })));
+    if (insMemErr) { errEl.textContent = 'บันทึกรายชื่อสมาชิกไม่สำเร็จ: ' + insMemErr.message; errEl.classList.remove('hidden'); return; }
   }
 
   await loadTeams();
@@ -6192,10 +6250,16 @@ async function saveAssigneeModal(clientId) {
   // staff id เป็น UUID (org_staff.id ผูกกับ auth.users) ไม่ใช่ตัวเลข — เก็บเป็น string ตรงๆ ห้าม parseInt()
   // (แพทเทิร์นเดียวกับ saveTeam()'s memberIds ที่ก็เก็บ el.value เป็น string ไม่แปลงเป็นเลขเหมือนกัน ต่างจาก
   // client id ใน createBatchInvoices ที่เป็นเลขจริงจึง parseInt ได้)
-  const checked = new Set([...document.querySelectorAll('.assignee-chk:checked')].map(el => el.value));
+  const checkEls = [...document.querySelectorAll('.assignee-chk')];
+  const checked = new Set(checkEls.filter(el => el.checked).map(el => el.value));
   const before = new Set(clientStaffMap[clientId] || []);
-  const allIds = new Set([...checked, ...before]);
-  const changed = [...allIds].filter(id => checked.has(id) !== before.has(id));
+  // เทียบกับ "renderedIds" (คนที่มีช่องติ๊กจริงในฟอร์มนี้ — คือ activeStaff เท่านั้น ดู openAssigneeModal)
+  // ไม่ใช่ allIds ที่รวม before ทั้งชุดแบบเดิม — ลูกค้าที่มีพนักงานลาออกแล้วแต่ยังค้างเป็นผู้รับผิดชอบอยู่
+  // (แถวเก่าใน clientStaffMap) จะไม่มีช่องติ๊กให้เห็นเลยเพราะ openAssigneeModal กรองเฉพาะ is_active — ถ้าเทียบ
+  // กับ before ทั้งชุด คนที่ "ไม่มีช่องติ๊ก" จะถูกตีความว่า "ผู้ใช้ติ๊กออกแล้ว" และโดนลบออกจาก crm_staff_clients
+  // ทันทีที่กดบันทึก แม้ผู้ใช้จะไม่เคยเห็น/ไม่เคยแตะชื่อนั้นเลยก็ตาม (พิสูจน์แล้วว่าเกิดจริง)
+  const renderedIds = new Set(checkEls.map(el => el.value));
+  const changed = [...renderedIds].filter(id => checked.has(id) !== before.has(id));
   if (!changed.length) { closeModal(); return; }
 
   const results = await Promise.all(changed.map(staffId => toggleClientAssignee_(clientId, staffId)));
