@@ -478,24 +478,32 @@
       </div>
       <div class="px-6 pb-8 overflow-x-auto">
         <div class="bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden">
-          <!-- height (fixed, not max-height) = header row (60px) + 6 rows at the shared
-               49px row height (see "#tracking-tbody tr" in the <style> block) + ~8px
-               buffer = 362px. A genuinely fixed height — not max-height — so the box never
-               shrinks for fewer/shorter rows either: its bottom edge stays put and empty
-               space shows below the last row instead, per user request ("ท้ายตาราง...ไม่ให้
-               ขยับ"). More than 6 rows scrolls inside it; the header stays pinned via the
-               global sticky thead-th rule. Row count dropped from an earlier 12-row target
-               to 6: #app is a fixed h-screen shell with overflow-hidden, and <main> (flex-1
-               overflow-auto) is deliberately the ONE scrollable region inside it — a 12-row
-               box made <main> itself taller than the viewport on every one of these 8 areas
-               (measured 176-274px of forced outer scroll), which is exactly the "outer
-               frame" the user then asked NOT to be scrollable at all ("กรอบด้านนอก ไม่ต้องให้
-               เลื่อนได้"). Measured (not guessed) the largest row count that keeps every one
-               of the 8 areas' main.scrollHeight ≤ main.clientHeight with zero outer scroll:
-               6 rows clears all of them with margin (7 rows was 1-29px short depending on
-               the page's own surrounding chrome — stat cards, sub-tabs — so 6 was chosen as
-               the safe uniform value, same "one shared number everywhere" rule as before). -->
-          <div style="height:362px;overflow-y:auto">
+          <!-- height:362px here is only a FALLBACK, painted before JS runs (or if it never
+               gets the chance to) — header row (60px) + 6 rows at the shared 49px row height
+               (see "#tracking-tbody tr" in the <style> block) + ~8px buffer. The real height
+               is set at runtime by fitBottomBoxes() (defined near the end of this file,
+               scheduled via scheduleFitBottom() on resize / DOM mutation / navigate()): it
+               measures how much room is actually left below this box in <main> and stretches
+               the box so its bottom edge sits flush against #app-footer, instead of stopping
+               partway down the page with a slab of dead space under it (per later user
+               request "เอามาชิดด้านล่าง" — supersedes the earlier fixed-6-rows sizing this
+               comment used to describe). The box marked with this class is found via
+               `.fit-bottom` — see fitBottomBoxes() for why it bails out (and leaves the
+               fallback height alone) unless exactly one such box is visible in the current
+               page.
+               Still a genuine `height` (not max-height) per measurement, so within one
+               viewport size / page layout it does NOT re-shrink for fewer/shorter rows —
+               its bottom edge stays anchored to the footer and empty space still shows below
+               the last row instead, same "ท้ายตาราง...ไม่ให้ขยับ" contract as before; it only
+               recomputes on resize or when switching page/sub-tab. More rows than fit scrolls
+               inside it; the header stays pinned via the global sticky thead-th rule.
+               #app is still a fixed h-screen shell with overflow-hidden, and <main> (flex-1
+               overflow-auto) is still deliberately the ONE scrollable region inside it —
+               fitBottomBoxes() enforces that itself now (it corrects its own estimate if
+               main ends up with any overflow), so that "กรอบด้านนอก ไม่ต้องให้เลื่อนได้"
+               constraint holds at any viewport size, not just the one this fallback number
+               was measured against. -->
+          <div class="fit-bottom" style="height:362px;overflow-y:auto">
           <table class="text-center" style="table-layout:fixed;width:100%;min-width:1330px">
             <colgroup>
               <col style="width:32px"> <!-- ดาว -->
@@ -598,7 +606,7 @@
                  rows, not the original 12). This table
                  (and the other two รายปี sub-tabs below) had no scroll box at all before
                  this change — the whole page scrolled instead; this wrapper is new. -->
-            <div style="height:362px;overflow-y:auto">
+            <div class="fit-bottom" style="height:362px;overflow-y:auto">
             <table class="w-full text-center">
               <thead>
                 <tr>
@@ -646,7 +654,7 @@
           <div class="bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden" style="min-width:1000px">
             <!-- matches #yearend-tbody above: fixed height = header (60px) + 6 rows at
                  49px + ~8px buffer = 362px (see that comment for why 6, not 12) -->
-            <div style="height:362px;overflow-y:auto">
+            <div class="fit-bottom" style="height:362px;overflow-y:auto">
             <table class="w-full text-center">
               <thead>
                 <tr>
@@ -697,7 +705,7 @@
           <div class="bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden" style="min-width:860px">
             <!-- matches #yearend-tbody above: fixed height = header (60px) + 6 rows at
                  49px + ~8px buffer = 362px (see that comment for why 6, not 12) -->
-            <div style="height:362px;overflow-y:auto">
+            <div class="fit-bottom" style="height:362px;overflow-y:auto">
             <table class="w-full text-center">
               <thead>
                 <tr>
@@ -806,7 +814,7 @@
                  box's bottom edge stays put even with fewer results (e.g. after a search) —
                  empty space shows below the last row instead of the box shrinking, per user
                  request ("ท้ายตาราง...ไม่ให้ขยับ"). -->
-            <div id="client-list" style="height:294px;overflow-y:auto"></div>
+            <div id="client-list" class="fit-bottom" style="height:294px;overflow-y:auto"></div>
           </div>
         </div>
       </div>
@@ -845,7 +853,7 @@
             </div>
             <!-- matches #client-list above: fixed height, 6 rows at the shared 49px row
                  height = 294px -->
-            <div id="old-client-list" style="height:294px;overflow-y:auto"></div>
+            <div id="old-client-list" class="fit-bottom" style="height:294px;overflow-y:auto"></div>
           </div>
         </div>
       </div>
@@ -923,7 +931,7 @@
             </div>
             <!-- height (fixed, not max-height) = 6 rows at the shared 49px row height:
                  6 × 49px = 294px. Same fixed-not-elastic rationale as #client-list above. -->
-            <div id="fin-collection-list" style="height:294px;overflow-y:auto"></div>
+            <div id="fin-collection-list" class="fit-bottom" style="height:294px;overflow-y:auto"></div>
           </div>
         </div>
       </div>
@@ -966,7 +974,7 @@
             </div>
             <!-- matches #fin-collection-list above: fixed height, 6 rows at the shared
                  49px row height = 294px -->
-            <div id="fin-fee-list" style="height:294px;overflow-y:auto"></div>
+            <div id="fin-fee-list" class="fit-bottom" style="height:294px;overflow-y:auto"></div>
           </div>
         </div>
       </div>
@@ -1142,7 +1150,7 @@
             <span class="w-40 flex-shrink-0">ทีม</span>
             <span class="w-48 flex-shrink-0">ผู้รับผิดชอบ</span>
           </div>
-          <div id="assign-list" style="height:294px;overflow-y:auto"></div>
+          <div id="assign-list" class="fit-bottom" style="height:294px;overflow-y:auto"></div>
         </div>
       </div>
     </div>
@@ -2112,6 +2120,56 @@ async function saveAppSettings() {
 // NAVIGATION
 // ─────────────────────────────────────────────────────────────
 const ALL_PAGES = ['tracking','yearend','clients','finance','settings','owncompany','employees','assign','appsettings','activitylog'];
+
+// ─────────────────────────────────────────────────────────────
+// AUTO-FIT BOTTOM BOXES — stretches whichever ".fit-bottom" scroll box is visible on the
+// current page (one of the 9 marked in the markup above: #tracking-tbody's table wrapper,
+// the 3 รายปี sub-tab table wrappers, #client-list, #old-client-list,
+// #fin-collection-list, #fin-fee-list, #assign-list) so its bottom edge sits flush against
+// #app-footer, instead of stopping partway down the page with a slab of empty space under
+// it — per user request ("เอามาชิดด้านล่าง"). Each box's inline height:362px/294px in the
+// markup is only the pre-JS fallback; this is what actually sizes it at runtime.
+// Deliberately measured, not a bigger hardcoded number: the room left below the box
+// depends on that page's own chrome above it (stat cards, sub-tab bar, toolbar — all
+// different per page) and on the viewport size, neither of which one constant could ever
+// get right everywhere.
+// Do NOT use main.scrollHeight - main.clientHeight to find the remaining space —
+// scrollHeight of a scrollable element is never less than its clientHeight, so that
+// difference is always >= 0 and can never reveal how much MORE room is left below the
+// content. Instead: collapse the box to 0, measure where the page's content now ends with
+// the box out of the way, then grow the box to fill the gap up to the footer.
+const FIT_MIN_H = 150;   // floor so a very short viewport never collapses the box away entirely
+const FIT_SAFETY = 2;    // small margin so rounding never leaves <main> with a 1px scrollbar
+
+function fitBottomBoxes() {
+  const app = document.getElementById('app');
+  if (!app || app.classList.contains('hidden')) return; // not logged in / still loading — nothing to size yet
+  const main = document.querySelector('main');
+  const pageEl = document.getElementById('page-' + curPage);
+  if (!main || !pageEl) return;
+  const boxes = Array.from(pageEl.querySelectorAll('.fit-bottom')).filter(el => el.offsetParent !== null);
+  if (boxes.length !== 1) return; // none visible, or 2+ visible at once (unexpected) — leave the fallback height alone
+  const box = boxes[0];
+
+  // Collapse to 0 first: makes the measurement below reflect "everything on this page
+  // except the box" — including anything BELOW the box (e.g. the "สัญลักษณ์" legend row
+  // under the tracking table) — and keeps it from being thrown off by however many rows
+  // happen to be scrolled inside the box right now.
+  box.style.height = '0px';
+  main.scrollTop = 0; // pageEl must be at its unscrolled on-screen position for the rect below to mean anything
+  const limit = main.getBoundingClientRect().bottom - 36; // bottom of the content area, minus the fixed footer strip's height
+  const rest  = pageEl.getBoundingClientRect().bottom;    // where the page's own content (sans box) ends, with box height 0
+  box.style.height = Math.max(FIT_MIN_H, Math.round(limit - rest - FIT_SAFETY)) + 'px';
+
+  // Guard against any rounding/margin-collapsing the estimate above missed: if <main> still
+  // ends up scrollable, trim the box further until it isn't — keeps the "กรอบด้านนอก
+  // ไม่ต้องให้เลื่อนได้" constraint true at every viewport size, not just the ones tested.
+  const over = main.scrollHeight - main.clientHeight;
+  if (over > 0) {
+    box.style.height = Math.max(FIT_MIN_H, Math.round(box.getBoundingClientRect().height - over)) + 'px';
+  }
+}
+
 function navigate(p) {
   document.getElementById('settings-menu')?.classList.add('hidden');
   // assign/activitylog เพิ่มเข้ารายการที่ LV4-5 เข้าถึงได้ด้วย (ต่างจาก owncompany/appsettings/employees
@@ -2155,6 +2213,11 @@ function navigate(p) {
   else if (p === 'employees') showEmployeeSubTab(employeeSubTab);
   else if (p === 'assign') { if (!teamsLoaded) { loadTeams().then(() => { teamsLoaded = true; renderAssignPage(); }); } else renderAssignPage(); }
   else if (p === 'appsettings') renderAppSettings();
+  // Re-measure the new page's .fit-bottom box (see fitBottomBoxes() above) — belt-and-braces
+  // alongside the MutationObserver set up near the end of this file, in case this navigate()
+  // call happens to run before that observer is installed (e.g. the very first call, from
+  // init()).
+  scheduleFitBottom();
 }
 function toggleSettingsMenu(ev) {
   ev.stopPropagation();
@@ -6800,6 +6863,30 @@ async function completeFirstLogin() {
   document.getElementById('loading').classList.remove('hidden');
   await init();
 }
+
+// ─────────────────────────────────────────────────────────────
+// AUTO-FIT BOTTOM BOXES — TRIGGERS (fitBottomBoxes() itself is defined near navigate(), in
+// the NAVIGATION section above — this just decides WHEN to call it: on window resize, and
+// whenever the visible page's DOM changes, since every render function in this file
+// rewrites a tbody/list's innerHTML directly rather than notifying anyone. navigate() above
+// also calls scheduleFitBottom() itself as a belt-and-braces for the very first call, in
+// case it ever runs before this observer is installed.)
+// ─────────────────────────────────────────────────────────────
+let fitRaf = 0;
+function scheduleFitBottom() {
+  if (fitRaf) return;
+  fitRaf = requestAnimationFrame(() => { fitRaf = 0; fitBottomBoxes(); });
+}
+window.addEventListener('resize', scheduleFitBottom);
+// attributeFilter must stay scoped to just "class": page/sub-tab switches show and hide
+// content purely by toggling the .hidden class (not by adding/removing elements), so class
+// changes have to be watched too, alongside childList for re-rendered rows — but
+// fitBottomBoxes() itself only ever writes inline style.height, never a class, so this can't
+// loop back on its own mutation. Watching attributes without this filter would also catch
+// unrelated attribute churn elsewhere inside <main> and risk turning this into a runaway loop.
+new MutationObserver(scheduleFitBottom).observe(document.querySelector('main'), {
+  childList: true, subtree: true, attributes: true, attributeFilter: ['class']
+});
 
 // ─────────────────────────────────────────────────────────────
 // START
