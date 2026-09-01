@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DCBC Calendar — บจก. เด็กชายบัญชี</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap">
+<script src="../../theme.js?v=1"></script>
 <style>
 :root{
   /* palette: warm cream + forest green — same token-generation formula reverse-engineered
@@ -12,22 +13,26 @@
      values ported here 1:1 (color-mix(in oklab, ...) so the relationship between tokens
      stays intact if the accent ever changes) — token NAMES kept as Calendar already had
      them (--panel/--text/--muted/--accent-2/--sidebar-* etc.) since every rule below already
-     references them; only the values change. */
-  --bg:color-mix(in oklab, #2F5D50 6%, #EDEAE3); --panel:color-mix(in oklab, #2F5D50 4%, #FBFAF7); --panel-2:color-mix(in oklab, #2F5D50 8%, #F4F2EC); --text:#1D1B17; --muted:#7C766B;
-  --border:#DFDACF; --accent:#2F5D50; --accent-2:color-mix(in oklab, #2F5D50 80%, black); --danger:#dc2626; --success:#16a34a;
+     references them; only the values change.
+     --brand คือค่าเริ่มต้นสำรอง (fallback) เผื่อกรณี theme.js โหลดไม่ทัน — ตัวจริงถูกตั้งทับด้วย
+     inline style บน <html> จาก theme.js เสมอ (สัญญากลาง ../../theme.js อ่าน/เขียน localStorage
+     'dcacc_theme' ที่เดียว ห้ามไฟล์นี้ตั้ง --brand เองที่จุดอื่นอีก) */
+  --brand: #2F5D50;
+  --bg:color-mix(in oklab, var(--brand) 6%, #EDEAE3); --panel:color-mix(in oklab, var(--brand) 4%, #FBFAF7); --panel-2:color-mix(in oklab, var(--brand) 8%, #F4F2EC); --text:#1D1B17; --muted:#7C766B;
+  --border:#DFDACF; --accent:var(--brand); --accent-2:color-mix(in oklab, var(--brand) 80%, black); --danger:#dc2626; --success:#16a34a;
   --sidebar-bg:var(--panel); --sidebar-text:var(--text); --sidebar-active:var(--panel-2);--shadow:none;
   --radius:12px;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --bg:color-mix(in oklab, #2F5D50 10%, #171614); --panel:color-mix(in oklab, #2F5D50 8%, #1F1E1B); --panel-2:color-mix(in oklab, #2F5D50 14%, #262420); --text:#EFECE5; --muted:#9C958C;
-    --border:#35322C; --accent:#2F5D50; --accent-2:color-mix(in oklab, #2F5D50 90%, black); --danger:#f87171; --success:#34d399;
+    --bg:color-mix(in oklab, var(--brand) 10%, #171614); --panel:color-mix(in oklab, var(--brand) 8%, #1F1E1B); --panel-2:color-mix(in oklab, var(--brand) 14%, #262420); --text:#EFECE5; --muted:#9C958C;
+    --border:#35322C; --accent:var(--brand); --accent-2:color-mix(in oklab, var(--brand) 90%, black); --danger:#f87171; --success:#34d399;
     --sidebar-bg:var(--panel); --sidebar-text:var(--text); --sidebar-active:var(--panel-2);--shadow:0 1px 3px rgba(29,27,23,.4);
   }
 }
 :root[data-theme="dark"]{
-  --bg:color-mix(in oklab, #2F5D50 10%, #171614); --panel:color-mix(in oklab, #2F5D50 8%, #1F1E1B); --panel-2:color-mix(in oklab, #2F5D50 14%, #262420); --text:#EFECE5; --muted:#9C958C;
-  --border:#35322C; --accent:#2F5D50; --accent-2:color-mix(in oklab, #2F5D50 90%, black); --danger:#f87171; --success:#34d399;
+  --bg:color-mix(in oklab, var(--brand) 10%, #171614); --panel:color-mix(in oklab, var(--brand) 8%, #1F1E1B); --panel-2:color-mix(in oklab, var(--brand) 14%, #262420); --text:#EFECE5; --muted:#9C958C;
+  --border:#35322C; --accent:var(--brand); --accent-2:color-mix(in oklab, var(--brand) 90%, black); --danger:#f87171; --success:#34d399;
   --sidebar-bg:var(--panel); --sidebar-text:var(--text); --sidebar-active:var(--panel-2);--shadow:0 1px 3px rgba(29,27,23,.4);
 }
 *{box-sizing:border-box;}
@@ -130,7 +135,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
 .week-wrap{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:var(--panel);}
 .week-head{display:grid;grid-template-columns:52px repeat(7,minmax(0,1fr));border-bottom:1px solid var(--border);}
 .week-head .cell{padding:8px 4px;text-align:center;border-right:1px solid var(--border);}
-.week-head .cell.today{background:rgba(47,93,80,.1);}
+.week-head .cell.today{background:color-mix(in oklab, var(--brand) 10%, transparent);}
 .week-head .dname{font-size:11px;color:var(--muted);}
 .week-head .dnum{font-weight:700;font-size:15px;}
 .week-allday{display:grid;grid-template-columns:52px repeat(7,minmax(0,1fr));border-bottom:1px solid var(--border);min-height:26px;}
@@ -157,7 +162,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
 .kanban{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;align-items:start;}
 .kcol{background:var(--panel-2);border:1px solid var(--border);border-radius:var(--radius);padding:10px;min-height:200px;}
 .kcol h3{font-size:13px;margin:2px 6px 10px;display:flex;justify-content:space-between;color:var(--muted);}
-.kcol.dragover{background:rgba(47,93,80,.08);border-color:var(--accent);}
+.kcol.dragover{background:color-mix(in oklab, var(--brand) 8%, transparent);border-color:var(--accent);}
 .tcard{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;cursor:grab;box-shadow:var(--shadow);}
 .tcard:active{cursor:grabbing;}
 .tcard .ttitle{font-weight:600;margin-bottom:4px;}
@@ -352,6 +357,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
           <div class="field"><label>โหมดมืด</label>
             <label class="switch"><input type="checkbox" id="darkModeSwitch"><span class="slider"></span></label>
           </div>
+          <div class="desc">การตั้งค่านี้มีผลกับทั้งเว็บ (ไม่ใช่แค่ปฏิทิน) ส่วนสีหลักของทั้งเว็บเลือกได้ที่เมนู "ตั้งค่า &gt; ธีม" ของหน้ารวม</div>
           <div class="field"><label>ตัวกรองปฏิทินเริ่มต้น</label>
             <select id="defaultFilterSelect">
               <option value="personal">ปฏิทินส่วนตัว</option>
@@ -723,7 +729,20 @@ function taxDeadlineOn(iso){
 /* ========================= STATE ========================= */
 let events, tasks;   // ตั้งค่าโดย loadLocalEventsAndTasksIntoState() ด้านล่าง (เรียกซ้ำตอนออกจากระบบด้วย เพื่อคืนโหมด Local)
 let profile = lsGet('dcbc_profile', null);
-let calTheme = localStorage.getItem('calTheme') || ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light');
+// ธีม (สีหลัก + โหมดมืด/สว่าง) ย้ายไปอยู่ที่สัญญากลาง localStorage['dcacc_theme'] ของ ../../theme.js
+// แล้วทั้งหมด — ไฟล์นี้ไม่มีตัวแปร state ของธีมเป็นของตัวเองอีกต่อไป (อ่านผ่าน window.DCTheme เสมอ
+// ดู applyTheme()/toggleTheme() ด้านล่าง) โค้ดตรงนี้ทำแค่ "ย้ายค่าเดิม" ของคนที่เคยตั้ง calTheme ไว้
+// ก่อนหน้านี้ ครั้งเดียว แล้วเลิกใช้คีย์เก่าทิ้งไป — ต้องรันตอนเริ่มต้นก่อนโค้ดจุดอื่นอ่านธีม
+(function migrateCalThemeToDCTheme(){
+  const legacy = localStorage.getItem('calTheme');
+  if(legacy === null) return; // ไม่เคยตั้งค่าเดิมไว้เลย ไม่มีอะไรต้องย้าย
+  if(window.DCTheme && localStorage.getItem(window.DCTheme.KEY) === null && (legacy === 'dark' || legacy === 'light')){
+    // ยังไม่มี dcacc_theme เลย (ยังไม่เคยย้าย/ยังไม่เคยตั้งจากที่อื่น) — เอาค่าเดิมมาตั้งเป็น mode ครั้งนี้
+    window.DCTheme.set({ mode: legacy });
+  }
+  // ถ้ามี dcacc_theme อยู่แล้ว (ย้ายไปแล้วรอบก่อน หรือถูกตั้งจากหน้ารวม) ไม่แตะมันซ้ำ — แค่เลิกใช้คีย์เก่า
+  localStorage.removeItem('calTheme');
+})();
 let gClientId = localStorage.getItem('g_client_id') || '';
 let msClientId = localStorage.getItem('ms_client_id') || '';
 let gToken = localStorage.getItem('g_token') || null;
@@ -765,7 +784,7 @@ let curDate = new Date();
 // เสร็จเบื้องหลังแล้ว re-render ทับ) ถ้าไม่จำไว้ ทุกครั้งที่ render ซ้ำจะเลื่อนกลับไป 07:00 ทับตำแหน่งที่ผู้ใช้
 // เพิ่งเลื่อนเองไปดูช่วงอื่น (เช่นตอนเย็น) แบบไม่ได้ตั้งใจ — เลื่อนอัตโนมัติเฉพาะตอนเข้าสัปดาห์นี้ครั้งแรกเท่านั้น
 let lastWeekScrollKey = null;
-// ตัวกรองปฏิทินเริ่มต้น เก็บไว้ใน localStorage เหมือนค่าตั้งค่าอื่นๆ ของแอพนี้ (calTheme/g_client_id ฯลฯ)
+// ตัวกรองปฏิทินเริ่มต้น เก็บไว้ใน localStorage เหมือนค่าตั้งค่าอื่นๆ ของแอพนี้ (g_client_id/ms_client_id ฯลฯ)
 // ค่าที่กู้คืนมายังต้องผ่าน enforceFilterAccess() ตอน render อยู่ดี ('all' จะถูกลดเป็น 'personal' เองถ้าสิทธิ์ไม่ถึง)
 let calFilter = (function(){
   const saved = localStorage.getItem(CAL_FILTER_KEY);
@@ -804,17 +823,24 @@ function toast(msg){
 }
 
 /* ========================= THEME ========================= */
+// data-theme/--brand บน <html> เป็นของ ../../theme.js เพียงผู้เดียวแล้ว (สัญญากลาง dcacc_theme) —
+// ฟังก์ชันนี้เหลือหน้าที่แค่ "อ่านสถานะปัจจุบันแล้วอัปเดตหน้าตาปุ่ม/ช่องติ๊กให้ตรงกัน" ไม่ตั้ง data-theme
+// เอง (ห้ามเพิ่มกลับมา — จะทำให้มีสองแหล่งความจริงชนกัน) ถูกเรียกทั้งตอนโหลดหน้าและทุกครั้งที่มี
+// event 'dctheme' (ธีมถูกเปลี่ยนจากที่ไหนก็ตาม ในเอกสารนี้เองหรือจากหน้ารวม/แอปอื่นผ่าน localStorage)
 function applyTheme(){
-  document.documentElement.setAttribute('data-theme', calTheme);
+  const dark = window.DCTheme.resolved(window.DCTheme.read().mode) === 'dark';
   const btn = document.getElementById('themeToggleBtn');
-  btn.innerHTML = (calTheme==='dark' ? '☀️ <span class="label">โหมดสว่าง</span>' : '🌙 <span class="label">โหมดมืด</span>');
+  if(btn) btn.innerHTML = (dark ? '☀️ <span class="label">โหมดสว่าง</span>' : '🌙 <span class="label">โหมดมืด</span>');
   const sw = document.getElementById('darkModeSwitch');
-  if(sw) sw.checked = calTheme==='dark';
+  if(sw) sw.checked = dark;
 }
+// กดปุ่ม/สลับช่องติ๊กแล้วกลายเป็นโหมดตายตัว (light/dark) ไม่ใช่ 'system' — ตรงกับที่ผู้ใช้คาดหวังจากปุ่ม
+// สลับ (ปุ่มควรสลับแน่นอน ไม่ใช่กลับไปตามเครื่องเฉยๆ) DCTheme.set() ตั้ง data-theme/--brand จริงทันที
+// แล้วยิง event 'dctheme' ให้เอง ซึ่ง listener ใน init() ฟังอยู่แล้ว (เรียก applyTheme() ให้อัตโนมัติ)
+// จึงไม่ต้องเรียก applyTheme() ซ้ำตรงนี้อีก
 function toggleTheme(){
-  calTheme = calTheme==='dark' ? 'light' : 'dark';
-  localStorage.setItem('calTheme', calTheme);
-  applyTheme();
+  const dark = window.DCTheme.resolved(window.DCTheme.read().mode) === 'dark';
+  window.DCTheme.set({ mode: dark ? 'light' : 'dark' });
 }
 
 /* ========================= MENU SWITCH ========================= */
@@ -2141,6 +2167,11 @@ function escapeHtml(s){
 function init(){
   fillCategorySelect(document.getElementById('ev_category'));
   applyTheme();
+  // ธีมถูกเปลี่ยนจากที่ไหนก็ได้ (ปุ่ม/ช่องติ๊กในเอกสารนี้เอง, หน้ารวม, CRM, พนักงาน/ทีม — ทุกจุดเขียนลง
+  // localStorage['dcacc_theme'] เดียวกัน) theme.js ยิง 'dctheme' ให้เองทั้งตอน set() ในเอกสารนี้ (ทันที
+  // แบบ synchronous) และตอนรับ event 'storage' จากเอกสารอื่น (ข้าม iframe/แท็บ) — ฟังจุดเดียวพอ ไม่ต้อง
+  // ฟัง 'storage' เองซ้ำอีกชั้น
+  window.addEventListener('dctheme', applyTheme);
 
   document.querySelectorAll('.menu button').forEach(b=>b.addEventListener('click', ()=>switchMenu(b.dataset.menu)));
   document.getElementById('themeToggleBtn').addEventListener('click', toggleTheme);

@@ -8,49 +8,57 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="./theme.js?v=1"></script>
 <style>
   /* palette: warm cream + forest green — matches the "ธีม" reference the user sent (a
      Claude Design .dc.html artboard) whose applyTheme() derives every token from one
      accent hex via color-mix(in oklab, ...); ported that exact formula here rather than
      hardcoding flat hexes, so the relationship between tokens stays intact if the accent
-     ever changes (the reference exposes 5 accent options; #2F5D50 is the one shown/picked) */
+     ever changes. The accent itself now lives in --brand (declared once below) instead
+     of being hardcoded per-token: theme.js (shared contract with CRM/ปฏิทิน/พนักงาน-ทีม,
+     see ตั้งค่า > ธีม) reads/writes it via localStorage and sets it as an inline style on
+     <html> on every load, before first paint, so it always wins over these declarations
+     regardless of which theme block (light/dark) is active. --brand's own default value
+     below mirrors theme.js's DEFAULT_BRAND, purely so nothing looks unstyled for the
+     instant before theme.js's synchronous apply() runs. */
   :root {
-    --bg: color-mix(in oklab, #2F5D50 6%, #EDEAE3);
-    --surface: color-mix(in oklab, #2F5D50 4%, #FBFAF7);
-    --surface-2: color-mix(in oklab, #2F5D50 8%, #F4F2EC);
+    --brand: #2F5D50;
+    --bg: color-mix(in oklab, var(--brand) 6%, #EDEAE3);
+    --surface: color-mix(in oklab, var(--brand) 4%, #FBFAF7);
+    --surface-2: color-mix(in oklab, var(--brand) 8%, #F4F2EC);
     --ink: #1D1B17;
     --ink-muted: #7C766B;
     --border: #DFDACF;
-    --accent: #2F5D50;
-    --accent-soft: color-mix(in oklab, #2F5D50 55%, white);
+    --accent: var(--brand);
+    --accent-soft: color-mix(in oklab, var(--brand) 55%, white);
     --accent-contrast: #FFFFFF;
-    --ring: color-mix(in oklab, #2F5D50 35%, transparent);
+    --ring: color-mix(in oklab, var(--brand) 35%, transparent);
     --shadow: 0 1px 2px rgba(29,27,23,0.05), 0 8px 24px -12px rgba(29,27,23,0.14);
     --shadow-lg: 0 4px 8px rgba(29,27,23,0.07), 0 20px 40px -16px rgba(29,27,23,0.24);
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --bg: color-mix(in oklab, #2F5D50 10%, #171614);
-      --surface: color-mix(in oklab, #2F5D50 8%, #1F1E1B);
-      --surface-2: color-mix(in oklab, #2F5D50 14%, #262420);
+      --bg: color-mix(in oklab, var(--brand) 10%, #171614);
+      --surface: color-mix(in oklab, var(--brand) 8%, #1F1E1B);
+      --surface-2: color-mix(in oklab, var(--brand) 14%, #262420);
       --ink: #EFECE5;
       --ink-muted: #9C958C;
       --border: #35322C;
-      --accent: #2F5D50;
-      --accent-soft: color-mix(in oklab, #2F5D50 45%, white);
+      --accent: var(--brand);
+      --accent-soft: color-mix(in oklab, var(--brand) 45%, white);
       --accent-contrast: #FFFFFF;
-      --ring: color-mix(in oklab, #2F5D50 45%, transparent);
+      --ring: color-mix(in oklab, var(--brand) 45%, transparent);
       --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.55);
       --shadow-lg: 0 4px 8px rgba(0,0,0,0.35), 0 20px 40px -16px rgba(0,0,0,0.65);
     }
   }
   :root[data-theme="dark"] {
-    --bg: color-mix(in oklab, #2F5D50 10%, #171614);
-    --surface: color-mix(in oklab, #2F5D50 8%, #1F1E1B);
-    --surface-2: color-mix(in oklab, #2F5D50 14%, #262420);
+    --bg: color-mix(in oklab, var(--brand) 10%, #171614);
+    --surface: color-mix(in oklab, var(--brand) 8%, #1F1E1B);
+    --surface-2: color-mix(in oklab, var(--brand) 14%, #262420);
     --ink: #EFECE5; --ink-muted: #9C958C; --border: #35322C;
-    --accent: #2F5D50; --accent-soft: color-mix(in oklab, #2F5D50 45%, white); --accent-contrast: #FFFFFF;
-    --ring: color-mix(in oklab, #2F5D50 45%, transparent);
+    --accent: var(--brand); --accent-soft: color-mix(in oklab, var(--brand) 45%, white); --accent-contrast: #FFFFFF;
+    --ring: color-mix(in oklab, var(--brand) 45%, transparent);
     --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.55);
     --shadow-lg: 0 4px 8px rgba(0,0,0,0.35), 0 20px 40px -16px rgba(0,0,0,0.65);
   }
@@ -288,8 +296,105 @@
     background: var(--surface-2); padding: 4px 12px; border-radius: 999px;
   }
 
+  /* ── ตั้งค่า > ธีม (centered dialog, same open/backdrop pattern as .ai-panel
+     above, just centered instead of anchored bottom-right since this is a
+     modal settings dialog rather than a chat panel) ── */
+  .theme-modal-backdrop {
+    position: fixed; inset: 0; background: rgba(30,24,20,0.32);
+    z-index: 60; opacity: 0; pointer-events: none; transition: opacity 0.16s ease;
+  }
+  .theme-modal-backdrop.open { opacity: 1; pointer-events: auto; }
+  .theme-modal {
+    position: fixed; left: 50%; top: 50%;
+    transform: translate(-50%, -50%) scale(0.98);
+    width: min(360px, calc(100vw - 40px));
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    box-shadow: var(--shadow-lg);
+    z-index: 65;
+    opacity: 0; pointer-events: none;
+    transition: transform 0.16s ease, opacity 0.16s ease;
+  }
+  .theme-modal.open { opacity: 1; pointer-events: auto; transform: translate(-50%, -50%) scale(1); }
+  .theme-modal-head {
+    position: sticky; top: 0;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 18px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+    border-radius: 18px 18px 0 0;
+  }
+  .theme-modal-head b { font-size: 0.95rem; font-weight: 700; }
+  .theme-modal-close {
+    width: 28px; height: 28px; border-radius: 8px; border: none;
+    background: transparent; color: var(--ink-muted); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .theme-modal-close:hover { background: var(--border); color: var(--ink); }
+  .theme-modal-close svg { width: 16px; height: 16px; }
+  .theme-modal-body { padding: 20px 18px; display: flex; flex-direction: column; gap: 22px; }
+  .theme-section-label { font-size: 0.8rem; font-weight: 600; color: var(--ink-muted); margin-bottom: 10px; }
+  .theme-mode-seg {
+    display: flex; background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 3px; gap: 2px;
+  }
+  /* Inactive-tab text deliberately uses --ink (full contrast), not --ink-muted:
+     measured --ink-muted (#7C766B/#9C958C) on this tray's --surface-2 backing
+     lands at only ~3.5:1 in light mode across all 8 accent choices (--ink-muted
+     and --surface-2 barely move with --brand, so this isn't accent-dependent) --
+     short of the 4.5:1 text minimum. Selected/unselected is instead
+     communicated by the .active pill's own elevation (surface + shadow) and
+     its --accent-colored label, same as every other active/inactive pair in
+     this file (.nav-item, .flyout-item) already does. */
+  .theme-mode-btn {
+    flex: 1; border: none; background: transparent; color: var(--ink);
+    font-family: inherit; font-size: 0.82rem; font-weight: 600;
+    padding: 8px 6px; border-radius: 7px; cursor: pointer;
+    transition: background 0.14s ease, color 0.14s ease;
+  }
+  .theme-mode-btn:hover { background: var(--border); }
+  .theme-mode-btn.active { background: var(--surface); color: var(--accent); box-shadow: var(--shadow); }
+  .theme-mode-btn.active:hover { background: var(--surface); }
+  .theme-swatch-row { display: flex; flex-wrap: wrap; gap: 11px; }
+  .theme-swatch {
+    width: 34px; height: 34px; border-radius: 50%; border: none; cursor: pointer;
+    padding: 0; position: relative; flex-shrink: 0;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.1) inset;
+  }
+  /* Selection ring deliberately uses --ink (not --accent/--brand): the ring
+     marks "this swatch is the active brand color" -- using the brand color
+     itself for that ring would make the marker blend into its own swatch
+     instead of standing out against all 8 of them consistently. */
+  .theme-swatch.selected { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ink); }
+  .theme-swatch-check {
+    display: none; width: 15px; height: 15px;
+    position: absolute; inset: 0; margin: auto;
+    filter: drop-shadow(0 1px 1.5px rgba(0,0,0,0.45));
+  }
+  .theme-swatch.selected .theme-swatch-check { display: block; }
+  .theme-color-input {
+    width: 34px; height: 34px; padding: 0; border: none; border-radius: 50%;
+    cursor: pointer; flex-shrink: 0; background: none;
+    -webkit-appearance: none; appearance: none;
+    box-shadow: 0 0 0 1px var(--border);
+  }
+  .theme-color-input::-webkit-color-swatch-wrapper { padding: 0; border-radius: 50%; }
+  .theme-color-input::-webkit-color-swatch { border: none; border-radius: 50%; }
+  .theme-color-input::-moz-color-swatch { border: none; border-radius: 50%; }
+  .theme-reset-btn {
+    align-self: flex-start; padding: 8px 14px; border-radius: 9px;
+    border: 1px solid var(--border); background: var(--surface);
+    color: var(--ink); font-family: inherit; font-size: 0.82rem; font-weight: 600;
+    cursor: pointer;
+  }
+  .theme-reset-btn:hover { background: var(--surface-2); }
+
   @media (prefers-reduced-motion: reduce) {
-    .nav-item, .ai-fab, .ai-panel, .ai-panel-backdrop, .nav-tooltip, .ai-fab-label, .settings-flyout { transition: none; }
+    .nav-item, .ai-fab, .ai-panel, .ai-panel-backdrop, .nav-tooltip, .ai-fab-label, .settings-flyout,
+    .theme-modal, .theme-modal-backdrop, .theme-mode-btn { transition: none; }
   }
 
   /* ── login gate ── */
@@ -519,6 +624,16 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
           <span>พนักงาน/ทีม</span>
         </button>
+        <!-- No data-target/data-section on purpose: this row doesn't navigate
+             to any of the 7 iframe-backed destinations goToSection() handles
+             (so it's deliberately excluded from `leafButtons` =
+             querySelectorAll('[data-target]') below) -- it opens the shell's
+             own centered dialog (#themeModal) instead, via its own click
+             handler further down. -->
+        <button class="flyout-item" data-key="theme" id="themeMenuBtn" role="menuitem">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+          <span>ธีม</span>
+        </button>
       </div>
     </div>
   </nav>
@@ -557,6 +672,63 @@
       </div>
       <p>ตอนนี้น้องบัญชีทำงานผ่านไลน์อยู่ (ถาม/ตอบ, งาน, เตือนความจำ, อ่านเอกสาร) กำลังเตรียมให้คุยหน้าเว็บนี้ได้เหมือนกัน</p>
       <span class="status">เร็วๆ นี้</span>
+    </div>
+  </div>
+
+  <!-- ── ตั้งค่า > ธีม ── shared contract with CRM/ปฏิทิน/พนักงาน-ทีม via
+       theme.js (see that file for the localStorage schema + DCTheme API).
+       This dialog only writes through DCTheme.set()/.reset() -- it never
+       touches --brand or data-theme directly, so every consumer of the
+       shared contract (including this page itself) stays in sync the same
+       way regardless of which page changed the theme. -->
+  <div class="theme-modal-backdrop" id="themeModalBackdrop"></div>
+  <div class="theme-modal" id="themeModal" role="dialog" aria-modal="true" aria-label="ตั้งค่าธีม">
+    <div class="theme-modal-head">
+      <b>ธีม</b>
+      <button class="theme-modal-close" id="themeModalClose" aria-label="ปิด">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="theme-modal-body">
+      <div class="theme-section">
+        <div class="theme-section-label">โหมด</div>
+        <div class="theme-mode-seg" role="group" aria-label="เลือกโหมดสี">
+          <button type="button" class="theme-mode-btn" data-mode="light">สว่าง</button>
+          <button type="button" class="theme-mode-btn" data-mode="dark">มืด</button>
+          <button type="button" class="theme-mode-btn" data-mode="system">ตามเครื่อง</button>
+        </div>
+      </div>
+      <div class="theme-section">
+        <div class="theme-section-label">สีหลัก</div>
+        <div class="theme-swatch-row" id="themeSwatchRow">
+          <button type="button" class="theme-swatch" data-color="#2F5D50" style="background:#2F5D50" aria-label="เขียวป่า (ค่าเริ่มต้น)" title="เขียวป่า (ค่าเริ่มต้น)">
+            <svg class="theme-swatch-check" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          </button>
+          <button type="button" class="theme-swatch" data-color="#1E4D6B" style="background:#1E4D6B" aria-label="น้ำเงินเข้ม" title="น้ำเงินเข้ม">
+            <svg class="theme-swatch-check" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          </button>
+          <button type="button" class="theme-swatch" data-color="#5B4B8A" style="background:#5B4B8A" aria-label="ม่วง" title="ม่วง">
+            <svg class="theme-swatch-check" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          </button>
+          <button type="button" class="theme-swatch" data-color="#8A5A44" style="background:#8A5A44" aria-label="น้ำตาลอิฐ" title="น้ำตาลอิฐ">
+            <svg class="theme-swatch-check" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          </button>
+          <button type="button" class="theme-swatch" data-color="#3F6C3A" style="background:#3F6C3A" aria-label="เขียวใบไม้" title="เขียวใบไม้">
+            <svg class="theme-swatch-check" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          </button>
+          <button type="button" class="theme-swatch" data-color="#7A2E4A" style="background:#7A2E4A" aria-label="แดงเบอร์กันดี" title="แดงเบอร์กันดี">
+            <svg class="theme-swatch-check" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          </button>
+          <button type="button" class="theme-swatch" data-color="#2B4C6F" style="background:#2B4C6F" aria-label="น้ำเงินเทา" title="น้ำเงินเทา">
+            <svg class="theme-swatch-check" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          </button>
+          <button type="button" class="theme-swatch" data-color="#4A4E54" style="background:#4A4E54" aria-label="เทาเข้ม" title="เทาเข้ม">
+            <svg class="theme-swatch-check" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          </button>
+          <input type="color" id="themeColorPicker" class="theme-color-input" value="#2f5d50" aria-label="เลือกสีเอง" title="เลือกสีเอง" />
+        </div>
+      </div>
+      <button type="button" class="theme-reset-btn" id="themeResetBtn">คืนค่าเริ่มต้น</button>
     </div>
   </div>
 </div>
@@ -802,6 +974,70 @@
   aiClose.addEventListener('click', closeAi);
   aiBackdrop.addEventListener('click', closeAi);
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAi(); });
+
+  // ── ตั้งค่า > ธีม ──────────────────────────────────────────────────────
+  // #themeMenuBtn has no data-target, so it was never picked up by the
+  // `leafButtons` (querySelectorAll('[data-target]')) loop above -- it opens
+  // this centered dialog instead of calling goToSection(). Every control in
+  // here only ever calls DCTheme.read()/.set()/.reset() (see theme.js) --
+  // never touches --brand or [data-theme] directly -- so this page follows
+  // the exact same shared contract as CRM/ปฏิทิน/พนักงาน-ทีม, and picks up a
+  // theme change made from any of those iframes too (DCTheme's 'dctheme'
+  // event fires here whenever theme.js's storage listener or a same-document
+  // .set() call applies a new value).
+  const themeMenuBtn = document.getElementById('themeMenuBtn');
+  const themeModal = document.getElementById('themeModal');
+  const themeModalBackdrop = document.getElementById('themeModalBackdrop');
+  const themeModalClose = document.getElementById('themeModalClose');
+  const themeResetBtn = document.getElementById('themeResetBtn');
+  const themeColorPicker = document.getElementById('themeColorPicker');
+  const themeModeBtns = document.querySelectorAll('.theme-mode-btn');
+  const themeSwatches = document.querySelectorAll('.theme-swatch');
+
+  function syncThemeModalUI() {
+    const t = DCTheme.read();
+    const brandLower = t.brand.toLowerCase();
+    themeModeBtns.forEach(b => b.classList.toggle('active', b.dataset.mode === t.mode));
+    themeSwatches.forEach(s => s.classList.toggle('selected', s.dataset.color.toLowerCase() === brandLower));
+    themeColorPicker.value = brandLower;
+  }
+  function openThemeModal() {
+    syncThemeModalUI();
+    themeModal.classList.add('open');
+    themeModalBackdrop.classList.add('open');
+  }
+  function closeThemeModal() {
+    themeModal.classList.remove('open');
+    themeModalBackdrop.classList.remove('open');
+  }
+  themeMenuBtn.addEventListener('click', () => {
+    // Same close-flyout-on-navigate behavior the other 3 flyout rows get
+    // from the leafButtons loop above -- done by hand here since this
+    // button deliberately isn't part of that loop (see comment above).
+    closeSettingsFlyout();
+    openThemeModal();
+  });
+  themeModalClose.addEventListener('click', closeThemeModal);
+  themeModalBackdrop.addEventListener('click', closeThemeModal);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeThemeModal(); });
+  themeModeBtns.forEach(b => b.addEventListener('click', () => DCTheme.set({ mode: b.dataset.mode })));
+  themeSwatches.forEach(s => s.addEventListener('click', () => DCTheme.set({ brand: s.dataset.color })));
+  // Dragging the native color picker fires 'input' continuously -- rAF-throttle
+  // so a fast drag doesn't spam localStorage writes/'dctheme' events for every
+  // intermediate frame, without dropping the final value the drag lands on.
+  let themeColorRaf = null;
+  themeColorPicker.addEventListener('input', () => {
+    if (themeColorRaf) return;
+    themeColorRaf = requestAnimationFrame(() => {
+      themeColorRaf = null;
+      DCTheme.set({ brand: themeColorPicker.value });
+    });
+  });
+  themeResetBtn.addEventListener('click', () => DCTheme.reset());
+  // Keeps this dialog's own buttons in sync if the theme is ever changed from
+  // somewhere else while it's open (another tab, or -- once wired -- one of
+  // the iframed apps' own theme controls) instead of only updating on open.
+  window.addEventListener('dctheme', syncThemeModalUI);
 
   // ── สมัครสมาชิก (public sign-up request) ──────────────────────────────
   // Nothing above this block is touched: checkSession/showApp/showLogin/

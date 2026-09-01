@@ -8,26 +8,124 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="../../theme.js?v=1"></script>
   <style>
     /* palette: warm cream + forest green — ported verbatim from the shell
        (/workspace/dc-acc/index.html :root block) so tokens are byte-identical
-       across the app. CRM has no existing dark-mode handling, so only the
-       light-mode block is included here (matches the shell's :root, not its
-       @media(prefers-color-scheme:dark)/[data-theme="dark"] blocks). */
+       across the app. --brand is read/written by the shared theme.js contract
+       (localStorage['dcacc_theme'], synced cross-tab/iframe via the 'storage'
+       event — see theme.js) which sets it as an inline style on <html> before
+       first paint, so it always wins over the declaration below regardless of
+       which theme block (light/dark) is active; the value here is only the
+       fallback shown for the instant before theme.js's synchronous apply()
+       runs. Dark-mode blocks are copied verbatim from the shell so both the
+       system-preference case and the explicit toggle (data-theme="dark") are
+       covered identically across the app. */
     :root {
-      --bg: color-mix(in oklab, #2F5D50 6%, #EDEAE3);
-      --surface: color-mix(in oklab, #2F5D50 4%, #FBFAF7);
-      --surface-2: color-mix(in oklab, #2F5D50 8%, #F4F2EC);
+      --brand: #2F5D50;
+      --bg: color-mix(in oklab, var(--brand) 6%, #EDEAE3);
+      --surface: color-mix(in oklab, var(--brand) 4%, #FBFAF7);
+      --surface-2: color-mix(in oklab, var(--brand) 8%, #F4F2EC);
       --ink: #1D1B17;
       --ink-muted: #7C766B;
       --border: #DFDACF;
-      --accent: #2F5D50;
-      --accent-soft: color-mix(in oklab, #2F5D50 55%, white);
+      --accent: var(--brand);
+      --accent-soft: color-mix(in oklab, var(--brand) 55%, white);
       --accent-contrast: #FFFFFF;
-      --ring: color-mix(in oklab, #2F5D50 35%, transparent);
+      --ring: color-mix(in oklab, var(--brand) 35%, transparent);
       --shadow: 0 1px 2px rgba(29,27,23,0.05), 0 8px 24px -12px rgba(29,27,23,0.14);
       --shadow-lg: 0 4px 8px rgba(29,27,23,0.07), 0 20px 40px -16px rgba(29,27,23,0.24);
     }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: color-mix(in oklab, var(--brand) 10%, #171614);
+        --surface: color-mix(in oklab, var(--brand) 8%, #1F1E1B);
+        --surface-2: color-mix(in oklab, var(--brand) 14%, #262420);
+        --ink: #EFECE5;
+        --ink-muted: #9C958C;
+        --border: #35322C;
+        --accent: var(--brand);
+        --accent-soft: color-mix(in oklab, var(--brand) 45%, white);
+        --accent-contrast: #FFFFFF;
+        --ring: color-mix(in oklab, var(--brand) 45%, transparent);
+        --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.55);
+        --shadow-lg: 0 4px 8px rgba(0,0,0,0.35), 0 20px 40px -16px rgba(0,0,0,0.65);
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg: color-mix(in oklab, var(--brand) 10%, #171614);
+      --surface: color-mix(in oklab, var(--brand) 8%, #1F1E1B);
+      --surface-2: color-mix(in oklab, var(--brand) 14%, #262420);
+      --ink: #EFECE5; --ink-muted: #9C958C; --border: #35322C;
+      --accent: var(--brand); --accent-soft: color-mix(in oklab, var(--brand) 45%, white); --accent-contrast: #FFFFFF;
+      --ring: color-mix(in oklab, var(--brand) 45%, transparent);
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.55);
+      --shadow-lg: 0 4px 8px rgba(0,0,0,0.35), 0 20px 40px -16px rgba(0,0,0,0.65);
+    }
+
+    /* ── dark-mode remap for hardcoded Tailwind status-color utilities ──
+       This file (unlike the shell) has no dark-mode handling of its own, and uses
+       ~200 literal Tailwind color classes (bg-red-50, text-green-700, etc.) for the 5
+       semantic hue families the app already relies on: red=error/delete, amber=pending/
+       warning, green=done/paid/SSO-column, blue=TAX1-column, purple=TAX2-column/CODE
+       badge. None of these are neutral-palette classes (no bg-white, bg-gray-N or
+       text-gray-N anywhere in this file) — this app already routes all neutral surface/ink
+       colors through the --surface/--ink CSS custom properties above, so those are
+       already dark-safe automatically. Only the 5 saturated hue families below need a
+       manual remap, and only where the *light*-mode shade actually fails contrast on a
+       dark background — verified with the WCAG relative-luminance formula against this
+       theme's measured dark tokens (--bg #1a1c19, --surface #21231f, --surface-2
+       #282c26 at the default --brand):
+
+         - Every override text/bg pair below was chosen from Tailwind's own palette
+           (never invented hexes) and re-checked to clear >=4.5:1 against all three dark
+           surfaces (text) or read as a clearly hue-tinted, at-least-as-visible patch
+           versus this same file's *light*-mode original (backgrounds/borders — those
+           were already low-contrast "soft" chips by design in light mode too, e.g.
+           border-red-200 on white is only ~1.45:1, so dark mode isn't held to a
+           stricter bar than light mode already set for the same decorative borders).
+         - text-*-400/text-amber-500/text-purple-400/text-blue-400 and the solid
+           bg-*-500/600/700 + text-white buttons are intentionally NOT overridden here —
+           already >=4.5:1 (text) or already theme-independent (solid button fills with
+           permanent white text) as measured; see the CRM dark-mode QA notes for the
+           full pass/fail table.
+       Selectors are scoped with [data-theme="dark"] so light mode is untouched, and
+       specificity (0,2,0) beats Tailwind's own single-class utility rules (0,1,0)
+       without needing !important, regardless of stylesheet injection order. */
+    [data-theme="dark"] .bg-red-50,
+    [data-theme="dark"] .hover\:bg-red-50:hover { background-color: #450a0a; }
+    [data-theme="dark"] .bg-amber-50 { background-color: #451a03; }
+    [data-theme="dark"] .bg-green-50 { background-color: #052e16; }
+    [data-theme="dark"] .hover\:bg-green-100:hover { background-color: #14532d; }
+    [data-theme="dark"] .bg-purple-50,
+    [data-theme="dark"] .hover\:bg-purple-50:hover { background-color: #3b0764; }
+    [data-theme="dark"] .bg-blue-50 { background-color: #172554; }
+
+    [data-theme="dark"] .border-red-200,
+    [data-theme="dark"] .border-red-300 { border-color: #991b1b; }
+    [data-theme="dark"] .border-amber-100,
+    [data-theme="dark"] .border-amber-200 { border-color: #92400e; }
+    [data-theme="dark"] .border-green-200 { border-color: #166534; }
+    [data-theme="dark"] .border-purple-100 { border-color: #6b21a8; }
+
+    [data-theme="dark"] .text-red-500,
+    [data-theme="dark"] .text-red-600,
+    [data-theme="dark"] .text-red-700,
+    [data-theme="dark"] .hover\:text-red-500:hover,
+    [data-theme="dark"] .hover\:text-red-700:hover { color: #f87171; }
+    [data-theme="dark"] .hover\:text-red-800:hover { color: #fca5a5; }
+    [data-theme="dark"] .text-amber-600,
+    [data-theme="dark"] .text-amber-700 { color: #fbbf24; }
+    [data-theme="dark"] .text-green-600,
+    [data-theme="dark"] .text-green-700 { color: #4ade80; }
+    [data-theme="dark"] .text-purple-700 { color: #c084fc; }
+    /* TAX2 column header title (text-purple-500) sits above a dimmer text-purple-400
+       subtitle in the same <th> — kept one step brighter than the subtitle override so
+       that title/subtitle hierarchy still reads in dark mode, same as light mode. */
+    [data-theme="dark"] .text-purple-500 { color: #d8b4fe; }
+    /* TAX1 column header title — same title/subtitle reasoning as text-purple-500
+       above, paired with the untouched (already-safe) text-blue-400 subtitle. */
+    [data-theme="dark"] .text-blue-600 { color: #93c5fd; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Sarabun', system-ui, sans-serif; font-size: 14px; }
 
@@ -243,6 +341,21 @@
     .inv-badge.sent     { background:#dbeafe; color:#1d4ed8; }
     .inv-badge.paid     { background:#dcfce7; color:#15803d; }
     .inv-badge.cancelled{ background:#fee2e2; color:#dc2626; }
+    /* Dark-mode remap for this app's own .inv-badge component (invoice/request status
+       chips: draft/ยังไม่ส่ง, sent/ส่งแล้ว, paid/จ่ายแล้ว, cancelled/ถูกปฏิเสธ) — same
+       reasoning as the Tailwind-utility remap further down in this stylesheet (light
+       chip backgrounds read as a jarring bright patch on a dark page; text needs
+       >=4.5:1 against the new dark chip background, not against --surface, since the
+       chip owns its own background). paid/cancelled reuse the exact green-950/red-950 +
+       green-400/red-400 pair already used for bg-green-50/bg-red-50 + text-green-700/
+       text-red-600 below, for one consistent green="done" / red="cancelled" language
+       app-wide; draft (gray) and sent (blue) are new combinations specific to this
+       component, verified >=4.5:1 the same way (gray-400 #9ca3af on gray-800 #1f2937 =
+       5.78:1; blue-400 #60a5fa on blue-950 #172554 = 5.78:1). */
+    [data-theme="dark"] .inv-badge.draft    { background:#1f2937; color:#9ca3af; }
+    [data-theme="dark"] .inv-badge.sent     { background:#172554; color:#60a5fa; }
+    [data-theme="dark"] .inv-badge.paid     { background:#052e16; color:#4ade80; }
+    [data-theme="dark"] .inv-badge.cancelled{ background:#450a0a; color:#f87171; }
 
     .select-field {
       border: 1px solid transparent; border-radius: 6px; padding: 4px 8px;
@@ -1730,9 +1843,40 @@ async function saveNote(clientId, val) {
   if (data) taskMap[clientId] = data;
   renderTracking();
 }
+// Shared check for a few spots below that bake a raw hex into an inline style="..."
+// string at render time (progress-bar fills, the year-end group chips) — a Tailwind/CSS
+// class override can never reach those, so the color itself has to branch on theme.
+// Reads the same data-theme attribute theme.js already sets on <html> (resolved to a
+// concrete 'light'/'dark', never 'system' — see theme.js's resolved()), so this adds no
+// new state and stays in sync with the shared theme automatically.
+function dcDark_() { return document.documentElement.getAttribute('data-theme') === 'dark'; }
+// Theme-aware fill/text color for the % progress bar (used by progressBar() below and by
+// the monthly-history cards further down). Light-mode values are byte-identical to
+// before; only the dark branch (Tailwind's 400-shade of each hue, verified >=4.5:1
+// against the dark theme's --bg/--surface/--surface-2 tokens) is new.
+function pctTierColor_(pct) {
+  if (pct === 100) return dcDark_() ? '#4ade80' : '#16a34a';
+  if (pct > 50)    return dcDark_() ? '#60a5fa' : '#2563eb';
+  return dcDark_() ? '#fbbf24' : '#d97706';
+}
 function progressBar(pct) {
-  const col = pct === 100 ? '#16a34a' : pct > 50 ? '#2563eb' : '#d97706';
+  const col = pctTierColor_(pct);
   return `<div class="prog-wrap"><div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${col}"></div></div><span class="prog-pct">${pct}%</span></div>`;
+}
+// Theme-aware {bg,fg,border} for the amber "sent/in-progress" and green "paid/done"
+// status pills reused across mkGroupCell()/openGroupModal()/reqStatusChip() below — same
+// reasoning as pctTierColor_() above (raw hex baked into style="..." strings at render
+// time, unreachable by CSS class overrides). Same hex pairs as the .inv-badge dark-mode
+// CSS overrides near the top of this file, so amber="sent/pending" and green="paid/done"
+// stay one consistent color language everywhere in the app. Light-mode values are
+// byte-identical to before.
+function pillColors_(hue) {
+  if (hue === 'amber') {
+    return dcDark_() ? { bg: '#451a03', fg: '#fbbf24', border: '#92400e' }
+                      : { bg: '#fef3c7', fg: '#92400e', border: '#fcd34d' };
+  }
+  return dcDark_() ? { bg: '#052e16', fg: '#4ade80', border: '#166534' }
+                    : { bg: '#dcfce7', fg: '#15803d', border: '#86efac' };
 }
 function fmtDate(d) {
   if (!d) return '—';
@@ -2447,9 +2591,11 @@ function renderTracking() {
       const progTitle = gItems.length ? `${gDone}/${gApp} รายการเสร็จแล้ว` : '';
       let chip;
       if (paid) {
-        chip = `<span class="tog-chip" style="background:#dcfce7;color:#15803d;border-color:#86efac" title="${progTitle}">✓ PAID</span>`;
+        const pc = pillColors_('green');
+        chip = `<span class="tog-chip" style="background:${pc.bg};color:${pc.fg};border-color:${pc.border}" title="${progTitle}">✓ PAID</span>`;
       } else if (sent) {
-        chip = `<span class="tog-chip" style="background:#fef3c7;color:#92400e;border-color:#fcd34d" title="${progTitle}">→ SENT</span>`;
+        const pc = pillColors_('amber');
+        chip = `<span class="tog-chip" style="background:${pc.bg};color:${pc.fg};border-color:${pc.border}" title="${progTitle}">→ SENT</span>`;
       } else {
         chip = canEdit() ? `<span class="tog-chip tog-empty" title="${progTitle}">—</span>` : `<span class="dot na" title="${progTitle}">—</span>`;
       }
@@ -2552,10 +2698,13 @@ function openGroupModal(clientId, group) {
   </svg>`;
 
   const SLABEL = { todo:'—', inprogress:'กำลังทำ', done:'เสร็จ ✓', na:'—' };
+  // Computed once per modal open and reused below for sentSty/paidSty too — see
+  // pillColors_() for why these are theme-aware JS values rather than CSS classes.
+  const amberPc = pillColors_('amber'), greenPc = pillColors_('green');
   const SSTYLE = {
     todo:       'background:var(--surface-2);color:var(--ink-muted);border:1.5px dashed var(--border)',
-    inprogress: 'background:#fef3c7;color:#92400e;border:1.5px solid #fcd34d',
-    done:       'background:#dcfce7;color:#15803d;border:1.5px solid #86efac',
+    inprogress: `background:${amberPc.bg};color:${amberPc.fg};border:1.5px solid ${amberPc.border}`,
+    done:       `background:${greenPc.bg};color:${greenPc.fg};border:1.5px solid ${greenPc.border}`,
     na:         'background:var(--surface-2);color:var(--ink-muted);border:1.5px solid var(--border)',
   };
 
@@ -2578,9 +2727,9 @@ function openGroupModal(clientId, group) {
 
   const sent = t[conf.sentField] || false;
   const paid = t[conf.paidField] || false;
-  const sentSty = sent ? 'background:#fef3c7;color:#92400e;border:1.5px solid #fcd34d'
+  const sentSty = sent ? `background:${amberPc.bg};color:${amberPc.fg};border:1.5px solid ${amberPc.border}`
                        : 'background:var(--surface-2);color:var(--ink-muted);border:1.5px solid var(--border)';
-  const paidSty = paid ? 'background:#dcfce7;color:#15803d;border:1.5px solid #86efac'
+  const paidSty = paid ? `background:${greenPc.bg};color:${greenPc.fg};border:1.5px solid ${greenPc.border}`
                        : 'background:var(--surface-2);color:var(--ink-muted);border:1.5px solid var(--border)';
 
   openModal(`<div style="min-width:320px;max-width:400px;font-family:inherit">
@@ -2917,7 +3066,7 @@ function docReceiptClassicHtml(c, monthLabel, dateStr, rows) {
     </div>`;
   }).join('');
   return `
-    <div style="font-family:'Sarabun',sans-serif;max-width:640px;margin:0 auto;padding:32px;color:#1e293b">
+    <div style="font-family:'Sarabun',sans-serif;max-width:640px;margin:0 auto;padding:32px;color:#1e293b;background:#fff">
       <div style="text-align:center;border-bottom:3px double #1e293b;padding-bottom:14px;margin-bottom:18px">
         <div style="font-size:19px;font-weight:700">รายการรับเอกสารจากลูกค้า</div>
         <div style="font-size:13px;color:#64748b;margin-top:2px">${e(monthLabel)}</div>
@@ -3087,7 +3236,15 @@ function mkYeGroupTd(group, c, t, groupsKind, first, subtitle) {
   const { done, total } = yeGroupProgress(group, c, t);
   const pct = total > 0 ? Math.round(done / total * 100) : 0;
   const isDone = total > 0 && done === total;
-  const fillColor = isDone ? '#15803d' : done > 0 ? '#1d4ed8' : '#cbd5e1';
+  // Same reasoning as pctTierColor_() above: raw hex baked into style="..." at render
+  // time, unreachable by CSS class overrides, so it has to branch on theme itself. The
+  // "not started" shade is deliberately low-contrast against the track in BOTH themes
+  // (light: slate-300 on the light --border is ~1.07:1 — barely visible on purpose, since
+  // it signals "nothing here yet") — #4b463d keeps that same subtle relationship against
+  // the dark --border (~1.36:1) rather than making it a strong signal.
+  const fillColor = isDone ? (dcDark_() ? '#4ade80' : '#15803d')
+                   : done > 0 ? (dcDark_() ? '#60a5fa' : '#1d4ed8')
+                   : (dcDark_() ? '#4b463d' : '#cbd5e1');
   const numCls = isDone ? 'text-green-700' : done > 0 ? 'text-[var(--accent)]' : 'text-[var(--ink-muted)]';
   return `<td class="${cellCls}">
             <button onclick="openYeGroupDetail(${c.id},'${groupsKind}','${group.key}')" class="ye-bar-chip">
@@ -5065,7 +5222,7 @@ async function renderPanelHistory() {
     const nameAtMonth = effectiveNameAt(my, mm);
     const showNameTag = nameAtMonth !== c.thai_name;
     const pct = calcRowPct(t, hasVat, hasSso);
-    const bar = pct === 100 ? '#16a34a' : pct > 50 ? '#2563eb' : '#d97706';
+    const bar = pctTierColor_(pct);
     const badges = [
       { label:'TAX1', done: !!t.tax1_paid },
       ...(hasSso ? [{ label:'SSO',  done: !!t.sso_client_paid }] : []),
@@ -6206,8 +6363,12 @@ async function deleteTeam(teamId) {
 
 // -- คำขอ --
 function reqStatusChip(status) {
+  // approved/rejected reuse the .inv-badge.paid/.cancelled CSS classes (dark-mode-safe
+  // via the [data-theme="dark"] overrides next to their definitions); pending has no
+  // matching .inv-badge variant so it stays inline, now theme-aware via pillColors_().
+  const pendingPc = pillColors_('amber');
   const map = {
-    pending:  '<span class="inv-badge" style="background:#fef3c7;color:#92400e">รออนุมัติ</span>',
+    pending:  `<span class="inv-badge" style="background:${pendingPc.bg};color:${pendingPc.fg}">รออนุมัติ</span>`,
     approved: '<span class="inv-badge paid">อนุมัติแล้ว</span>',
     rejected: '<span class="inv-badge cancelled">ถูกปฏิเสธ</span>',
   };

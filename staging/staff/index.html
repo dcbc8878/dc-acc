@@ -1,4 +1,5 @@
 <title>พนักงาน — ระบบกลาง</title>
+<script src="../../theme.js?v=1"></script>
 <style>
   @font-face {
     font-family: 'Sarabun Now';
@@ -47,18 +48,27 @@
      status pills (pending, approved, rejected) and error/danger text, which are
      semantic and intentionally untouched by this reskin. */
   :root{
-    --bg: color-mix(in oklab, #2F5D50 6%, #EDEAE3);
-    --surface: color-mix(in oklab, #2F5D50 4%, #FBFAF7);
-    --surface-2: color-mix(in oklab, #2F5D50 8%, #F4F2EC);
+    --brand: #2F5D50; /* สีแบรนด์กลาง ต้นทางของ --bg/--surface/--accent ฯลฯ ทุกตัวด้านล่าง — theme.js เขียนทับค่านี้ที่ <html> ได้ */
+    --bg: color-mix(in oklab, var(--brand) 6%, #EDEAE3);
+    --surface: color-mix(in oklab, var(--brand) 4%, #FBFAF7);
+    --surface-2: color-mix(in oklab, var(--brand) 8%, #F4F2EC);
     --ink: #1D1B17;
     --ink-muted: #7C766B;
     --border: #DFDACF;
-    --accent: #2F5D50;
-    --accent-soft: color-mix(in oklab, #2F5D50 55%, white);
+    --accent: var(--brand);
+    --accent-soft: color-mix(in oklab, var(--brand) 55%, white);
     --accent-contrast: #FFFFFF;
-    --ring: color-mix(in oklab, #2F5D50 35%, transparent);
+    --ring: color-mix(in oklab, var(--brand) 35%, transparent);
     --shadow: 0 1px 2px rgba(29,27,23,0.05), 0 8px 24px -12px rgba(29,27,23,0.14);
     --shadow-lg: 0 4px 8px rgba(29,27,23,0.07), 0 20px 40px -16px rgba(29,27,23,0.24);
+    /* ข้อความสีแดง/เขียวที่วางบน --surface ตรงๆ (ไม่มีพื้นหลังของตัวเอง) ต้องผูกกับโทเคนนี้แทนเลข
+       ฮาร์ดโค้ด เพื่อให้สลับเป็นสีที่อ่านออกในธีมมืดได้ — ปุ่ม/ป้ายที่มีพื้นหลังพาสเทลของตัวเอง
+       (เช่น .tog-chip สถานะคำขอสมัคร) ไม่ต้องผูก เพราะพื้น+ตัวอักษรคงที่ไม่ขึ้นกับธีมอยู่แล้ว */
+    --danger-text: #b91c1c;
+    --success-text: #166534; /* เข้มกว่า #15803d ของ pill/banner เดิมเล็กน้อย — วัดจริงแล้ว #15803d
+       ขอบพอดี (4.48-4.51:1) เมื่อเทียบกับ --surface ที่มีสี --brand อื่นผสมอยู่ (fail กับ #7A2E4A)
+       ส่วน pill/banner (เช่น .tog-chip) มีพื้นหลังพาสเทลคงที่ของตัวเอง ไม่ผูกกับ --brand จึงไม่กระทบ
+       ยังคงเป็น #15803d เหมือนเดิม */
 
     --slate-50:var(--bg); --slate-100:var(--surface-2); --slate-200:var(--border); --slate-400:var(--ink-muted); --slate-500:var(--ink-muted); --slate-600:var(--ink-muted); --slate-700:var(--ink); --slate-900:var(--ink);
     --gray-50:var(--surface-2); --gray-100:var(--border); --gray-200:var(--border); --gray-300:var(--border); --gray-400:var(--ink-muted); --gray-500:var(--ink-muted); --gray-600:var(--ink-muted); --gray-700:var(--ink); --gray-900:var(--ink);
@@ -71,29 +81,33 @@
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --bg: color-mix(in oklab, #2F5D50 10%, #171614);
-      --surface: color-mix(in oklab, #2F5D50 8%, #1F1E1B);
-      --surface-2: color-mix(in oklab, #2F5D50 14%, #262420);
+      --bg: color-mix(in oklab, var(--brand) 10%, #171614);
+      --surface: color-mix(in oklab, var(--brand) 8%, #1F1E1B);
+      --surface-2: color-mix(in oklab, var(--brand) 14%, #262420);
       --ink: #EFECE5;
       --ink-muted: #9C958C;
       --border: #35322C;
-      --accent: #2F5D50;
-      --accent-soft: color-mix(in oklab, #2F5D50 45%, white);
+      --accent: var(--brand);
+      --accent-soft: color-mix(in oklab, var(--brand) 45%, white);
       --accent-contrast: #FFFFFF;
-      --ring: color-mix(in oklab, #2F5D50 45%, transparent);
+      --ring: color-mix(in oklab, var(--brand) 45%, transparent);
       --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.55);
       --shadow-lg: 0 4px 8px rgba(0,0,0,0.35), 0 20px 40px -16px rgba(0,0,0,0.65);
+      --danger-text: #f87171;
+      --success-text: #4ade80;
     }
   }
   :root[data-theme="dark"] {
-    --bg: color-mix(in oklab, #2F5D50 10%, #171614);
-    --surface: color-mix(in oklab, #2F5D50 8%, #1F1E1B);
-    --surface-2: color-mix(in oklab, #2F5D50 14%, #262420);
+    --bg: color-mix(in oklab, var(--brand) 10%, #171614);
+    --surface: color-mix(in oklab, var(--brand) 8%, #1F1E1B);
+    --surface-2: color-mix(in oklab, var(--brand) 14%, #262420);
     --ink: #EFECE5; --ink-muted: #9C958C; --border: #35322C;
-    --accent: #2F5D50; --accent-soft: color-mix(in oklab, #2F5D50 45%, white); --accent-contrast: #FFFFFF;
-    --ring: color-mix(in oklab, #2F5D50 45%, transparent);
+    --accent: var(--brand); --accent-soft: color-mix(in oklab, var(--brand) 45%, white); --accent-contrast: #FFFFFF;
+    --ring: color-mix(in oklab, var(--brand) 45%, transparent);
     --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.55);
     --shadow-lg: 0 4px 8px rgba(0,0,0,0.35), 0 20px 40px -16px rgba(0,0,0,0.65);
+    --danger-text: #f87171;
+    --success-text: #4ade80;
   }
 
   *{box-sizing:border-box;}
@@ -156,7 +170,7 @@
     <div style="padding:0 24px;display:flex;gap:22px;border-bottom:1px solid var(--gray-200);background:var(--white)">
       <button class="svc-subtab active" id="empTab-list" onclick="showEmployeeSubTab('list')">ทะเบียนพนักงาน</button>
       <button class="svc-subtab" id="empTab-teams" onclick="showEmployeeSubTab('teams')">ทีม</button>
-      <button class="svc-subtab" id="empTab-requests" style="display:none" onclick="showEmployeeSubTab('requests')">คำขอสมัคร<span id="empReqBadge" style="display:none;margin-left:5px;background:#ef4444;color:#fff;border-radius:9px;font-size:10px;padding:1px 6px;font-weight:700"></span></button>
+      <button class="svc-subtab" id="empTab-requests" style="display:none" onclick="showEmployeeSubTab('requests')">คำขอสมัคร<span id="empReqBadge" style="display:none;margin-left:5px;background:#dc2626;color:#fff;border-radius:9px;font-size:10px;padding:1px 6px;font-weight:700"></span></button>
     </div>
 
     <div id="emp-sub-list">
@@ -429,7 +443,7 @@ function employeeRowHtml(s, idx) {
       <span class="col-name">${e(s.display_name)}${s.nickname ? ` <span style="color:var(--gray-400);font-size:11.5px">(${e(s.nickname)})</span>` : ''}${s.is_active ? '' : ' <span style=\'font-size:11px;color:var(--gray-400)\'>(ออกแล้ว)</span>'}</span>
       <span style="width:190px;flex-shrink:0;font-size:12.5px;color:var(--gray-600);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e(ROLE_LABEL[s.role] || s.role)}</span>
       <span style="width:110px;flex-shrink:0;text-align:center;font-size:12.5px;color:var(--gray-600)">${fmtServiceDate(s.created_at)}</span>
-      <span style="width:90px;flex-shrink:0;text-align:center;font-size:12.5px">${s.is_active ? '<span style="color:#15803d;font-weight:600">ทำงาน</span>' : '<span style="color:var(--gray-400)">ปิดใช้งาน</span>'}</span>
+      <span style="width:90px;flex-shrink:0;text-align:center;font-size:12.5px">${s.is_active ? '<span style="color:var(--success-text);font-weight:600">ทำงาน</span>' : '<span style="color:var(--gray-400)">ปิดใช้งาน</span>'}</span>
     </div>`;
 }
 function renderEmployees() {
@@ -470,7 +484,7 @@ function openEmployeeModal(employeeId) {
             <select id="emp-role" class="search-input" style="width:100%">${roleOptions}</select>
           </div>
         </div>
-        <div id="emp-err" style="display:none;color:#b91c1c;font-size:12px;margin-top:8px"></div>
+        <div id="emp-err" style="display:none;color:var(--danger-text);font-size:12px;margin-top:8px"></div>
         <button id="emp-save-btn" class="btn-blue" style="width:100%;margin-top:14px" onclick="saveEmployee(null)">บันทึก</button>
         <div style="display:flex;justify-content:flex-end;margin-top:10px">
           <button class="btn-ghost" onclick="closeGenModal()">ปิด</button>
@@ -533,7 +547,7 @@ function openEmployeeModal(employeeId) {
           <input type="checkbox" id="emp-active" ${s.is_active ? 'checked' : ''}> ยังทำงานอยู่
         </label>
       </div>
-      <div id="emp-err" style="display:none;color:#b91c1c;font-size:12px;margin-top:8px"></div>
+      <div id="emp-err" style="display:none;color:var(--danger-text);font-size:12px;margin-top:8px"></div>
       <button id="emp-save-btn" class="btn-blue" style="width:100%;margin-top:14px" onclick="saveEmployee('${s.id}')">บันทึก</button>
       <div style="display:flex;justify-content:space-between;margin-top:10px">
         ${resetBtnHtml}
@@ -704,10 +718,10 @@ function openTeamModal(teamId) {
           <div style="border:1px solid var(--gray-100);border-radius:8px;max-height:220px;overflow-y:auto;padding:4px 8px">${memberCheckboxes || '<div style="font-size:12px;color:var(--gray-400);padding:8px 4px">ไม่มีพนักงาน</div>'}</div>
         </div>
       </div>
-      <div id="team-err" style="display:none;color:#b91c1c;font-size:12px;margin-top:8px"></div>
+      <div id="team-err" style="display:none;color:var(--danger-text);font-size:12px;margin-top:8px"></div>
       <button class="btn-blue" style="width:100%;margin-top:14px" onclick="saveTeam(${t ? t.id : 'null'})">บันทึก</button>
       <div style="display:flex;justify-content:space-between;margin-top:10px">
-        ${t ? `<button class="btn-ghost" style="color:#b91c1c" onclick="deleteTeam(${t.id})">ลบทีม</button>` : '<span></span>'}
+        ${t ? `<button class="btn-ghost" style="color:var(--danger-text)" onclick="deleteTeam(${t.id})">ลบทีม</button>` : '<span></span>'}
         <button class="btn-ghost" onclick="closeGenModal()">ปิด</button>
       </div>
     </div>`, { maxWidth: '420px' });
@@ -824,7 +838,7 @@ function openEmployeeRequestForm() {
           <input type="email" id="req-personalemail" class="search-input" style="width:100%">
         </div>
       </div>
-      <div id="req-err" style="display:none;color:#b91c1c;font-size:12px;margin-top:8px"></div>
+      <div id="req-err" style="display:none;color:var(--danger-text);font-size:12px;margin-top:8px"></div>
       <button id="req-submit-btn" class="btn-blue" style="width:100%;margin-top:14px" onclick="submitEmployeeRequest()">ส่งคำขอสมัคร</button>
       <div style="display:flex;justify-content:flex-end;margin-top:10px">
         <button class="btn-ghost" onclick="closeGenModal()">ยกเลิก</button>
@@ -928,10 +942,10 @@ function openReviewRequestModal(reqId) {
             <select id="req-role" class="search-input" style="width:100%">${roleOptions}</select>
             <input id="req-username" class="search-input" style="width:100%" value="${e(suggestedUsername)}" placeholder="ชื่อผู้ใช้ เช่น somchai">
           </div>
-          <div id="req-approve-err" style="display:none;color:#b91c1c;font-size:12px;margin-top:8px"></div>
+          <div id="req-approve-err" style="display:none;color:var(--danger-text);font-size:12px;margin-top:8px"></div>
           <div style="display:flex;gap:8px;margin-top:10px">
             <button id="req-approve-btn" class="btn-blue" style="flex:1" onclick="approveRequest(${r.id})">✓ อนุมัติ (สร้างพนักงาน)</button>
-            <button class="btn-ghost" style="flex:1;color:#b91c1c" onclick="rejectRequest(${r.id})">ปฏิเสธ</button>
+            <button class="btn-ghost" style="flex:1;color:var(--danger-text)" onclick="rejectRequest(${r.id})">ปฏิเสธ</button>
           </div>
         </div>`;
     } else {
