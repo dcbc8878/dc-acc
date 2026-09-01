@@ -118,17 +118,15 @@
     thead th { position: sticky; top: 0; z-index: 1; background: var(--surface-2); height: 60px; vertical-align: middle; text-align: center; }
     tbody tr:hover td { background: var(--surface-2); }
     tbody tr:last-child td { border-bottom: none; }
-    /* Caps the outer white card of the flex-row list views (ลูกค้า/ลูกค้าเก่า/การเก็บเงิน/
-       ค่าบริการ — clientRowHtml/financeCollectionRowHtml/financeFeeRowHtml and their header
-       spans) so the flex-1 NAME column doesn't stretch edge-to-edge on wide monitors and
-       leave a huge dead gap before the right-hand data columns. Left-aligned on purpose, no
-       margin:auto — matches this file's other capped-width block (page-settings' .max-w-3xl/
-       .max-w-md, also left-aligned). Written as a plain hand-authored rule instead of a
-       Tailwind arbitrary-value utility (max-w-[1000px]) so it renders identically here and
-       in the offline preview build (preview-crm.html), which ships a pre-generated Tailwind
-       snapshot with no JIT step and can't produce a class that wasn't already in use when
-       that snapshot was built. Real <table> views (page-tracking, page-yearend) don't need
-       this — more columns already fill the width evenly. */
+    /* เดิม cap ความกว้าง (max-width:1000px) นี้ใช้กับการ์ดลิสต์ของ ลูกค้า/ลูกค้าเก่า/การเก็บเงิน/
+       ค่าบริการ ด้วย (ตอนนั้น 4 หน้านี้ยังอยู่ใต้เมนู CRM เดียว เจ้าของระบบเคยขอให้จำกัดไว้กันช่องว่าง
+       กลางแถวเยอะเกินไปตอนจอกว้าง) — ตอนนี้ 4 หน้านั้นแยกเป็นเมนู "ลูกค้า"/"ค่าบริการ" ของตัวเองแล้ว
+       เจ้าของระบบเปลี่ยนใจให้เต็มความกว้างจอแทน จึงถอดคลาสนี้ออกจากทั้ง 4 จุดนั้นแล้ว (ดู
+       clientRowHtml/financeCollectionRowHtml/financeFeeRowHtml — คอลัมน์ NAME เป็น flex-1 min-w-0
+       อยู่แล้ว ส่วนคอลัมน์ตัวเลข/สถานะเป็น width คงที่ทั้งหมดอยู่แล้วเช่นกัน พอถอดเพดานออกจึงมีแค่ NAME
+       ที่ขยายกินพื้นที่ที่เหลือ ไม่กระจายจนอ่านยาก ไม่ต้องปรับสัดส่วนคอลัมน์เพิ่มอีก) ยังเหลือใช้จุดเดียว
+       คือหน้า "มอบหมายงาน" (page-assign, assignRowHtml) ที่คอลัมน์ ลูกค้า/ทีม/ผู้รับผิดชอบ แคบกว่านี้มาก
+       ปล่อยเต็มจอจะว่างกลางแถวเยอะแบบที่เคยเป็นปัญหาอีก — จึงยังไม่ลบกฎ CSS นี้ทิ้ง */
     .list-card-cap { max-width: 1000px; }
     .col-fav  { position:sticky; left:0;     z-index:2; background:var(--surface); }
     .col-num  { position:sticky; left:32px;  z-index:2; background:var(--surface); }
@@ -757,6 +755,11 @@
       <!-- SUBTAB: ลูกค้า (ปัจจุบัน) -->
       <div id="clients-sub-current">
         <div class="bg-[var(--surface)] border-b border-[var(--border)] px-6 py-4 flex items-center justify-end gap-2">
+          <button id="export-creds-btn" onclick="exportClientCredsCSV()" title="ส่งออกรหัสผ่านของลูกค้าที่แสดงอยู่เป็นไฟล์ CSV"
+            class="hidden text-xs font-semibold border border-[var(--border)] text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-2)] px-3 py-2 rounded-lg transition-colors inline-flex items-center gap-1.5 flex-shrink-0">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            ส่งออกรหัสผ่าน
+          </button>
           <input id="client-search" type="text" placeholder="ค้นหา…" oninput="renderClientList()"
             class="px-3.5 py-2 rounded-lg border border-[var(--border)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)] w-48">
           <select id="client-type-filter" onchange="clientTypeFilter=this.value; renderClientList();"
@@ -790,7 +793,7 @@
           </div>
         </div>
         <div class="p-6 pt-0">
-          <div class="bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden list-card-cap">
+          <div class="bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden">
             <div class="flex items-center gap-3 px-4 py-2.5 border-b border-[var(--border)] bg-[var(--surface-2)] text-[11px] font-semibold text-[var(--ink-muted)] uppercase tracking-wide">
               <span class="w-6 flex-shrink-0"></span>
               <span class="w-10 flex-shrink-0">#</span>
@@ -839,7 +842,7 @@
           </div>
         </div>
         <div class="p-6 pt-0">
-          <div class="bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden list-card-cap">
+          <div class="bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden">
             <div class="flex items-center gap-3 px-4 py-2.5 border-b border-[var(--border)] bg-[var(--surface-2)] text-[11px] font-semibold text-[var(--ink-muted)] uppercase tracking-wide">
               <span class="w-6 flex-shrink-0"></span>
               <span class="w-10 flex-shrink-0">#</span>
@@ -908,7 +911,7 @@
           </div>
         </div>
         <div class="p-6 pt-0">
-          <div class="bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden list-card-cap">
+          <div class="bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden">
             <div class="flex items-center gap-3 px-4 py-2.5 border-b border-[var(--border)] bg-[var(--surface-2)] text-[11px] font-semibold text-[var(--ink-muted)] uppercase tracking-wide">
               <span class="w-6 flex-shrink-0"></span>
               <span class="w-10 flex-shrink-0">#</span>
@@ -959,7 +962,7 @@
           </div>
         </div>
         <div class="p-6 pt-0">
-          <div class="bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden list-card-cap">
+          <div class="bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden">
             <div class="flex items-center gap-3 px-4 py-2.5 border-b border-[var(--border)] bg-[var(--surface-2)] text-[11px] font-semibold text-[var(--ink-muted)] uppercase tracking-wide">
               <span class="w-6 flex-shrink-0"></span>
               <span class="w-10 flex-shrink-0">#</span>
@@ -1544,9 +1547,36 @@ function teamMemberIdsIncludingLead(teamId) {
   return [...ids];
 }
 // รายเดือน/ปลายปี เท่านั้น (ลูกค้า/ลูกค้าเก่า ยังเห็นทุกรายเหมือนเดิม) — LV1-2 ไม่ถูกจำกัด,
-// บริษัทภายในใช้ own_company_visible_to อยู่แล้ว (RLS กรองมาก่อนหน้านี้แล้ว) ไม่ต้องเช็คทีมซ้ำ
+// บริษัทภายในใช้ own_company_visible_to อยู่แล้ว (RLS กรองมาก่อนหน้านี้แล้ว) ไม่ต้องเช็คทีมซ้ำ —
+// ลูกค้าที่ยังไม่ได้กำหนดทีม (team_id เป็น null) ให้เห็นได้ทุกระดับเสมอด้วยเหตุผลเดียวกับบริษัทภายใน:
+// ลูกค้าใหม่ที่เพิ่งรับเข้ามาแล้วยังไม่ได้จัดเข้าทีม ไม่ควรหายไปจากสายตาของ LV3-5 (เดิมเห็นได้แค่ทีม
+// ตัวเองเท่านั้น กลายเป็นไม่มีใครทำงานให้ลูกค้ากลุ่มนี้เลย) — กฎของลูกค้าที่ "มี" ทีมแล้วไม่เปลี่ยนเลย: คน
+// นอกทีมยังมองไม่เห็นเหมือนเดิมทุกประการ (LV1-2 เห็นหมด, คนอื่นเห็นเฉพาะทีมตัวเอง)
 function isClientVisibleOnTeamScopedPages(c, myIds) {
-  return canSeeAllTeamClients() || c.is_own_company || (c.team_id != null && myIds.includes(c.team_id));
+  return canSeeAllTeamClients() || c.is_own_company || c.team_id == null || myIds.includes(c.team_id);
+}
+
+// ─────────────────────────────────────────────────────────────
+// ลำดับการเรียงลูกค้าที่ใช้ร่วมกันทุกหน้าที่แสดงรายชื่อลูกค้าแบบ "ตามลำดับ" (รายเดือน/รายปีทั้ง 3 แท็บย่อย):
+// 1) รายการโปรด (ดาว) ก่อน  2) บริษัทตัวเอง (is_own_company) ถัดมา  3) ทีมตัวเอง — เฉพาะผู้จัดการ (role
+// 'manager') ตามพฤติกรรมเดิมของหน้ารายเดือน  4) เลข # (seq_num) จากน้อยไปมาก เทียบเป็นตัวเลขตรงๆ (ห้าม
+// localeCompare กับข้อความที่ได้จาก computeClientNo() เพราะ seq_num เป็นลำดับเดียวรวมทุกประเภท M/Y/T/Z
+// ปนกัน — string sort จะเอา "M..." ทั้งหมดมาก่อน "Y..." ทั้งหมดซึ่งผิด) ลูกค้าที่ไม่มี seq_num (null เช่น
+// บางรายที่ข้อมูลไม่ครบ) ไปอยู่ท้ายสุดของกลุ่มตัวเองเสมอ ไม่ทำให้การเรียงพัง — เขียนเป็นฟังก์ชันเปรียบเทียบ
+// ตัวเดียวใช้ร่วมกันทุกจุด ห้ามเขียนซ้ำ (แพทเทิร์นเดียวกับ taxTaskSummary_/applyFeeChangeCore_ ฯลฯ)
+function clientSortCompare_(a, b, myIds) {
+  const aFav = favoriteClientIds.has(a.id), bFav = favoriteClientIds.has(b.id);
+  if (aFav !== bFav) return aFav ? -1 : 1;
+  const aOwn = !!a.is_own_company, bOwn = !!b.is_own_company;
+  if (aOwn !== bOwn) return aOwn ? -1 : 1;
+  if (role() === 'manager') {
+    const aMine = a.team_id != null && myIds.includes(a.team_id);
+    const bMine = b.team_id != null && myIds.includes(b.team_id);
+    if (aMine !== bMine) return aMine ? -1 : 1;
+  }
+  const aSeq = a.seq_num == null ? Infinity : a.seq_num;
+  const bSeq = b.seq_num == null ? Infinity : b.seq_num;
+  return aSeq - bSeq;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1554,6 +1584,12 @@ function isClientVisibleOnTeamScopedPages(c, myIds) {
 // ─────────────────────────────────────────────────────────────
 function e(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+// RFC4180 CSV field escaping — ครอบด้วย " เฉพาะตอนค่ามี , / " / ขึ้นบรรทัดใหม่ (\n, \r) เท่านั้น
+// (ตาม spec ไม่บังคับครอบทุกช่อง) " ภายในค่าต้อง escape เป็น "" คู่ ใช้กับ exportClientCredsCSV()
+function csvEscape_(v) {
+  const s = String(v ?? '');
+  return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
 }
 function showToast(msg, type = 'success') {
   const t = document.getElementById('toast');
@@ -1685,9 +1721,16 @@ function fmtDate(d) {
   const mo = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'][dt.getMonth()];
   return `${dt.getDate()} ${mo} ${dt.getFullYear()}`;
 }
+// ไม่มีสัญลักษณ์สกุลเงิน ('฿') ต่อท้ายแล้ว (เจ้าของระบบขอเอาออก) — เช็คทั้งไฟล์แล้วว่านี่คือจุดเดียวที่มี
+// '฿' อยู่ (grep ยืนยัน 0 จุดที่เหลือหลังแก้) จุดที่เขียนคำว่า "บาท"/"บาท/เดือน" เป็นข้อความในป้ายกำกับ
+// (เช่น "ยอดรวมค่าบริการ/เดือน... บาท") ไม่ใช่สัญลักษณ์ ไม่แตะ — และไม่มีเอกสารทางการ (ใบเสร็จ/ใบกำกับ
+// ภาษี) ในไฟล์นี้ที่ต้องมีหน่วยเงินตามกฎหมาย: "ใบรับเอกสาร" (downloadDocReceiptJpg ฯลฯ) เป็นเช็คลิสต์
+// เอกสารที่ได้รับจากลูกค้า ไม่เกี่ยวกับเงินเลย ส่วนการออกใบกำกับภาษี/ใบเสร็จจริงถูกถอดออกไปแล้วพร้อม
+// FlowAccount (ดูหัวข้อ "ยกเลิก FlowAccount ทั้งหมด" ใน CLAUDE.md) ที่เหลือทั้งหมดเป็นแค่ตัวเลขแสดงผล
+// ภายในแอปเอง (แผงลูกค้า/ตารางการเงิน) จึงลบสัญลักษณ์ได้ที่จุดเดียวนี้จบ มีผลทุกที่ที่เรียก fmtMoney()
 function fmtMoney(n) {
   if (!n && n !== 0) return '—';
-  return Number(n).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' ฿';
+  return Number(n).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 function invBadge(status) {
   const cls = { draft:'draft', sent:'sent', paid:'paid', cancelled:'cancelled' }[status] || 'draft';
@@ -1783,6 +1826,7 @@ async function init() {
 
   if (isOwner()) document.getElementById('add-client-btn').classList.remove('hidden');
   if (canManageOwnCompany()) document.getElementById('add-owncompany-btn').classList.remove('hidden');
+  if (canCred()) document.getElementById('export-creds-btn').classList.remove('hidden');
   // เมนู "พนักงาน" ใช้เกณฑ์เดียวกับ "จัดการทีม" (canManageTeams, LV1-3) เพราะหน้านี้เป็นทางเดียวในระบบที่
   // สร้าง/แก้ไขทีมได้จริง (ปุ่ม "+ สร้างทีม" อยู่ในแท็บย่อย "ทีม" ของหน้านี้) — LV3 มีสิทธิ์จัดการทีมอยู่แล้ว
   // ตามนิยามเดิม จึงต้องเปิดหน้านี้ให้ถึงได้ ส่วนสิทธิ์ที่แคบกว่านั้นยังกันไว้ในหน้าเองเหมือนเดิมทุกจุด
@@ -2229,14 +2273,7 @@ function renderTracking() {
     .filter(c => (!c.start_date || c.start_date <= monthLastStr) && (!c.end_date || c.end_date >= monthFirstStr))
     .filter(c => isClientVisibleOnTeamScopedPages(c, myIds))
     .slice()
-    .sort((a, b) => {
-      if (role() === 'manager') {
-        const aMine = a.team_id != null && myIds.includes(a.team_id);
-        const bMine = b.team_id != null && myIds.includes(b.team_id);
-        if (aMine !== bMine) return aMine ? -1 : 1;
-      }
-      return favoriteClientIds.has(b.id) - favoriteClientIds.has(a.id);
-    });
+    .sort((a, b) => clientSortCompare_(a, b, myIds));
 
   let totalDone = 0, totalTodo = 0;
   let invPaid = 0, invTotal = 0;
@@ -2906,7 +2943,8 @@ function yearEndVisibleClients() {
   const yeMyIds = myTeamIds();
   return clients.filter(c => (c.is_active || c.end_date))
     .filter(c => (!c.start_date || c.start_date <= yearLastStr) && (!c.end_date || c.end_date >= yearFirstStr))
-    .filter(c => isClientVisibleOnTeamScopedPages(c, yeMyIds));
+    .filter(c => isClientVisibleOnTeamScopedPages(c, yeMyIds))
+    .sort((a, b) => clientSortCompare_(a, b, yeMyIds));
 }
 // star/#/code/ชื่อบริษัท แยกเป็น 4 คอลัมน์เหมือนหน้ารายเดือน/ลูกค้า/การเงินทุกหน้า — # ใช้
 // computeClientNo() ตรงกับหน้ารายเดือนที่เป็นตารางจริงเหมือนกัน ใช้ร่วมกันทั้ง 3 แท็บย่อยของหน้ารายปี
@@ -3053,7 +3091,8 @@ const DSL_FIELD_LABEL = { dissolution_fin_stmt_closed: 'การปิดงบ
 function yearEndDissolvedClients() {
   const yeMyIds = myTeamIds();
   return clients.filter(c => c.billing_type === 'dissolved')
-    .filter(c => isClientVisibleOnTeamScopedPages(c, yeMyIds));
+    .filter(c => isClientVisibleOnTeamScopedPages(c, yeMyIds))
+    .sort((a, b) => clientSortCompare_(a, b, yeMyIds));
 }
 function renderDissolvedSummary() {
   const visibleClients = yearEndDissolvedClients();
@@ -3076,9 +3115,7 @@ function renderDissolved() {
   renderDissolvedSummary();
 
   let rows = '';
-  visibleClients.slice()
-    .sort((a, b) => favoriteClientIds.has(b.id) - favoriteClientIds.has(a.id))
-    .forEach(c => {
+  visibleClients.forEach(c => {
       const pct = calcPct(c, DSL_FIELDS);
       const isFav = favoriteClientIds.has(c.id);
       rows += `<tr class="border-b border-[var(--border)]">
@@ -3267,7 +3304,10 @@ function clientRowHtml(c, editable) {
     </div>`;
 }
 
-function renderClientList() {
+// รายชื่อลูกค้าของหน้า "ลูกค้า" (ปัจจุบัน) ตามตัวกรองประเภท/คำค้นหาที่ตั้งอยู่ ณ ขณะนี้ — แยกออกมาจาก
+// renderClientList() เพื่อให้ exportClientCredsCSV() (ปุ่ม "ส่งออกรหัสผ่าน") ใช้ชุดข้อมูล "ที่แสดงอยู่
+// จริง" สูตรเดียวกันเป๊ะ ไม่คำนวณ filtered แยกอีกชุดที่อาจเพี้ยนไปจากตารางที่เห็นจริง
+function visibleCustomerList_() {
   const q = (document.getElementById('client-search')?.value || '').toLowerCase();
   // base = full active-client set (matches the stat cards above the list, which must NOT
   // flicker while typing a search query — they always summarize this unfiltered set, not
@@ -3284,6 +3324,11 @@ function renderClientList() {
   filtered = filtered.slice().sort((a, b) =>
     (favoriteClientIds.has(b.id) - favoriteClientIds.has(a.id)) ||
     computeClientNo(a.billing_type, a.seq_num).localeCompare(computeClientNo(b.billing_type, b.seq_num)));
+  return { base, filtered };
+}
+
+function renderClientList() {
+  const { base, filtered } = visibleCustomerList_();
 
   const container = document.getElementById('client-list');
   if (!container) return;
@@ -3294,6 +3339,47 @@ function renderClientList() {
   document.getElementById('cl-total').textContent = base.length;
   document.getElementById('cl-vat').textContent = base.filter(c => c.has_vat !== false).length;
   document.getElementById('cl-sso').textContent = base.filter(c => c.has_sso !== false).length;
+}
+
+// ส่งออกรหัสผ่าน (RD e-Filing / DBD e-Filing / SSO — ช่องเดียวกับที่ renderPanelCreds()/credMap เก็บอยู่)
+// ของลูกค้าทุกรายที่ "แสดงอยู่จริง" ในหน้า "ลูกค้า" ตอนนี้ (ตัวกรองประเภท/คำค้นหาปัจจุบัน ผ่าน
+// visibleCustomerList_() สูตรเดียวกับตาราง) เป็นไฟล์ CSV — ปุ่มนี้ (export-creds-btn) แสดง/ทำงานเฉพาะ
+// canCred() เกณฑ์เดียวกับแท็บ "รหัสผ่าน" ทุกประการ (ดู renderPanelCreds ด่านแรก) ไม่ได้เปิดสิทธิ์เพิ่ม
+// ไม่ล็อกข้อความรหัสผ่านลง crm_activity_log เด็ดขาด — log แค่จำนวนราย ข้อมูลอ่อนไหวที่ออกจากระบบ
+// ต้องมีร่องรอยตรวจสอบได้ว่าใครส่งออกตอนไหน แต่ไม่ใช่ทำสำเนารหัสผ่านไปฝากไว้อีกที่
+async function exportClientCredsCSV() {
+  if (!canCred()) return;
+  const { filtered } = visibleCustomerList_();
+  if (!filtered.length) { showToast('ไม่มีลูกค้าที่จะส่งออก', 'error'); return; }
+
+  if (!Object.keys(credMap).length) await loadCreds();
+
+  const header = ['#','CODE','ชื่อบริษัท','RD Username','RD Password','DBD Username','DBD Password','SSO Username','SSO Password'];
+  const lines = [header.map(csvEscape_).join(',')];
+  filtered.forEach(c => {
+    const cred = credMap[c.id] || {};
+    lines.push([
+      computeClientNo(c.billing_type, c.seq_num),
+      c.code,
+      c.thai_name,
+      cred.rd_username,  cred.rd_password,
+      cred.dbd_username, cred.dbd_password,
+      cred.sso_username, cred.sso_password,
+    ].map(csvEscape_).join(','));
+  });
+
+  // \ufeff = UTF-8 BOM นำหน้า — ไม่มีอันนี้ Excel (โดยเฉพาะบน Windows) จะเดา encoding ผิดแล้วภาษาไทย
+  // เพี้ยนเป็นตัวอักษรมั่ว แม้ไฟล์จะเป็น UTF-8 ที่ถูกต้องแล้วก็ตาม
+  const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const dl = document.createElement('a');
+  dl.href = url;
+  dl.download = `crm-client-passwords-${new Date().toISOString().slice(0,10)}.csv`;
+  dl.click();
+  URL.revokeObjectURL(url);
+
+  await logActivity('client_creds_export', 'client_bulk', filtered.length, `ส่งออกรหัสผ่านลูกค้า ${filtered.length} ราย`);
+  showToast(`ส่งออกรหัสผ่าน ${filtered.length} ราย สำเร็จ`);
 }
 
 async function renderOldClients() {
@@ -4036,9 +4122,15 @@ function openEditFee(clientId) {
   if (!c) return;
   const today = new Date();
   const resolved = resolveEffectiveFee(c, today.getFullYear(), today.getMonth() + 1, billingContractsByClient[c.id]);
-  // วันที่ตามเวลาเครื่อง (yeYmdStr) ไม่ใช่ toISOString() ที่แปลงเป็น UTC ก่อน — ไทยเป็น UTC+7 ช่วง 00:00-06:59
-  // ตามเวลาไทย toISOString() จะได้ "เมื่อวาน" ทำให้ค่าบริการใหม่ย้อนไปมีผลตั้งแต่เดือนก่อนหน้าโดยไม่ตั้งใจ
-  const todayIso = yeYmdStr(today.getFullYear(), today.getMonth() + 1, today.getDate());
+  // ค่าบริการเป็นรายเดือน — คนใช้งานคิดเป็น "เริ่มคิดราคาใหม่ตั้งแต่เดือนไหน" ไม่ใช่ "วันที่เท่าไร" จึงใช้
+  // <input type="month"> (ให้ค่า "YYYY-MM" เป็น ISO 8601 เสมอ ไม่ขึ้นกับ locale ของเบราว์เซอร์ — ตรงตาม
+  // ที่ทั้งแอปใช้ปี ค.ศ. อยู่แล้ว) แทนตัวเลือกวันแบบเดิม (dateFieldHtml) ค่าเริ่มต้น = เดือนปัจจุบันตาม
+  // เวลาเครื่อง (getFullYear()/getMonth() ตรงๆ ไม่ผ่าน toISOString() ที่แปลงเป็น UTC ก่อน — ไทยเป็น UTC+7
+  // ช่วง 00:00-06:59 ตามเวลาไทย toISOString() จะได้ "เมื่อวาน" ผิดเดือนได้) เลือกย้อนหลัง/ล่วงหน้าได้ปกติ
+  // ไม่จำกัดแค่เดือนปัจจุบันขึ้นไป (ปรับราคาย้อนหลังเป็นเรื่องปกติของงานจริง) — ตัวฟอร์มเลือกแค่ "เดือน" แต่
+  // saveEditFee() ด้านล่างแปลงเป็นวันที่ 1 ของเดือนนั้นก่อนส่งเข้า applyFeeChangeCore_() ซึ่งไม่ถูกแตะเลย
+  // (logic ปิดสัญญาเดิม/เปิดสัญญาใหม่บน crm_billing_contracts เหมือนเดิมทุกจุด)
+  const curMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
   openModal(`
     <h3 class="text-base font-bold text-[var(--ink)] mb-1">เปลี่ยนค่าบริการ</h3>
     <p class="text-xs text-[var(--ink-muted)] mb-4">${e(c.thai_name)} · ปัจจุบัน ${fmtMoney(resolved.fee_amount)}/เดือน</p>
@@ -4048,10 +4140,11 @@ function openEditFee(clientId) {
         <input id="ef-amount" type="number" min="0" step="100" value="${resolved.fee_amount}"
           class="w-full px-3 py-2 rounded-lg border border-[var(--border)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]">
       </div>
-      ${dateFieldHtml({
-        label: 'วันที่มีผล', textId: 'ef-date-disp', hiddenId: 'ef-date', isoVal: todayIso,
-        cls: 'w-full px-3 py-2 rounded-lg border border-[var(--border)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]',
-      })}
+      <div>
+        <div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide mb-1">มีผลตั้งแต่เดือน</div>
+        <input id="ef-month" type="month" value="${curMonthStr}"
+          class="w-full px-3 py-2 rounded-lg border border-[var(--border)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]">
+      </div>
       <div>
         <div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide mb-1">หมายเหตุ (ไม่บังคับ)</div>
         <input id="ef-note" type="text" placeholder="เช่น ปรับราคาประจำปี"
@@ -4067,11 +4160,15 @@ function openEditFee(clientId) {
 
 async function saveEditFee(clientId) {
   const amount = parseFloat(document.getElementById('ef-amount')?.value);
-  const effDate = (document.getElementById('ef-date')?.value || '').trim();
+  // ef-month มาจาก <input type="month"> ค่า "YYYY-MM" เสมอ — แปลงเป็นวันที่ 1 ของเดือนนั้นก่อนส่งเข้า
+  // applyFeeChangeCore_() (resolveEffectiveFee() เทียบช่วงเวลาเป็นราย "เดือน" อยู่แล้ว ดู monthFirstStr/
+  // monthLastStr วันที่ 1 จึงตรงความหมาย "เริ่มมีผลตั้งแต่เดือนนี้" ที่สุด)
+  const effMonth = (document.getElementById('ef-month')?.value || '').trim();
+  const effDate = effMonth ? `${effMonth}-01` : '';
   const note = (document.getElementById('ef-note')?.value || '').trim();
   const err = document.getElementById('ef-err');
   if (!(amount >= 0)) { err.textContent = 'กรุณากรอกค่าบริการใหม่'; err.classList.remove('hidden'); return; }
-  if (!effDate) { err.textContent = 'กรุณาระบุวันที่มีผล'; err.classList.remove('hidden'); return; }
+  if (!effDate) { err.textContent = 'กรุณาระบุเดือนที่มีผล'; err.classList.remove('hidden'); return; }
   err.classList.add('hidden');
 
   const ok = await applyFeeChangeCore_(clientId, amount, effDate, note);
@@ -4442,19 +4539,21 @@ async function confirmMarkPaid(clientId) {
 }
 
 // ── Creds Tab ──
-function maskCredVal(v) { return v ? '•'.repeat(Math.min(v.length, 20)) : '—'; }
-
-function toggleCredView(btn) {
-  const span = btn.previousElementSibling;
-  const masked = span.dataset.masked !== 'false';
-  span.textContent = masked ? (span.dataset.val || '—') : maskCredVal(span.dataset.val);
-  span.dataset.masked = masked ? 'false' : 'true';
-}
-
-function copyCredValue(span) {
-  const val = span.dataset.val;
+// รหัสผ่านลูกค้า (RD/DBD/SSO ฯลฯ) แสดงเป็นตัวอักษรจริงตรงๆ ไม่ปิดบัง (ไม่มี maskCredVal()/ปุ่มรูปตา
+// อีกต่อไป) — เพราะพนักงานต้องเอาไปใช้ล็อกอินเว็บสรรพากร/DBD/ประกันสังคมจริง การซ่อนไว้แล้วต้องกดดูก่อน
+// เป็นแค่ความยุ่งยากเพิ่มโดยไม่ได้ป้องกันอะไร (ใครเข้าแท็บนี้ได้ผ่าน canCred() ก็เห็นค่าได้อยู่แล้วเหมือนเดิม
+// ไม่ได้เปิดสิทธิ์ให้ใครเห็นเพิ่มจากเดิม) canCred() ยังเป็นด่านเดียวที่ตัดสินว่าใครเข้าแท็บนี้ได้ ไม่แตะ
+function copyCredValue(el) {
+  const val = el.dataset.val;
   if (!val) return;
   navigator.clipboard.writeText(val).then(() => showToast('คัดลอกแล้ว'));
+}
+// ทำให้เห็นชัดว่าคลิกแล้วคัดลอกได้ (ไอคอนคัดลอก + tooltip "คลิกเพื่อคัดลอก" ที่ตัว container +
+// toast ยืนยันจาก copyCredValue() ด้านบนหลังคัดลอกสำเร็จ) ใช้ร่วมกันทั้ง credFieldView ด้านล่าง และ
+// รายการรหัสผ่านเพิ่มเติมใน loadCredItems() กันเขียนมาร์กอัปซ้ำ
+function credCopyIconHtml_(val) {
+  return `<span class="flex-1 min-w-0 truncate">${val ? e(val) : '—'}</span>
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="flex-shrink-0 opacity-60"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
 }
 
 function renderPanelCreds() {
@@ -4480,25 +4579,15 @@ function renderPanelCreds() {
   const credFieldEdit = (label, key, val) => `
     <div>
       <div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide mb-1">${label}</div>
-      <div class="relative">
-        <input type="password" value="${e(val)}" data-key="${key}"
-          class="editable-field w-full text-sm text-[var(--ink)] pr-8" oninput="markDirty()">
-        <button type="button" onclick="togglePw(this)" class="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--ink-muted)] hover:text-[var(--ink)]">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-        </button>
-      </div>
+      <input type="text" value="${e(val)}" data-key="${key}"
+        class="editable-field w-full text-sm" oninput="markDirty()">
     </div>`;
 
   const credFieldView = (label, key, val) => `
     <div>
       <div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide mb-1">${label}</div>
-      <div class="flex items-center gap-1.5">
-        <span class="cred-view-val flex-1 px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] text-sm text-[var(--ink)] font-mono truncate cursor-pointer hover:bg-[var(--surface-2)] hover:border-[var(--border)] transition-colors"
-          title="คลิกเพื่อคัดลอก" data-val="${e(val)}" data-masked="true" onclick="copyCredValue(this)">${maskCredVal(val)}</span>
-        <button type="button" onclick="toggleCredView(this)" class="text-[var(--ink-muted)] hover:text-[var(--ink)] flex-shrink-0 p-1.5">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-        </button>
-      </div>
+      <div class="cred-view-val flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] text-sm text-[var(--ink)] font-mono cursor-pointer hover:border-[var(--accent-soft)] transition-colors"
+        title="คลิกเพื่อคัดลอก" data-val="${e(val)}" onclick="copyCredValue(this)">${credCopyIconHtml_(val)}</div>
     </div>`;
 
   const credField = editable ? credFieldEdit : credFieldView;
@@ -4561,8 +4650,8 @@ async function loadCredItems(clientId) {
           <div><div class="text-[10px] text-[var(--ink-muted)] uppercase mb-0.5">Username</div><div class="text-sm text-[var(--ink)]">${e(item.username) || '—'}</div></div>
           <div><div class="text-[10px] text-[var(--ink-muted)] uppercase mb-0.5">Password</div><div class="text-sm text-[var(--ink)] font-mono">${e(item.password) || '—'}</div></div>
         ` : `
-          <div><div class="text-[10px] text-[var(--ink-muted)] uppercase mb-0.5">Username</div><span class="cred-view-val block px-2 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] text-sm text-[var(--ink)] font-mono truncate cursor-pointer hover:bg-[var(--surface-2)]" title="คลิกเพื่อคัดลอก" data-val="${e(item.username)}" data-masked="true" onclick="copyCredValue(this)">${maskCredVal(item.username)}</span></div>
-          <div><div class="text-[10px] text-[var(--ink-muted)] uppercase mb-0.5">Password</div><span class="cred-view-val block px-2 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] text-sm text-[var(--ink)] font-mono truncate cursor-pointer hover:bg-[var(--surface-2)]" title="คลิกเพื่อคัดลอก" data-val="${e(item.password)}" data-masked="true" onclick="copyCredValue(this)">${maskCredVal(item.password)}</span></div>
+          <div><div class="text-[10px] text-[var(--ink-muted)] uppercase mb-0.5">Username</div><div class="cred-view-val flex items-center gap-1 px-2 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] text-sm text-[var(--ink)] font-mono cursor-pointer hover:border-[var(--accent-soft)] transition-colors" title="คลิกเพื่อคัดลอก" data-val="${e(item.username)}" onclick="copyCredValue(this)">${credCopyIconHtml_(item.username)}</div></div>
+          <div><div class="text-[10px] text-[var(--ink-muted)] uppercase mb-0.5">Password</div><div class="cred-view-val flex items-center gap-1 px-2 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] text-sm text-[var(--ink)] font-mono cursor-pointer hover:border-[var(--accent-soft)] transition-colors" title="คลิกเพื่อคัดลอก" data-val="${e(item.password)}" onclick="copyCredValue(this)">${credCopyIconHtml_(item.password)}</div></div>
         `}
       </div>
     </div>`).join('');
@@ -4886,10 +4975,6 @@ async function renderPanelHistory() {
     monthCards;
 }
 
-function togglePw(btn) {
-  const input = btn.previousElementSibling;
-  input.type = input.type === 'password' ? 'text' : 'password';
-}
 function markDirty() {
   if (!panelDirty) {
     panelDirty = true;
@@ -6367,6 +6452,7 @@ const ACTIVITY_ACTION_LABEL = {
   client_change_edit: 'แก้ไขการเปลี่ยนแปลง',
   client_change_delete: 'ลบการเปลี่ยนแปลง',
   client_creds_update: 'แก้ไขรหัสผ่านเข้าระบบ',
+  client_creds_export: 'ส่งออกรหัสผ่านลูกค้า',
   client_cred_item_add: 'เพิ่มรหัสผ่านลูกค้า',
   client_cred_item_edit: 'แก้ไขรหัสผ่านลูกค้า',
   client_cred_item_delete: 'ลบรหัสผ่านลูกค้า',
