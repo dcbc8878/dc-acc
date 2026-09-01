@@ -3579,7 +3579,7 @@ function visibleCustomerList_() {
     (c.tax_number || '').includes(q));
   filtered = filtered.slice().sort((a, b) =>
     (favoriteClientIds.has(b.id) - favoriteClientIds.has(a.id)) ||
-    computeClientNo(a.billing_type, a.seq_num).localeCompare(computeClientNo(b.billing_type, b.seq_num)));
+    seqNumCompare_(a, b));
   return { base, filtered };
 }
 
@@ -3630,7 +3630,10 @@ async function exportClientCredsCSV() {
   const url = URL.createObjectURL(blob);
   const dl = document.createElement('a');
   dl.href = url;
-  dl.download = `crm-client-passwords-${new Date().toISOString().slice(0,10)}.csv`;
+  // todayYmd_() ไม่ใช่ new Date().toISOString().slice(0,10) — ตัวหลังตัดเวลาออกจากค่า UTC ก่อนจะแปลงกลับ
+  // เป็นเวลาไทย ช่วง 00:00-06:59 น. ตามเวลาไทยจะได้ชื่อไฟล์เป็นวันที่ "เมื่อวาน" ผิด (บั๊กคลาสเดียวกับที่ห้าม
+  // ไว้ทั้งไฟล์ที่ paymentDateToIso_/yeYmdStr แม้ตรงนี้จะกระทบแค่ชื่อไฟล์ ไม่กระทบข้อมูลจริงก็ตาม)
+  dl.download = `crm-client-passwords-${todayYmd_()}.csv`;
   dl.click();
   URL.revokeObjectURL(url);
 
@@ -3656,7 +3659,7 @@ async function renderOldClients() {
     (c.tax_number || '').includes(q));
   filtered = filtered.slice().sort((a, b) =>
     (favoriteClientIds.has(b.id) - favoriteClientIds.has(a.id)) ||
-    computeClientNo(a.billing_type, a.seq_num).localeCompare(computeClientNo(b.billing_type, b.seq_num)));
+    seqNumCompare_(a, b));
 
   const container = document.getElementById('old-client-list');
   if (!container) return;
@@ -3706,6 +3709,16 @@ function computeClientNo(billingType, seqNum) {
   const prefix = BILLING_TYPE_PREFIX[billingType] || '';
   if (!prefix || !seqNum) return '';
   return prefix + String(seqNum).padStart(3, '0');
+}
+// เทียบลำดับลูกค้า 2 ราย ด้วย seq_num แบบตัวเลขตรงๆ (ไม่มี seq_num ไปท้ายสุดเสมอ) — ใช้แทน
+// computeClientNo(...).localeCompare(computeClientNo(...)) ที่เคยเขียนผิดไว้หลายจุด (ลูกค้า/ลูกค้าเก่า/
+// การเก็บเงิน/ค่าบริการ/มอบหมายงาน) การเทียบข้อความจะเอาตัวอักษรนำหน้า M/T/Y/Z มาจัดกลุ่มแยกกันก่อน (M
+// ทั้งหมดมาก่อน T/Y/Z) ทั้งที่ seq_num เป็นลำดับเดียวรวมทุกประเภท (ดูคอมเมนต์ที่ clientSortCompare_/
+// nextClientNo ด้านบน) ทำให้ตารางไม่เรียงตามลำดับรับลูกค้าจริงเหมือนหน้ารายเดือน/รายปี
+function seqNumCompare_(a, b) {
+  const aSeq = a.seq_num == null ? Infinity : a.seq_num;
+  const bSeq = b.seq_num == null ? Infinity : b.seq_num;
+  return aSeq - bSeq;
 }
 function syncClientNo() {
   const bt = document.getElementById('no-billing-type').value;
@@ -4099,9 +4112,19 @@ async function renderPanelChanges() {
   if (!el) return;
   el.innerHTML = '<div class="text-[var(--ink-muted)] text-sm py-4">กำลังโหลด…</div>';
 
-  const { data } = await sb.from('crm_client_change_log')
+  // LV4-5 ไม่มีสิทธิ์ดูข้อมูลการเงินเลย (canSeeFinance) — RLS ของ crm_client_change_log กรองแถว
+  // change_type IN ('fee','type') ให้เหลือ LV1-3 อยู่แล้วที่ฐานข้อมูล (ตรวจกับ production จริงแล้ว:
+  // policy crm_ccl_sel — junior/parttime มองไม่เห็นแถวการเงินเลย) การกรองที่ query ตรงนี้จึงเป็น
+  // ชั้นที่สอง (defense in depth) ไม่ใช่ชั้นเดียวที่กันอยู่ ปุ่มเปิด modal นี้ (openClientChanges) ถูกซ่อนจาก LV4-5 ในหน้ารายชื่อลูกค้าอยู่
+  // แล้วก็จริง (ดู clientRowHtml — editable=canEditBasic()) แต่ฟังก์ชันนี้ยังเรียกตรงได้จาก console/ที่อื่น
+  // อยู่ดี ไม่ตัดที่ query จะพาแถว fee/type (new_value เป็นยอดเงิน/รหัสลูกค้าจริง) ไปถึงเบราว์เซอร์ของทุก
+  // ระดับ (รวม LV4-5) แม้ JS จะกรองก่อนแสดงผลก็ตาม — กรองที่ query เลยตัดปัญหานี้ที่ต้นทาง (แพทเทิร์น
+  // เดียวกับ query ของแท็บ "ประวัติงาน" ที่ renderPanelHistory ด้านล่าง)
+  let changeQuery = sb.from('crm_client_change_log')
     .select('*').eq('client_id', panelClientId)
     .order('change_date', { ascending: false }).order('created_at', { ascending: false });
+  if (!canSeeFinance()) changeQuery = changeQuery.not('change_type', 'in', '(fee,type)');
+  const { data } = await changeQuery;
   panelChangesCache = data || [];
 
   const CHANGE_TYPE_LABEL = {};
@@ -5189,8 +5212,8 @@ async function renderPanelHistory() {
     // .eq('change_type','name') ตั้งใจใส่ — แท็บนี้ ("ประวัติงาน") ใช้แค่ change_type==='name' เท่านั้น
     // (ดู nameChanges ด้านล่าง) แต่ตารางนี้เก็บ change_type อื่นด้วย รวมถึง 'fee'/'type' ที่ new_value เป็น
     // ยอดเงิน/รหัสลูกค้าจริง — ต่างจาก crm_activity_log ที่ RLS กรองแถวการเงินให้เหลือ LV1-3 เองแล้ว
-    // (crm_sc_sel ฯลฯ) crm_client_change_log ไม่มี policy กรองตาม change_type เลย (SELECT เปิดให้ staff ที่
-    // ยัง active ทุกระดับ) แท็บนี้เองก็เปิดให้ทุกระดับเข้าถึงได้ (ไม่ได้ซ่อนด้วย isLimited เหมือนกันทุกจุด —
+    // (crm_sc_sel ฯลฯ) crm_client_change_log ก็มี policy กรอง change_type ('fee','type') ให้เหลือ
+    // LV1-3 เหมือนกัน (ตรวจกับ production จริงแล้ว) การกรองที่ query จึงเป็นชั้นที่สอง แท็บนี้เองก็เปิดให้ทุกระดับเข้าถึงได้ (ไม่ได้ซ่อนด้วย isLimited เหมือนกันทุกจุด —
     // ดู openPanel) ถ้าไม่กรองที่นี่ query จะพา row การเงินทั้งก้อนไปถึงเบราว์เซอร์ของทุกระดับ (รวม LV4-5)
     // แม้ JS จะกรองอีกทีก่อนแสดงผลก็ตาม — กรองที่ query เลยตัดปัญหานี้ที่ต้นทาง
     sb.from('crm_client_change_log')
@@ -5708,7 +5731,7 @@ function financeCollectionClients() {
     .slice()
     .sort((a, b) =>
       (favoriteClientIds.has(b.id) - favoriteClientIds.has(a.id)) ||
-      computeClientNo(a.billing_type, a.seq_num).localeCompare(computeClientNo(b.billing_type, b.seq_num)));
+      seqNumCompare_(a, b));
 }
 // เซลล์สถานะ: คลิกเดียวสลับ "ยังไม่เก็บ" ↔ "✓ เก็บแล้ว <ยอด>" (เหมือน checklist รายเดือน ไม่มี modal/ฟอร์ม —
 // ดู toggleFinCollected ด้านล่าง) เฉพาะ canEdit() เท่านั้นที่คลิกได้ คนอื่นเห็นเป็นป้ายสถานะเฉยๆ
@@ -5970,8 +5993,7 @@ function renderFinanceFees() {
     (c.thai_name||'').toLowerCase().includes(q) ||
     (c.eng_name || '').toLowerCase().includes(q) ||
     (c.tax_number || '').includes(q));
-  filtered = filtered.slice().sort((a, b) =>
-    computeClientNo(a.billing_type, a.seq_num).localeCompare(computeClientNo(b.billing_type, b.seq_num)));
+  filtered = filtered.slice().sort((a, b) => seqNumCompare_(a, b));
 
   const container = document.getElementById('fin-fee-list');
   if (!container) return;
@@ -6331,15 +6353,27 @@ async function saveTeam(teamId) {
     savedTeamId = data.id;
   }
 
-  // เดิมไม่เช็ค error ทั้ง delete และ insert ตรงนี้ — ถ้า delete สำเร็จแต่ insert ล้มเหลว (เช่นเน็ตหลุดพอดี
-  // ระหว่างสองคำสั่ง) ทีมจะเหลือสมาชิก 0 คนเงียบๆ ทั้งที่ผู้ใช้เพิ่งติ๊กเลือกไว้ แล้ว toast ยังขึ้น "บันทึกทีม
-  // แล้ว" ทับเหมือนสำเร็จปกติ — เช็ค error แล้วโชว์ที่ #team-err แทน (แพทเทิร์นเดียวกับ 2 จุดข้างบนในฟังก์ชัน
-  // นี้เป๊ะ) ทีม/ชื่อ/หัวหน้าทีมที่บันทึกไปแล้วก่อนหน้านี้ยังอยู่ครบ ไม่ต้องกดใหม่ทั้งหมด แค่กดบันทึกซ้ำอีกครั้ง
-  const { error: delMemErr } = await sb.from('org_team_members').delete().eq('team_id', savedTeamId);
-  if (delMemErr) { errEl.textContent = 'บันทึกรายชื่อสมาชิกไม่สำเร็จ: ' + delMemErr.message; errEl.classList.remove('hidden'); return; }
-  if (memberIds.length) {
-    const { error: insMemErr } = await sb.from('org_team_members').insert(memberIds.map(staff_id => ({ team_id: savedTeamId, staff_id })));
+  // เดิม delete ทั้งทีมแล้ว insert ใหม่ทั้งชุด (ก่อนหน้านี้แค่เพิ่มการเช็ค error กันโชว์ "สำเร็จ" ทับตอน
+  // ล้มเหลวเงียบๆ แต่ยังไม่ได้แก้ตัวรูปแบบ delete-all-then-insert เอง) — ฟอร์มนี้มีช่องติ๊กให้เห็นเฉพาะพนักงาน
+  // ที่ยัง active เท่านั้น (memberChecks วนแค่ activeStaff) ถ้าทีมมีสมาชิกที่ลาออกไปแล้วอยู่ในแถว
+  // org_team_members เดิม จะไม่มีช่องติ๊กให้เห็นเลย พอกดบันทึกด้วยเรื่องอื่น (เช่นแค่เปลี่ยนชื่อทีม/หัวหน้าทีม)
+  // แถวสมาชิกที่ลาออกไปแล้วจะถูกลบทิ้งเงียบๆ ไปด้วยทุกครั้ง ทั้งที่ผู้ใช้ไม่เคยเห็น/ไม่เคยแตะชื่อนั้นเลย —
+  // บั๊กคลาสเดียวกับที่พิสูจน์แล้วว่าเกิดจริงกับ openAssigneeModal/saveAssigneeModal ด้านบน (ดูคอมเมนต์ที่
+  // legacyStaff/renderedIds ตรงนั้น) เปลี่ยนมาใช้แพทเทิร์นเดียวกันเป๊ะ: เทียบส่วนต่างเฉพาะพนักงานที่มีช่องติ๊ก
+  // จริงในฟอร์มนี้ (renderedMemberIds) แล้ว insert เฉพาะคนที่เพิ่มก่อน ลบเฉพาะคนที่เอาออกทีหลัง — คนที่ลาออก
+  // ไปแล้ว (ไม่มีช่องติ๊กให้เห็น) จะไม่ถูกแตะเลยไม่ว่าจะกดบันทึกกี่ครั้งก็ตาม
+  const beforeMemberIds = new Set(teamId ? (teamMembersMap[teamId] || []) : []);
+  const checkedMemberIds = new Set(memberIds);
+  const renderedMemberIds = [...document.querySelectorAll('.team-member-chk')].map(el => el.value);
+  const toAddMemberIds = renderedMemberIds.filter(id => checkedMemberIds.has(id) && !beforeMemberIds.has(id));
+  const toRemoveMemberIds = renderedMemberIds.filter(id => !checkedMemberIds.has(id) && beforeMemberIds.has(id));
+  if (toAddMemberIds.length) {
+    const { error: insMemErr } = await sb.from('org_team_members').insert(toAddMemberIds.map(staff_id => ({ team_id: savedTeamId, staff_id })));
     if (insMemErr) { errEl.textContent = 'บันทึกรายชื่อสมาชิกไม่สำเร็จ: ' + insMemErr.message; errEl.classList.remove('hidden'); return; }
+  }
+  if (toRemoveMemberIds.length) {
+    const { error: delMemErr } = await sb.from('org_team_members').delete().eq('team_id', savedTeamId).in('staff_id', toRemoveMemberIds);
+    if (delMemErr) { errEl.textContent = 'บันทึกรายชื่อสมาชิกไม่สำเร็จ: ' + delMemErr.message; errEl.classList.remove('hidden'); return; }
   }
 
   await loadTeams();
@@ -6786,7 +6820,7 @@ function renderAssignPage() {
     (c.code || '').toLowerCase().includes(q) ||
     (c.thai_name || '').toLowerCase().includes(q) ||
     (c.eng_name || '').toLowerCase().includes(q));
-  rows = rows.slice().sort((a, b) => computeClientNo(a.billing_type, a.seq_num).localeCompare(computeClientNo(b.billing_type, b.seq_num)));
+  rows = rows.slice().sort((a, b) => seqNumCompare_(a, b));
   const el = document.getElementById('assign-list');
   if (!el) return;
   el.innerHTML = rows.length ? rows.map(assignRowHtml).join('') : '<div class="text-[var(--ink-muted)] text-sm py-8 text-center">ไม่พบลูกค้า</div>';

@@ -719,7 +719,7 @@ function openTeamModal(teamId) {
         </div>
       </div>
       <div id="team-err" style="display:none;color:var(--danger-text);font-size:12px;margin-top:8px"></div>
-      <button class="btn-blue" style="width:100%;margin-top:14px" onclick="saveTeam(${t ? t.id : 'null'})">บันทึก</button>
+      <button id="team-save-btn" class="btn-blue" style="width:100%;margin-top:14px" onclick="saveTeam(${t ? t.id : 'null'})">บันทึก</button>
       <div style="display:flex;justify-content:space-between;margin-top:10px">
         ${t ? `<button class="btn-ghost" style="color:var(--danger-text)" onclick="deleteTeam(${t.id})">ลบทีม</button>` : '<span></span>'}
         <button class="btn-ghost" onclick="closeGenModal()">ปิด</button>
@@ -735,15 +735,25 @@ async function saveTeam(teamId) {
   errEl.style.display = 'none';
   if (!name) { errEl.textContent = 'กรุณากรอกชื่อทีม'; errEl.style.display = 'block'; return; }
 
+  // ── กันดับเบิลคลิก/แตะซ้ำ (เจอบั๊กจริง: ปุ่มนี้เป็นปุ่มเดียวในไฟล์นี้ที่ไม่มีการ disable ระหว่างบันทึก
+  // ต่างจาก saveEmployee/submitEmployeeRequest/approveRequest ที่ทำแบบนี้อยู่แล้วทุกจุด — ถ้าไม่กัน ตอน
+  // "สร้างทีมใหม่" (teamId เป็น null) การกดซ้ำเร็วๆ จะยิง org_teams.insert() 2 ครั้งจริง ได้ทีมซ้ำ 2 แถว
+  // พิสูจน์แล้วด้วย negative control ก่อนแก้) ต้อง disable ทันทีก่อนงานอะไรทั้งสิ้น (แม้แต่ก่อน validate
+  // ชื่อทีม) แล้ว enable กลับทุกจุดที่ return ก่อนถึงบรรทัดสุดท้าย (ปิด modal อยู่แล้วตอนสำเร็จ ไม่ต้อง
+  // enable กลับ เพราะ openGenModal() รอบถัดไปจะสร้างปุ่มใหม่ทับของเดิมอยู่แล้ว) ──
+  const saveBtn = document.getElementById('team-save-btn');
+  if (saveBtn) { if (saveBtn.disabled) return; saveBtn.disabled = true; saveBtn.textContent = 'กำลังบันทึก…'; }
+  function reEnable() { if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'บันทึก'; } }
+
   let savedTeamId = teamId;
   if (teamId) {
     const { error } = await sb.from('org_teams').update({ name, lead_id: leadId }).eq('id', teamId);
-    if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; return; }
+    if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; reEnable(); return; }
   } else {
     // ทุกพนักงานที่ active มองเห็นทีมทุกทีมได้อยู่แล้ว (org_teams SELECT ไม่จำกัดตามสมาชิก) จึงอ่านค่า
     // id ที่เพิ่ง insert กลับมาได้อย่างปลอดภัย (ต่างจากกรณีอื่นในโปรเจกต์นี้ที่ RLS กรอง RETURNING ทิ้ง)
     const { data, error } = await sb.from('org_teams').insert({ name, lead_id: leadId }).select().single();
-    if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; return; }
+    if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; reEnable(); return; }
     savedTeamId = data.id;
   }
 
@@ -757,11 +767,11 @@ async function saveTeam(teamId) {
   const toRemoveIds = oldMemberIds.filter(id => !memberIds.includes(id));
   if (toAddIds.length) {
     const { error: insErr } = await sb.from('org_team_members').insert(toAddIds.map(staff_id => ({ team_id: savedTeamId, staff_id })));
-    if (insErr) { errEl.textContent = insErr.message; errEl.style.display = 'block'; return; }
+    if (insErr) { errEl.textContent = insErr.message; errEl.style.display = 'block'; reEnable(); return; }
   }
   if (toRemoveIds.length) {
     const { error: delErr } = await sb.from('org_team_members').delete().eq('team_id', savedTeamId).in('staff_id', toRemoveIds);
-    if (delErr) { errEl.textContent = delErr.message; errEl.style.display = 'block'; return; }
+    if (delErr) { errEl.textContent = delErr.message; errEl.style.display = 'block'; reEnable(); return; }
   }
 
   await loadTeams();

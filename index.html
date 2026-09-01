@@ -751,6 +751,12 @@
 
   const loginScreen = document.getElementById('loginScreen');
   const appEl = document.getElementById('app');
+  // ประกาศไว้ตรงนี้ (ไม่ใช่ลงไปอยู่กับโค้ดฟอร์มสมัครสมาชิกด้านล่าง) เพราะ showApp()/showLogin()
+  // ซึ่งอยู่เหนือบล็อกนั้นหลายร้อยบรรทัด ต้องใช้ตัวนี้ซ่อนหน้าสมัครสมาชิก — เป็น const จึงอยู่ใน
+  // temporal dead zone จนกว่าบรรทัดประกาศจะรัน ถ้าวันหลังมีใครเพิ่มเส้นทางที่เรียก showLogin()
+  // แบบ synchronous ก่อนสคริปต์รันถึงบรรทัดนั้น จะได้ ReferenceError ทั้งหน้าเว็บทันที
+  // (ตอนนี้รอดเพราะ checkSession() await getSession() ก่อนเสมอ — พึ่งจังหวะแบบนั้นเปราะเกินไป)
+  const signupScreenEl = document.getElementById('signupScreen');
   const loginForm = document.getElementById('loginForm');
   const loginError = document.getElementById('loginError');
   const loginBtn = document.getElementById('loginBtn');
@@ -816,11 +822,24 @@
     }
   }
   let signedIn = false;
-  function showApp() { signedIn = true; loginScreen.style.display = 'none'; appEl.style.display = 'grid'; loadIframes(); loadStaffName(); }
+  // Both transitions also force-hide #signupScreen (a sibling of #loginScreen,
+  // not nested inside it -- so neither showLogin() nor showApp() touched it
+  // otherwise). Without this, a slow checkSession()/onAuthStateChange
+  // resolution landing *after* the user has already clicked "สมัครสมาชิก"
+  // (showSignupScreen() only flips #loginScreen/#signupScreen, it never
+  // touches #app) leaves #signupScreen sitting at display:flex while
+  // showApp()/showLogin() independently flips #app/#loginScreen to visible
+  // too -- both screens stacked on top of each other at once, confirmed with
+  // a reproduction before this fix (negative control:
+  // scratchpad/audit-shell-tests.mjs, tests T1/T1b). Resetting to signup's own
+  // typed values is intentionally NOT done here (only the SIGNED_OUT listener
+  // near the sign-up block does that) -- this purely re-establishes the "only
+  // one screen visible" invariant without discarding in-progress PII.
+  function showApp() { signedIn = true; loginScreen.style.display = 'none'; signupScreenEl.style.display = 'none'; appEl.style.display = 'grid'; loadIframes(); loadStaffName(); }
   function showLogin() {
     const wasSignedIn = signedIn;
     signedIn = false;
-    appEl.style.display = 'none'; loginScreen.style.display = 'flex';
+    appEl.style.display = 'none'; loginScreen.style.display = 'flex'; signupScreenEl.style.display = 'none';
     staffNameLoaded = false; staffNameGen++; shellStaffName.textContent = '';
     // Signing out never reloads this page, so without this the previous user's
     // username *and* password stay sitting in the form -- re-submittable, and
@@ -921,6 +940,27 @@
   const settingsToggle = document.getElementById('settingsToggle');
   const settingsFlyout = document.getElementById('settingsFlyout');
   const crmIframe = document.getElementById('crmIframe');
+  // postMessage has no delivery queue: if goToSection() below posts a section
+  // change while the CRM iframe's own document is still loading (its 'message'
+  // listener isn't registered yet -- CRM has several blocking <script src> CDN
+  // tags before its own inline script ever runs, a real window on a slow
+  // connection), that message is simply dropped forever, leaving the sidebar
+  // showing e.g. "ลูกค้า" as active while the iframe still displays "CRM".
+  // Re-sending the current section once the iframe's own 'load' fires (i.e.
+  // once its document, including those blocking scripts, has actually finished
+  // -- which is also exactly when its listener is guaranteed registered)
+  // self-heals any such loss, since currentCrmSection always holds whatever
+  // the user most recently clicked, not necessarily the first click. Confirmed
+  // lost pre-fix and delivered post-fix with a simulated slow-loading iframe
+  // (negative control: scratchpad/audit-shell-tests.mjs, test T2). Harmless
+  // no-op the rest of the time: CRM's own goToSection(section) (see
+  // staging/crm/index.html) already early-returns when `section` matches the
+  // page already showing, which covers both a normal (non-raced) load -- whose
+  // initial #section= hash already matches -- and every subsequent load event
+  // this same listener causes.
+  crmIframe.addEventListener('load', () => {
+    if (crmIframe.contentWindow) crmIframe.contentWindow.postMessage({ type: 'dcacc-nav', section: currentCrmSection }, location.origin);
+  });
   const TITLES = {
     crm: 'CRM', calendar: 'ปฏิทินงาน', customer: 'ลูกค้า', service: 'ค่าบริการ',
     personal: 'ตั้งค่า · ส่วนตัว', program: 'ตั้งค่า · โปรแกรม', staff: 'พนักงาน/ทีม'
@@ -1063,7 +1103,6 @@
   // rejected_at) is left out entirely -- so the payload below must contain
   // ONLY the 8 applicant-supplied fields, exactly as staging/staff/index.html's
   // submitEmployeeRequest() (the staff-side equivalent of this form) does it.
-  const signupScreenEl = document.getElementById('signupScreen');
   const signupForm = document.getElementById('signupForm');
   const signupSuccessCard = document.getElementById('signupSuccessCard');
   const signupError = document.getElementById('signupError');

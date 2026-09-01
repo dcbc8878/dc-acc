@@ -32,8 +32,20 @@
     return mode === 'system' ? ((mq && mq.matches) ? 'dark' : 'light') : mode;
   }
 
-  function apply() {
-    var t = read(), r = document.documentElement;
+  // precomputed (optional): apply this exact {brand,mode} instead of re-reading
+  // localStorage. Needed by set() below -- if localStorage.setItem() there just
+  // failed (private-browsing mode with a zero write quota, cookies/site-data
+  // disabled, storage full), read()-ing again right after would silently see
+  // the OLD stored value and paint that instead, while notify() still
+  // broadcasts the NEW value to every 'dctheme' listener (including this same
+  // page's own theme picker, which would then show the new color as selected
+  // even though the page's own --brand never actually changed). Every other
+  // caller (the initial apply() call below, the storage-event and
+  // prefers-color-scheme listeners further down) omits this argument on
+  // purpose -- they exist specifically to pick up a value that changed
+  // elsewhere, so they must keep re-reading fresh from storage.
+  function apply(precomputed) {
+    var t = precomputed || read(), r = document.documentElement;
     r.setAttribute('data-theme', resolved(t.mode));
     r.style.setProperty('--brand', t.brand);
     return t;
@@ -57,7 +69,7 @@
       if (patch && typeof patch.brand === 'string' && /^#[0-9a-fA-F]{6}$/.test(patch.brand)) t.brand = patch.brand;
       if (patch && (patch.mode === 'dark' || patch.mode === 'light' || patch.mode === 'system')) t.mode = patch.mode;
       try { localStorage.setItem(KEY, JSON.stringify(t)); } catch (e) {}
-      apply();
+      apply(t);
       notify(t);
       return t;
     },
