@@ -15,43 +15,62 @@
      references them; only the values change. */
   --bg:color-mix(in oklab, #2F5D50 6%, #EDEAE3); --panel:color-mix(in oklab, #2F5D50 4%, #FBFAF7); --panel-2:color-mix(in oklab, #2F5D50 8%, #F4F2EC); --text:#1D1B17; --muted:#7C766B;
   --border:#DFDACF; --accent:#2F5D50; --accent-2:color-mix(in oklab, #2F5D50 80%, black); --danger:#dc2626; --success:#16a34a;
-  --sidebar-bg:color-mix(in oklab, #2F5D50 10%, #171614); --sidebar-text:#9C958C; --sidebar-active:color-mix(in oklab, #2F5D50 14%, #262420); --shadow:none;
+  --sidebar-bg:var(--panel); --sidebar-text:var(--text); --sidebar-active:var(--panel-2);--shadow:none;
   --radius:12px;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --bg:color-mix(in oklab, #2F5D50 10%, #171614); --panel:color-mix(in oklab, #2F5D50 8%, #1F1E1B); --panel-2:color-mix(in oklab, #2F5D50 14%, #262420); --text:#EFECE5; --muted:#9C958C;
     --border:#35322C; --accent:#2F5D50; --accent-2:color-mix(in oklab, #2F5D50 90%, black); --danger:#f87171; --success:#34d399;
-    --sidebar-bg:color-mix(in oklab, #2F5D50 10%, #171614); --sidebar-text:#9C958C; --sidebar-active:color-mix(in oklab, #2F5D50 14%, #262420); --shadow:0 1px 3px rgba(29,27,23,.4);
+    --sidebar-bg:var(--panel); --sidebar-text:var(--text); --sidebar-active:var(--panel-2);--shadow:0 1px 3px rgba(29,27,23,.4);
   }
 }
 :root[data-theme="dark"]{
   --bg:color-mix(in oklab, #2F5D50 10%, #171614); --panel:color-mix(in oklab, #2F5D50 8%, #1F1E1B); --panel-2:color-mix(in oklab, #2F5D50 14%, #262420); --text:#EFECE5; --muted:#9C958C;
   --border:#35322C; --accent:#2F5D50; --accent-2:color-mix(in oklab, #2F5D50 90%, black); --danger:#f87171; --success:#34d399;
-  --sidebar-bg:color-mix(in oklab, #2F5D50 10%, #171614); --sidebar-text:#9C958C; --sidebar-active:color-mix(in oklab, #2F5D50 14%, #262420); --shadow:0 1px 3px rgba(29,27,23,.4);
+  --sidebar-bg:var(--panel); --sidebar-text:var(--text); --sidebar-active:var(--panel-2);--shadow:0 1px 3px rgba(29,27,23,.4);
 }
 *{box-sizing:border-box;}
 body{margin:0;background:var(--bg);color:var(--text);font-family:'Sarabun', system-ui, sans-serif;font-size:14px;}
 button{font-family:inherit;cursor:pointer;}
 input,select,textarea{font-family:inherit;font-size:14px;background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:8px 10px;}
 input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:-1px;}
-.app{display:flex;flex-direction:column;min-height:100vh;}
+/* กรอบนอกตายตัวเท่าจอ (แบบเดียวกับ CRM: h-screen+overflow-hidden) — ให้ main.content เป็นจุดเลื่อนเดียว
+   แทนที่จะปล่อยให้ทั้งหน้าเว็บ (body/html) เลื่อน ซึ่งเป็นเงื่อนไขที่ทำให้ตารางเดือนยืดชิดขอบล่างจอได้จริง */
+.app{display:flex;flex-direction:column;height:100vh;overflow:hidden;}
 
-/* Top bar (was a left sidebar) */
-.sidebar{width:100%;flex:none;background:var(--sidebar-bg);color:var(--sidebar-text);display:flex;flex-direction:row;align-items:center;gap:24px;padding:10px 22px;}
+/* Top bar (was a left sidebar) — ผู้ใช้แจ้งว่าแถบนี้หลุดโทน (พื้นเข้มทึบ ค้างมาจากตอนเคยเป็นแถบข้างสีเข้ม)
+   ต่างจากแถบบนของหน้ารวม/หัว CRM ที่เป็นพื้นสว่าง — --sidebar-bg/--sidebar-text/--sidebar-active ทั้ง 3 ธีมบล็อก
+   ด้านบน (:root / prefers-color-scheme:dark / [data-theme=dark]) จึงเปลี่ยนจากค่าสีเข้มตายตัวเป็นการ alias ไปที่
+   --panel/--text/--panel-2 แทน (โทเคนชุดเดียวกับที่หน้ารวมใช้ทำหัวข้อสว่าง) ได้ถูกทั้ง 2 ธีมโดยอัตโนมัติไม่ต้อง
+   เพิ่มค่าใหม่ — เพิ่มเส้นขอบล่างบางๆ ให้เหมือนหัวหน้ารวมด้วย
+   หมายเหตุ: --sidebar-text ตอนแรกลองผูกกับ var(--muted) ตามที่เสนอมา แต่วัดคอนทราสต์จริงด้วย Playwright
+   (สูตร WCAG relative luminance) แล้วพบว่าไม่ผ่าน 4.5:1 ในธีมสว่าง (--muted บน --panel ได้แค่ 4.05:1, บน
+   --panel-2 ได้แค่ 3.55:1) จึงเปลี่ยนมาใช้ var(--text) แทน (เข้มกว่า อ่านชัดกว่า) วัดซ้ำแล้วผ่านทุกจุด — ปุ่มที่
+   active ยังแยกออกชัดด้วยพื้นสีเขียวเข้ม (--accent-2) เป็นตัวบอกสถานะหลักอยู่แล้ว ไม่ได้พึ่งความเข้ม-จางของ
+   ตัวหนังสือปุ่มปกติในการแยกสถานะ */
+.sidebar{width:100%;flex:none;background:var(--sidebar-bg);color:var(--sidebar-text);display:flex;flex-direction:row;align-items:center;gap:24px;padding:10px 22px;border-bottom:1px solid var(--border);}
 .menu{display:flex;flex-direction:row;gap:4px;flex:1;}
 .menu button{display:flex;align-items:center;gap:8px;background:none;border:none;color:var(--sidebar-text);padding:9px 14px;border-radius:8px;font-size:14px;white-space:nowrap;}
 .menu button .ico{font-size:17px;}
-.menu button:hover{background:var(--sidebar-active);color:#fff;}
+/* พื้น hover (--sidebar-active) เป็นพื้นสว่างแล้ว (var(--panel-2)) — ตัวหนังสือขาว #fff เดิมจะกลืนหายไปเลย
+   เปลี่ยนเป็น var(--text) (เข้ม) ให้อ่านออก */
+.menu button:hover{background:var(--sidebar-active);color:var(--text);}
+/* .active ใช้ --accent-2 (เขียวเข้ม) เป็นพื้น ไม่ได้ผูกกับ --sidebar-* เลย ยังเข้มเหมือนเดิมทั้ง 2 ธีม
+   ตัวหนังสือขาว #fff จึงยังอ่านออกปกติ ไม่ต้องแก้ */
 .menu button.active{background:var(--accent-2);color:#fff;}
 .sidebar-footer{display:flex;flex-direction:row;gap:8px;flex:none;}
 .sidebar-footer button{background:var(--sidebar-active);border:none;color:var(--sidebar-text);padding:9px 10px;border-radius:8px;font-size:13px;}
-.sidebar-footer button:hover{color:#fff;}
+/* เหตุผลเดียวกับ .menu button:hover ด้านบน — พื้นกลายเป็นสว่างแล้ว ต้องใช้ตัวหนังสือเข้ม */
+.sidebar-footer button:hover{color:var(--text);}
 
-/* Main */
-.content{flex:1;min-width:0;padding:22px 26px;}
+/* Main — พื้นที่เลื่อนเดียวของทั้งแอพ (ถ้าเนื้อหาเกินพื้นที่) ตามที่ .app ล็อกความสูงไว้เท่าจอแล้ว */
+.content{flex:1;min-width:0;min-height:0;padding:22px 26px;display:flex;flex-direction:column;overflow:auto;}
 .view{display:none;}
-.view.active{display:block;}
+/* .view ที่ active เป็น flex column เต็มพื้นที่ที่เหลือของ .content — .view-header สูงตามเนื้อหาปกติ
+   (flex item ทั่วไป ไม่ยืด) ส่วนกล่องเนื้อหาที่ต้องการยืด (เช่น #calBody ของมุมมองปฏิทิน) ยืดเอาเองด้วย flex:1
+   ด้านล่าง — .view ที่ไม่ active ยังคง display:none ตามเดิมทุกจุด ไม่แตะกลไกนี้ */
+.view.active{flex:1;min-height:0;display:flex;flex-direction:column;}
 .view-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;flex-wrap:wrap;}
 .view-header h1{font-size:20px;margin:0;}
 .toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
@@ -73,8 +92,25 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
 .view-tabs{display:flex;background:var(--panel-2);border:1px solid var(--border);border-radius:8px;overflow:hidden;}
 .view-tabs button{border:none;background:none;color:var(--muted);padding:7px 14px;font-size:13px;}
 .view-tabs button.active{background:var(--accent-2);color:#fff;}
-.month-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:var(--panel);}
+/* ตัวครอบตารางของทุกมุมมองปฏิทิน (เดือน/สัปดาห์/Agenda สลับกันด้วย body.innerHTML) — ยืดเต็มพื้นที่ที่เหลือใต้
+   .view-header เสมอ (flex:1;min-height:0 ให้ .month-grid ด้านล่างใช้ height:100% อ้างอิงได้จริง) มุมมองสัปดาห์/
+   Agenda ไม่ได้ตั้งใจให้ยืดตาม แต่เป็น div ธรรมดา (ไม่ใช่ display:flex) จึงสูงตามเนื้อหาปกติเหมือนเดิม ไม่ถูกยืด */
+#calBody{flex:1;min-height:0;}
+/* height:100% เติมเต็ม #calBody พอดี, grid-template-rows:auto ล็อกแถวหัว (.dow) ไม่ให้ถูกยืด, grid-auto-rows
+   ยืดเฉพาะแถววัน (day-cell) เฉลี่ยกันแทน — ถ้าพื้นที่ไม่พอ (เดือน 6 แถว + จอเตี้ย) แถวจะไม่หดต่ำกว่า 100px และ
+   เนื้อหาจะล้นออกนอกกรอบให้ main.content (จุดเลื่อนเดียวของแอพ) เลื่อนดูได้แทนการโดนตัดหาย — เอา overflow:hidden
+   เดิมออกเพราะจะไปบังเนื้อหาที่ล้นแทนที่จะปล่อยให้เลื่อนดู (มุมโค้งบนซ้าย/ขวาแทนด้วยกฎ .dow:first-child/:last-child
+   ด้านล่างแทน ไม่ต้องพึ่ง overflow:hidden ของกรอบทั้งก้อน) */
+.month-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:auto;grid-auto-rows:minmax(100px,1fr);height:100%;border:1px solid var(--border);border-radius:var(--radius);background:var(--panel);}
 .month-grid .dow{background:var(--panel-2);text-align:center;padding:8px 0;font-size:12px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);}
+.month-grid .dow:first-child{border-top-left-radius:var(--radius);}
+.month-grid .dow:last-child{border-top-right-radius:var(--radius);}
+/* มุมล่างของตาราง: เดิมได้ความมนมาฟรีจาก overflow:hidden ของ .month-grid ซึ่งถูกถอดออกไป
+   (เพื่อให้เนื้อหาที่ล้นในจอเตี้ยไหลไปให้ main.content เลื่อนแทนที่จะโดนตัดหาย) จึงต้องมนให้
+   เซลล์มุมล่างเองแทน — เซลล์วันทั้งหมดเป็นลูกของ .month-grid ต่อจากหัว .dow 7 ช่อง และมี
+   ครบแถวละ 7 เสมอ ตัวที่ 7 นับจากท้ายจึงเป็นมุมล่างซ้าย และตัวสุดท้ายคือมุมล่างขวา */
+.month-grid .day-cell:nth-last-child(7){border-bottom-left-radius:var(--radius);}
+.month-grid .day-cell:last-child{border-bottom-right-radius:var(--radius);}
 .day-cell{min-height:100px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:6px;position:relative;cursor:pointer;transition:background .1s;}
 .day-cell:nth-child(7n){border-right:none;}
 .day-cell:hover{background:var(--panel-2);}
