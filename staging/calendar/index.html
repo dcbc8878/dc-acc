@@ -236,9 +236,6 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
       <button data-menu="daily-activity" id="menu-daily-activity" class="hidden"><span class="ico">👥</span><span class="label">กิจกรรมประจำวัน</span></button>
       <button data-menu="settings"><span class="ico">⚙️</span><span class="label">การตั้งค่า</span></button>
     </nav>
-    <div class="sidebar-footer">
-      <button id="themeToggleBtn">🌙 <span class="label">โหมดมืด</span></button>
-    </div>
   </aside>
 
   <main class="content">
@@ -353,11 +350,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
 
         <div class="card settings-card">
           <h3>🎨 รูปแบบการแสดงผล</h3>
-          <div class="desc">ธีมและค่าเริ่มต้นของปฏิทิน</div>
-          <div class="field"><label>โหมดมืด</label>
-            <label class="switch"><input type="checkbox" id="darkModeSwitch"><span class="slider"></span></label>
-          </div>
-          <div class="desc">การตั้งค่านี้มีผลกับทั้งเว็บ (ไม่ใช่แค่ปฏิทิน) ส่วนสีหลักของทั้งเว็บเลือกได้ที่เมนู "ตั้งค่า &gt; ธีม" ของหน้ารวม</div>
+          <div class="desc">ค่าเริ่มต้นของปฏิทิน — ส่วน<b>ธีม (สีหลัก และโหมดสว่าง/มืด)</b> ตั้งได้ที่เมนู &quot;ตั้งค่า &gt; ธีม&quot; ของหน้ารวม ที่เดียวมีผลทุกส่วนของโปรแกรม</div>
           <div class="field"><label>ตัวกรองปฏิทินเริ่มต้น</label>
             <select id="defaultFilterSelect">
               <option value="personal">ปฏิทินส่วนตัว</option>
@@ -731,7 +724,7 @@ let events, tasks;   // ตั้งค่าโดย loadLocalEventsAndTasksIn
 let profile = lsGet('dcbc_profile', null);
 // ธีม (สีหลัก + โหมดมืด/สว่าง) ย้ายไปอยู่ที่สัญญากลาง localStorage['dcacc_theme'] ของ ../../theme.js
 // แล้วทั้งหมด — ไฟล์นี้ไม่มีตัวแปร state ของธีมเป็นของตัวเองอีกต่อไป (อ่านผ่าน window.DCTheme เสมอ
-// ดู applyTheme()/toggleTheme() ด้านล่าง) โค้ดตรงนี้ทำแค่ "ย้ายค่าเดิม" ของคนที่เคยตั้ง calTheme ไว้
+// ตั้งที่เมนู "ตั้งค่า > ธีม" ของหน้ารวมที่เดียว) โค้ดตรงนี้ทำแค่ "ย้ายค่าเดิม" ของคนที่เคยตั้ง calTheme ไว้
 // ก่อนหน้านี้ ครั้งเดียว แล้วเลิกใช้คีย์เก่าทิ้งไป — ต้องรันตอนเริ่มต้นก่อนโค้ดจุดอื่นอ่านธีม
 (function migrateCalThemeToDCTheme(){
   const legacy = localStorage.getItem('calTheme');
@@ -823,25 +816,12 @@ function toast(msg){
 }
 
 /* ========================= THEME ========================= */
-// data-theme/--brand บน <html> เป็นของ ../../theme.js เพียงผู้เดียวแล้ว (สัญญากลาง dcacc_theme) —
-// ฟังก์ชันนี้เหลือหน้าที่แค่ "อ่านสถานะปัจจุบันแล้วอัปเดตหน้าตาปุ่ม/ช่องติ๊กให้ตรงกัน" ไม่ตั้ง data-theme
-// เอง (ห้ามเพิ่มกลับมา — จะทำให้มีสองแหล่งความจริงชนกัน) ถูกเรียกทั้งตอนโหลดหน้าและทุกครั้งที่มี
-// event 'dctheme' (ธีมถูกเปลี่ยนจากที่ไหนก็ตาม ในเอกสารนี้เองหรือจากหน้ารวม/แอปอื่นผ่าน localStorage)
-function applyTheme(){
-  const dark = window.DCTheme.resolved(window.DCTheme.read().mode) === 'dark';
-  const btn = document.getElementById('themeToggleBtn');
-  if(btn) btn.innerHTML = (dark ? '☀️ <span class="label">โหมดสว่าง</span>' : '🌙 <span class="label">โหมดมืด</span>');
-  const sw = document.getElementById('darkModeSwitch');
-  if(sw) sw.checked = dark;
-}
-// กดปุ่ม/สลับช่องติ๊กแล้วกลายเป็นโหมดตายตัว (light/dark) ไม่ใช่ 'system' — ตรงกับที่ผู้ใช้คาดหวังจากปุ่ม
-// สลับ (ปุ่มควรสลับแน่นอน ไม่ใช่กลับไปตามเครื่องเฉยๆ) DCTheme.set() ตั้ง data-theme/--brand จริงทันที
-// แล้วยิง event 'dctheme' ให้เอง ซึ่ง listener ใน init() ฟังอยู่แล้ว (เรียก applyTheme() ให้อัตโนมัติ)
-// จึงไม่ต้องเรียก applyTheme() ซ้ำตรงนี้อีก
-function toggleTheme(){
-  const dark = window.DCTheme.resolved(window.DCTheme.read().mode) === 'dark';
-  window.DCTheme.set({ mode: dark ? 'light' : 'dark' });
-}
+/* ตัวสลับโหมดมืดของปฏิทินถูกถอดออกแล้ว (ผู้ใช้แจ้งว่า "มีโหมดมืดซ้ำอยู่ในปฏิทิน") — ธีมทั้งเว็บ
+   ตั้งที่เดียวคือเมนู "ตั้งค่า > ธีม" ของหน้ารวม ซึ่งเลือกได้ทั้งโหมดและสีหลัก ที่นี่จึงไม่มีทั้งปุ่มใน
+   แถบเมนูบนและช่องติ๊กในหน้าการตั้งค่าอีกต่อไป (แพทเทิร์นเดียวกับตอนที่ลบปุ่ม "ออกจากระบบ" ซ้ำ
+   ออกจาก CRM ให้เหลือปุ่มเดียวที่หน้ารวม) — ../../theme.js เป็นคนตั้ง data-theme/--brand ให้เอง
+   ตั้งแต่ก่อนหน้าถูกวาด และรับการเปลี่ยนจากหน้ารวมผ่าน event 'storage' อยู่แล้ว จึงไม่ต้องมี
+   โค้ดฝั่งนี้คอยอัปเดตอะไรอีกเลย (ตัวย้ายค่าเดิม calTheme ด้านบนยังอยู่ ห้ามลบ) */
 
 /* ========================= MENU SWITCH ========================= */
 function switchMenu(name){
@@ -2166,15 +2146,8 @@ function escapeHtml(s){
 /* ========================= INIT / EVENT WIRING ========================= */
 function init(){
   fillCategorySelect(document.getElementById('ev_category'));
-  applyTheme();
-  // ธีมถูกเปลี่ยนจากที่ไหนก็ได้ (ปุ่ม/ช่องติ๊กในเอกสารนี้เอง, หน้ารวม, CRM, พนักงาน/ทีม — ทุกจุดเขียนลง
-  // localStorage['dcacc_theme'] เดียวกัน) theme.js ยิง 'dctheme' ให้เองทั้งตอน set() ในเอกสารนี้ (ทันที
-  // แบบ synchronous) และตอนรับ event 'storage' จากเอกสารอื่น (ข้าม iframe/แท็บ) — ฟังจุดเดียวพอ ไม่ต้อง
-  // ฟัง 'storage' เองซ้ำอีกชั้น
-  window.addEventListener('dctheme', applyTheme);
 
   document.querySelectorAll('.menu button').forEach(b=>b.addEventListener('click', ()=>switchMenu(b.dataset.menu)));
-  document.getElementById('themeToggleBtn').addEventListener('click', toggleTheme);
 
   // Calendar
   document.getElementById('calPrev').addEventListener('click', calNavPrev);
@@ -2247,7 +2220,6 @@ function init(){
 
   // Settings
   document.getElementById('saveProfileBtn').addEventListener('click', saveProfile);
-  document.getElementById('darkModeSwitch').addEventListener('change', toggleTheme);
   document.getElementById('defaultFilterSelect').addEventListener('change', e=>{
     calFilter = e.target.value;
     const wasReset = enforceFilterAccess();
