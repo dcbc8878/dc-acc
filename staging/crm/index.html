@@ -424,7 +424,7 @@
 
     <!-- PAGE: tracking -->
     <div id="page-tracking">
-      <div class="bg-[var(--surface)] border-b border-[var(--border)] px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+      <div class="bg-[var(--surface)] border-b border-[var(--border)] px-6 py-4 flex items-center justify-between flex-wrap gap-y-2 sticky top-0 z-10">
         <div>
           <h2 class="text-base font-bold text-[var(--ink)]">สถานะงานภาษีรายเดือน</h2>
         </div>
@@ -448,36 +448,29 @@
           </button>
         </div>
       </div>
-      <!-- Invisible spacers: unlike รายปี/ลูกค้า/การเงิน, this page has no sub-tab
-           row and no separate toolbar row (its controls live inline in the sticky
-           header above) — reserve the same vertical space those rows take up on
-           every other page so the table below starts at the same Y everywhere.
-           visibility:hidden removes these from paint AND from hit-testing/focus,
-           so nothing fake is ever visible or clickable. -->
-      <div class="flex border-b-0 mt-2 px-6" style="visibility:hidden" aria-hidden="true">
-        <span class="tab-btn">&nbsp;</span>
-        <span class="tab-btn">&nbsp;</span>
-      </div>
-      <div class="bg-[var(--surface)] border-b border-[var(--border)] px-6 py-4 flex items-center justify-end gap-2" style="visibility:hidden" aria-hidden="true">
-        <span class="px-3.5 py-2 rounded-lg border border-[var(--border)] text-sm w-48 inline-block">&nbsp;</span>
-      </div>
-      <div class="grid grid-cols-4 gap-4 px-6 py-4">
-        <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-4">
+      <!-- เดิมมีสเปเซอร์ล่องหน 2 อันตรงนี้ (mimic ความสูงของแถวแท็บย่อย + แถว toolbar ที่หน้าอื่นมี)
+           เพื่อบังคับให้ตารางเริ่มที่ Y เดียวกันทุกหน้า — เอาออกแล้วตามคำสั่งผู้ใช้ (2026-09-01,
+           "แถบว่างเปล่าเหนือการ์ดสรุป...เอาออกเลย ตารางขยับก็ได้") ตอนนี้ทุกหน้าใช้วิธีให้ "ส่วนหัว
+           มีโครงเดียวกันจริง" แทน (หัวข้อ+ปุ่มแท็บย่อยรวมแถวเดียวกันหมด ไม่มีแถว toolbar แยกเหลือ
+           อยู่แล้วสำหรับ ลูกค้า/การเงิน ก็ย้ายขึ้นไปรวมกับแถวหัวข้อเหมือนกัน ดูหน้า clients/finance) —
+           ไม่ต้องมีสเปเซอร์ปลอมให้คอยดูแลอีกต่อไป -->
+      <div class="grid grid-cols-4 gap-4 px-6 py-3">
+        <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] px-4 py-2.5">
           <div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide">ลูกค้าทั้งหมด</div>
           <div id="sv-total" class="text-3xl font-black text-[var(--ink)] mt-1">—</div>
           <div class="text-xs text-[var(--ink-muted)] mt-1">บริษัท</div>
         </div>
-        <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-4">
+        <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] px-4 py-2.5">
           <div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide">งานที่เสร็จแล้ว</div>
           <div id="sv-done" class="text-3xl font-black text-green-600 mt-1">—</div>
           <div class="text-xs text-[var(--ink-muted)] mt-1">รายการ</div>
         </div>
-        <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-4">
+        <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] px-4 py-2.5">
           <div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide">ใบแจ้งหนี้</div>
           <div id="sv-inv" class="text-3xl font-black text-green-600 mt-1">—</div>
           <div class="text-xs text-[var(--ink-muted)] mt-1">ชำระแล้ว / ทั้งหมด</div>
         </div>
-        <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-4">
+        <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] px-4 py-2.5">
           <div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide">งานที่เหลือ</div>
           <div id="sv-todo" class="text-3xl font-black text-[var(--ink-muted)] mt-1">—</div>
           <div class="text-xs text-[var(--ink-muted)] mt-1">รายการ</div>
@@ -550,10 +543,18 @@
 
     <!-- PAGE: yearend -->
     <div id="page-yearend" class="hidden">
+      <!-- หัวข้อ + ปุ่มแท็บย่อยรวมแถวเดียวกัน (เดิมแยกคนละแถว กินความสูงเพิ่มไปทั้งแถว) — ตามคำสั่งผู้ใช้
+           (2026-09-01) "เลือกเอาขึ้นไปแถวเดียวกับ รายปี ทำให้ขนาดเท่ากับ รายเดือน" ซ้าย: หัวข้อ+แท็บย่อย,
+           ขวา: ตัวเลือกปี (ของเดิม ไม่แตะ) — flex-wrap กันล้นถ้าจอแคบ ไม่แตะ logic/onclick ใดๆ เลย -->
       <div class="bg-[var(--surface)] border-b border-[var(--border)] px-6 sticky top-0 z-10">
-        <div class="flex items-center justify-between py-4">
-          <div>
+        <div class="flex items-center justify-between py-4 flex-wrap gap-y-2">
+          <div class="flex items-center gap-4 flex-wrap gap-y-2">
             <h2 class="text-base font-bold text-[var(--ink)]">รายปี</h2>
+            <div class="flex items-center">
+              <button class="tab-btn active" id="yeTab-tasks" onclick="showYearEndSubTab('tasks')">งานรายปี</button>
+              <button class="tab-btn" id="yeTab-fin" onclick="showYearEndSubTab('fin')">งบการเงิน</button>
+              <button class="tab-btn" id="yeTab-dissolved" onclick="showYearEndSubTab('dissolved')">เลิกกิจการ</button>
+            </div>
           </div>
           <div class="flex items-center gap-2">
             <button onclick="changeYearEnd(-1)" class="w-8 h-8 rounded-lg border border-[var(--border)] flex items-center justify-center hover:bg-[var(--surface-2)] transition-colors text-[var(--ink-muted)]">
@@ -565,34 +566,24 @@
             </button>
           </div>
         </div>
-        <div class="flex border-b-0 mt-2">
-          <button class="tab-btn active" id="yeTab-tasks" onclick="showYearEndSubTab('tasks')">งานรายปี</button>
-          <button class="tab-btn" id="yeTab-fin" onclick="showYearEndSubTab('fin')">งบการเงิน</button>
-          <button class="tab-btn" id="yeTab-dissolved" onclick="showYearEndSubTab('dissolved')">เลิกกิจการ</button>
-        </div>
       </div>
 
       <!-- SUBTAB: งานรายปี (ภ.ง.ด.51 · ภงด.1ก · กท.26ก · ภ.ง.ด.50) -->
       <div id="ye-sub-tasks">
-        <!-- Invisible spacer: this page's controls live in the sticky header
-             above, with no separate toolbar row here — but ลูกค้า/การเงิน DO have
-             one at this exact position, so reserve the same height to keep the
-             table below aligned at the same Y across every page/sub-tab. -->
-        <div class="bg-[var(--surface)] border-b border-[var(--border)] px-6 py-4 flex items-center justify-end gap-2" style="visibility:hidden" aria-hidden="true">
-          <span class="px-3.5 py-2 rounded-lg border border-[var(--border)] text-sm w-48 inline-block">&nbsp;</span>
-        </div>
-        <div class="grid grid-cols-3 gap-4 px-6 py-4">
-          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-4">
+        <!-- เดิมมีสเปเซอร์ล่องหนตรงนี้ (mimic แถว toolbar ของลูกค้า/การเงิน) เอาออกแล้วตามคำสั่งผู้ใช้
+             (2026-09-01) — ดูคอมเมนต์เดียวกันที่ page-tracking ด้านบน -->
+        <div class="grid grid-cols-3 gap-4 px-6 py-3">
+          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] px-4 py-2.5">
             <div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide">เสร็จครบ</div>
             <div id="ye-done" class="text-3xl font-black text-green-600 mt-1">—</div>
             <div class="text-xs text-[var(--ink-muted)] mt-1">บริษัท</div>
           </div>
-          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-4">
+          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] px-4 py-2.5">
             <div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide">กำลังดำเนินการ</div>
             <div id="ye-inprog" class="text-3xl font-black text-[var(--accent)] mt-1">—</div>
             <div class="text-xs text-[var(--ink-muted)] mt-1">บริษัท</div>
           </div>
-          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-4">
+          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] px-4 py-2.5">
             <div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide">ยังไม่เริ่ม</div>
             <div id="ye-pending" class="text-3xl font-black text-[var(--ink-muted)] mt-1">—</div>
             <div class="text-xs text-[var(--ink-muted)] mt-1">บริษัท</div>
@@ -633,22 +624,19 @@
 
       <!-- SUBTAB: งบการเงิน (งบการเงิน · ผู้สอบฯ · ส่ง DBD · บอจ.5) -->
       <div id="ye-sub-fin" class="hidden">
-        <!-- Invisible spacer: see the matching one in #ye-sub-tasks above. -->
-        <div class="bg-[var(--surface)] border-b border-[var(--border)] px-6 py-4 flex items-center justify-end gap-2" style="visibility:hidden" aria-hidden="true">
-          <span class="px-3.5 py-2 rounded-lg border border-[var(--border)] text-sm w-48 inline-block">&nbsp;</span>
-        </div>
-        <div class="grid grid-cols-3 gap-4 px-6 py-4">
-          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-4">
+        <!-- เดิมมีสเปเซอร์ล่องหนตรงนี้ เอาออกแล้วตามคำสั่งผู้ใช้ (2026-09-01) — ดู #ye-sub-tasks ด้านบน -->
+        <div class="grid grid-cols-3 gap-4 px-6 py-3">
+          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] px-4 py-2.5">
             <div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide">เสร็จครบ</div>
             <div id="yefin-done" class="text-3xl font-black text-green-600 mt-1">—</div>
             <div class="text-xs text-[var(--ink-muted)] mt-1">บริษัท</div>
           </div>
-          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-4">
+          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] px-4 py-2.5">
             <div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide">กำลังดำเนินการ</div>
             <div id="yefin-inprog" class="text-3xl font-black text-[var(--accent)] mt-1">—</div>
             <div class="text-xs text-[var(--ink-muted)] mt-1">บริษัท</div>
           </div>
-          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-4">
+          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] px-4 py-2.5">
             <div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide">ยังไม่เริ่ม</div>
             <div id="yefin-pending" class="text-3xl font-black text-[var(--ink-muted)] mt-1">—</div>
             <div class="text-xs text-[var(--ink-muted)] mt-1">บริษัท</div>
@@ -687,22 +675,19 @@
 
       <!-- SUBTAB: เลิกกิจการ (วันที่เลิกกิจการ · การปิดงบการเงิน · ยื่นแบบ · ปิดงบการเงินสำเร็จ) -->
       <div id="ye-sub-dissolved" class="hidden">
-        <!-- Invisible spacer: see the matching one in #ye-sub-tasks above. -->
-        <div class="bg-[var(--surface)] border-b border-[var(--border)] px-6 py-4 flex items-center justify-end gap-2" style="visibility:hidden" aria-hidden="true">
-          <span class="px-3.5 py-2 rounded-lg border border-[var(--border)] text-sm w-48 inline-block">&nbsp;</span>
-        </div>
-        <div class="grid grid-cols-3 gap-4 px-6 py-4">
-          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-4">
+        <!-- เดิมมีสเปเซอร์ล่องหนตรงนี้ เอาออกแล้วตามคำสั่งผู้ใช้ (2026-09-01) — ดู #ye-sub-tasks ด้านบน -->
+        <div class="grid grid-cols-3 gap-4 px-6 py-3">
+          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] px-4 py-2.5">
             <div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide">เสร็จครบ</div>
             <div id="dsl-done" class="text-3xl font-black text-green-600 mt-1">—</div>
             <div class="text-xs text-[var(--ink-muted)] mt-1">บริษัท</div>
           </div>
-          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-4">
+          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] px-4 py-2.5">
             <div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide">กำลังดำเนินการ</div>
             <div id="dsl-inprog" class="text-3xl font-black text-[var(--accent)] mt-1">—</div>
             <div class="text-xs text-[var(--ink-muted)] mt-1">บริษัท</div>
           </div>
-          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-4">
+          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] px-4 py-2.5">
             <div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide">ยังไม่เริ่ม</div>
             <div id="dsl-pending" class="text-3xl font-black text-[var(--ink-muted)] mt-1">—</div>
             <div class="text-xs text-[var(--ink-muted)] mt-1">บริษัท</div>
@@ -740,53 +725,64 @@
 
     <!-- PAGE: clients -->
     <div id="page-clients" class="hidden">
+      <!-- หัวข้อ + ปุ่มแท็บย่อย + toolbar ของแท็บย่อยที่กำลังเปิดอยู่ รวมแถวเดียวกันหมด (ตามคำสั่งผู้ใช้
+           2026-09-01) — ต่างจากรายปี/รายเดือนตรงที่หน้านี้มี toolbar จริง (ค้นหา/ตัวกรอง) ต่อแท็บย่อย ไม่ใช่
+           แค่สเปเซอร์ล่องหน จึงย้าย toolbar ทั้ง 2 ชุดขึ้นมาไว้ที่นี่ด้วย (clients-toolbar-current/-old) แล้ว
+           สลับโชว์/ซ่อนคู่กับเนื้อหาแท็บย่อยเป๊ะ (ดู showClientsSubTab() — เพิ่มแค่บรรทัด toggle('hidden')
+           อีก 2 บรรทัด ไม่แตะ renderClientList()/renderOldClients() หรือ logic อื่นเลย) id/onclick/oninput/
+           onchange ของทุกช่องเหมือนเดิมทุกตัวอักษร แค่ย้ายตำแหน่งใน DOM เท่านั้น -->
       <div class="bg-[var(--surface)] border-b border-[var(--border)] px-6 sticky top-0 z-10">
-        <div class="flex items-center justify-between py-4">
-          <div>
+        <div class="flex items-center justify-between py-4 flex-wrap gap-y-2">
+          <div class="flex items-center gap-4 flex-wrap gap-y-2">
             <h2 class="text-base font-bold text-[var(--ink)]">ข้อมูลลูกค้า</h2>
+            <div class="flex items-center">
+              <button class="tab-btn active" id="clientsTab-current" onclick="showClientsSubTab('current')">ลูกค้า</button>
+              <button class="tab-btn" id="clientsTab-old" onclick="showClientsSubTab('old')">ลูกค้าเก่า</button>
+            </div>
           </div>
-        </div>
-        <div class="flex border-b-0 mt-2">
-          <button class="tab-btn active" id="clientsTab-current" onclick="showClientsSubTab('current')">ลูกค้า</button>
-          <button class="tab-btn" id="clientsTab-old" onclick="showClientsSubTab('old')">ลูกค้าเก่า</button>
+          <div id="clients-toolbar-current" class="flex items-center gap-2 flex-wrap">
+            <button id="export-creds-btn" onclick="exportClientCredsCSV()" title="ส่งออกรหัสผ่านของลูกค้าที่แสดงอยู่เป็นไฟล์ CSV"
+              class="hidden text-xs font-semibold border border-[var(--border)] text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-2)] px-3 py-2 rounded-lg transition-colors inline-flex items-center gap-1.5 flex-shrink-0">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              ส่งออกรหัสผ่าน
+            </button>
+            <input id="client-search" type="text" placeholder="ค้นหา…" oninput="renderClientList()"
+              class="px-3.5 py-2 rounded-lg border border-[var(--border)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)] w-48">
+            <select id="client-type-filter" onchange="clientTypeFilter=this.value; renderClientList();"
+              class="px-3 py-2 rounded-lg border border-[var(--border)] text-xs font-semibold text-[var(--ink-muted)] bg-[var(--surface)] hover:bg-[var(--surface-2)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] transition-colors">
+              <option value="all">ทุกประเภท</option>
+              <option value="monthly">รายเดือน</option>
+              <option value="annual">รายปี</option>
+              <option value="filing">ยื่นแบบเปล่า</option>
+              <option value="dissolved">เลิกกิจการ</option>
+            </select>
+          </div>
+          <div id="clients-toolbar-old" class="hidden flex items-center gap-2 flex-wrap">
+            <p class="text-xs text-[var(--ink-muted)]">ลูกค้าที่ปิดใช้งานแล้ว</p>
+            <input id="old-client-search" type="text" placeholder="ค้นหา…" oninput="renderOldClients()"
+              class="px-3.5 py-2 rounded-lg border border-[var(--border)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)] w-48">
+          </div>
         </div>
       </div>
 
       <!-- SUBTAB: ลูกค้า (ปัจจุบัน) -->
       <div id="clients-sub-current">
-        <div class="bg-[var(--surface)] border-b border-[var(--border)] px-6 py-4 flex items-center justify-end gap-2">
-          <button id="export-creds-btn" onclick="exportClientCredsCSV()" title="ส่งออกรหัสผ่านของลูกค้าที่แสดงอยู่เป็นไฟล์ CSV"
-            class="hidden text-xs font-semibold border border-[var(--border)] text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-2)] px-3 py-2 rounded-lg transition-colors inline-flex items-center gap-1.5 flex-shrink-0">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            ส่งออกรหัสผ่าน
-          </button>
-          <input id="client-search" type="text" placeholder="ค้นหา…" oninput="renderClientList()"
-            class="px-3.5 py-2 rounded-lg border border-[var(--border)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)] w-48">
-          <select id="client-type-filter" onchange="clientTypeFilter=this.value; renderClientList();"
-            class="px-3 py-2 rounded-lg border border-[var(--border)] text-xs font-semibold text-[var(--ink-muted)] bg-[var(--surface)] hover:bg-[var(--surface-2)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] transition-colors">
-            <option value="all">ทุกประเภท</option>
-            <option value="monthly">รายเดือน</option>
-            <option value="annual">รายปี</option>
-            <option value="filing">ยื่นแบบเปล่า</option>
-            <option value="dissolved">เลิกกิจการ</option>
-          </select>
-        </div>
         <!-- Stat-card summary row (สรุปฐานลูกค้าปัจจุบันทั้งหมด — ไม่ผูกกับตัวกรอง
              ประเภท/คำค้นหาด้านบน ตั้งใจให้ตัวเลขนิ่ง ไม่กระพริบเวลาพิมพ์ค้นหา ดู
              renderClientList()) ก็ยังทำหน้าที่เดิมของสเปเซอร์เดิมด้วย: ความสูงเท่ากับ
              grid-cols-3 แถวสถิติของหน้าอื่น ทำให้ตารางด้านล่างเริ่มที่ Y เดียวกันทุกหน้า/แท็บย่อย. -->
-        <div class="grid grid-cols-3 gap-4 px-6 py-4">
-          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-4">
+        <div class="grid grid-cols-3 gap-4 px-6 py-3">
+          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] px-4 py-2.5">
             <div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide">ลูกค้าทั้งหมด</div>
             <div id="cl-total" class="text-3xl font-black text-[var(--ink)] mt-1">—</div>
             <div class="text-xs text-[var(--ink-muted)] mt-1">บริษัท</div>
           </div>
-          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-4">
+          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] px-4 py-2.5">
             <div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide">มี VAT</div>
             <div id="cl-vat" class="text-3xl font-black text-[var(--ink)] mt-1">—</div>
             <div class="text-xs text-[var(--ink-muted)] mt-1">บริษัท</div>
           </div>
-          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-4">
+          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] px-4 py-2.5">
             <div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide">มี SSO</div>
             <div id="cl-sso" class="text-3xl font-black text-[var(--ink)] mt-1">—</div>
             <div class="text-xs text-[var(--ink-muted)] mt-1">บริษัท</div>
@@ -817,25 +813,21 @@
 
       <!-- SUBTAB: ลูกค้าเก่า -->
       <div id="clients-sub-old" class="hidden">
-        <div class="bg-[var(--surface)] border-b border-[var(--border)] px-6 py-4 flex items-center justify-between gap-2">
-          <p class="text-xs text-[var(--ink-muted)]">ลูกค้าที่ปิดใช้งานแล้ว</p>
-          <input id="old-client-search" type="text" placeholder="ค้นหา…" oninput="renderOldClients()"
-            class="px-3.5 py-2 rounded-lg border border-[var(--border)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)] w-48">
-        </div>
+        <!-- toolbar (คำอธิบาย+ค้นหา) ย้ายขึ้นไปที่ #clients-toolbar-old ในแถวหัวข้อด้านบนแล้ว -->
         <!-- Stat-card summary row: see the matching one in #clients-sub-current above,
              scoped to the inactive-client set instead (renderOldClients()). -->
-        <div class="grid grid-cols-3 gap-4 px-6 py-4">
-          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-4">
+        <div class="grid grid-cols-3 gap-4 px-6 py-3">
+          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] px-4 py-2.5">
             <div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide">ลูกค้าทั้งหมด</div>
             <div id="clold-total" class="text-3xl font-black text-[var(--ink)] mt-1">—</div>
             <div class="text-xs text-[var(--ink-muted)] mt-1">บริษัท</div>
           </div>
-          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-4">
+          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] px-4 py-2.5">
             <div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide">มี VAT</div>
             <div id="clold-vat" class="text-3xl font-black text-[var(--ink)] mt-1">—</div>
             <div class="text-xs text-[var(--ink-muted)] mt-1">บริษัท</div>
           </div>
-          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-4">
+          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] px-4 py-2.5">
             <div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide">มี SSO</div>
             <div id="clold-sso" class="text-3xl font-black text-[var(--ink)] mt-1">—</div>
             <div class="text-xs text-[var(--ink-muted)] mt-1">บริษัท</div>
@@ -861,28 +853,22 @@
 
     <!-- PAGE: finance -->
     <div id="page-finance" class="hidden">
+      <!-- หัวข้อ + ปุ่มแท็บย่อย + toolbar ของแท็บย่อยที่กำลังเปิดอยู่ รวมแถวเดียวกันหมด (ตามคำสั่งผู้ใช้
+           2026-09-01) — แพทเทิร์นเดียวกับ page-clients ด้านบน: toolbar ทั้ง 2 ชุด (fin-toolbar-collection/
+           -fee) ย้ายขึ้นมาไว้ที่นี่ สลับโชว์/ซ่อนคู่กับเนื้อหาแท็บย่อยผ่าน showFinanceSubTab() (เพิ่มแค่ 2
+           บรรทัด toggle('hidden') ไม่แตะ renderFinanceCollection()/renderFinanceFees()) id/onclick/oninput
+           ของทุกช่องเหมือนเดิมทุกตัวอักษร แค่ย้ายตำแหน่งใน DOM เท่านั้น -->
       <div class="bg-[var(--surface)] border-b border-[var(--border)] px-6 sticky top-0 z-10">
-        <div class="flex items-center justify-between py-4">
-          <div>
+        <div class="flex items-center justify-between py-4 flex-wrap gap-y-2">
+          <div class="flex items-center gap-4 flex-wrap gap-y-2">
             <h2 class="text-base font-bold text-[var(--ink)]">การเงิน</h2>
+            <div class="flex items-center">
+              <button class="tab-btn active" id="finTab-collection" onclick="showFinanceSubTab('collection')">การเก็บเงิน</button>
+              <button class="tab-btn" id="finTab-fee" onclick="showFinanceSubTab('fee')">ค่าบริการ</button>
+            </div>
           </div>
-        </div>
-        <div class="flex border-b-0 mt-2">
-          <button class="tab-btn active" id="finTab-collection" onclick="showFinanceSubTab('collection')">การเก็บเงิน</button>
-          <button class="tab-btn" id="finTab-fee" onclick="showFinanceSubTab('fee')">ค่าบริการ</button>
-        </div>
-      </div>
-
-      <!-- SUBTAB: การเก็บเงิน (มีเดือนที่กำลังดูเป็นของตัวเอง แยกจากหน้า "รายเดือน" โดยสิ้นเชิง — finYear/finMonth) -->
-      <div id="fin-sub-collection">
-        <!-- min-height: this row's own content (date pill + w-8 h-8 nav buttons,
-             32px tall) is naturally a few px shorter than the search-input-based
-             toolbar rows on ลูกค้า/ค่าบริการ (36px tall) — pin it to the same
-             measured total row height so the stat cards/table below still line
-             up at the same Y as those pages. -->
-        <div class="bg-[var(--surface)] border-b border-[var(--border)] px-6 py-4 flex items-center justify-between gap-2" style="min-height:71px">
-          <p class="text-xs text-[var(--ink-muted)]">สถานะการเก็บเงินของลูกค้าแต่ละราย</p>
-          <div class="flex items-center gap-2">
+          <div id="fin-toolbar-collection" class="flex items-center gap-2 flex-wrap">
+            <p class="text-xs text-[var(--ink-muted)] mr-1">สถานะการเก็บเงินของลูกค้าแต่ละราย</p>
             <button id="fin-create-invoices-btn" onclick="openBatchInvoice(finYear, finMonth)" class="hidden text-xs font-semibold bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg transition-colors flex-shrink-0">สร้างใบแจ้งหนี้</button>
             <button id="finPrevBtn" onclick="changeFinMonth(-1)" class="w-8 h-8 rounded-lg border border-[var(--border)] flex items-center justify-center hover:bg-[var(--surface-2)] transition-colors text-[var(--ink-muted)] disabled:opacity-30 disabled:hover:bg-[var(--surface)] disabled:cursor-not-allowed">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
@@ -892,19 +878,33 @@
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
             </button>
           </div>
+          <div id="fin-toolbar-fee" class="hidden flex items-center gap-2 flex-wrap">
+            <p class="text-xs text-[var(--ink-muted)] mr-1">ค่าบริการปัจจุบันของลูกค้าแต่ละราย</p>
+            <button id="add-client-btn" onclick="openAddClient()"
+              class="hidden bg-[var(--accent)] hover:bg-[color-mix(in_oklab,var(--accent)_85%,black)] text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors flex-shrink-0">
+              + เพิ่มลูกค้า
+            </button>
+            <input id="fin-fee-search" type="text" placeholder="ค้นหา…" oninput="renderFinanceFees()"
+              class="px-3.5 py-2 rounded-lg border border-[var(--border)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)] w-48">
+          </div>
         </div>
-        <div class="grid grid-cols-3 gap-4 px-6 py-4">
-          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-4">
+      </div>
+
+      <!-- SUBTAB: การเก็บเงิน (มีเดือนที่กำลังดูเป็นของตัวเอง แยกจากหน้า "รายเดือน" โดยสิ้นเชิง — finYear/finMonth) -->
+      <div id="fin-sub-collection">
+        <!-- toolbar (ปุ่มสร้างใบแจ้งหนี้+เลือกเดือน) ย้ายขึ้นไปที่ #fin-toolbar-collection ด้านบนแล้ว -->
+        <div class="grid grid-cols-3 gap-4 px-6 py-3">
+          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] px-4 py-2.5">
             <div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide">เก็บเงินแล้ว</div>
             <div id="fin-paid-count" class="text-3xl font-black text-green-600 mt-1">—</div>
             <div class="text-xs text-[var(--ink-muted)] mt-1">ราย</div>
           </div>
-          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-4">
+          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] px-4 py-2.5">
             <div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide">ยังไม่เก็บ</div>
             <div id="fin-pending-count" class="text-3xl font-black text-[var(--ink-muted)] mt-1">—</div>
             <div class="text-xs text-[var(--ink-muted)] mt-1">ราย</div>
           </div>
-          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-4">
+          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] px-4 py-2.5">
             <div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide">ยอดรวมที่เก็บได้</div>
             <div id="fin-paid-total" class="text-2xl font-black text-[var(--accent)] mt-1">—</div>
             <div class="text-xs text-[var(--ink-muted)] mt-1">บาท</div>
@@ -919,6 +919,7 @@
               <span class="flex-1">NAME</span>
               <span class="w-24 flex-shrink-0 text-right">ค่าบริการ</span>
               <span class="w-36 flex-shrink-0 text-center">สถานะ</span>
+              <span class="w-24 flex-shrink-0 text-center">วันที่รับเงิน</span>
             </div>
             <!-- height (fixed, not max-height) = 6 rows at the shared 49px row height:
                  6 × 49px = 294px. Same fixed-not-elastic rationale as #client-list above. -->
@@ -929,33 +930,23 @@
 
       <!-- SUBTAB: ค่าบริการ -->
       <div id="fin-sub-fee" class="hidden">
-        <div class="bg-[var(--surface)] border-b border-[var(--border)] px-6 py-4 flex items-center justify-between gap-2">
-          <p class="text-xs text-[var(--ink-muted)]">ค่าบริการปัจจุบันของลูกค้าแต่ละราย</p>
-          <div class="flex items-center gap-2">
-            <button id="add-client-btn" onclick="openAddClient()"
-              class="hidden bg-[var(--accent)] hover:bg-[color-mix(in_oklab,var(--accent)_85%,black)] text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors flex-shrink-0">
-              + เพิ่มลูกค้า
-            </button>
-            <input id="fin-fee-search" type="text" placeholder="ค้นหา…" oninput="renderFinanceFees()"
-              class="px-3.5 py-2 rounded-lg border border-[var(--border)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)] w-48">
-          </div>
-        </div>
+        <!-- toolbar (ปุ่มเพิ่มลูกค้า+ค้นหา) ย้ายขึ้นไปที่ #fin-toolbar-fee ด้านบนแล้ว -->
         <!-- Stat-card summary row (สรุปค่าบริการของฐานลูกค้าปัจจุบันทั้งหมด — ไม่ผูกกับ
              คำค้นหาด้านบน ตั้งใจให้ตัวเลขนิ่ง ไม่กระพริบเวลาพิมพ์ค้นหา ดู renderFinanceFees())
              ก็ยังทำหน้าที่เดิมของสเปเซอร์เดิมด้วย: ความสูงเท่ากับ grid-cols-3 แถวสถิติของ
              หน้าอื่น (เช่น การเก็บเงิน) ทำให้ตารางด้านล่างเริ่มที่ Y เดียวกันทุกหน้า/แท็บย่อย. -->
-        <div class="grid grid-cols-3 gap-4 px-6 py-4">
-          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-4">
+        <div class="grid grid-cols-3 gap-4 px-6 py-3">
+          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] px-4 py-2.5">
             <div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide">ยอดรวมค่าบริการ/เดือน</div>
             <div id="fee-total" class="text-2xl font-black text-[var(--ink)] mt-1">—</div>
             <div class="text-xs text-[var(--ink-muted)] mt-1">บาท</div>
           </div>
-          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-4">
+          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] px-4 py-2.5">
             <div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide">เฉลี่ยต่อราย</div>
             <div id="fee-avg" class="text-2xl font-black text-[var(--ink)] mt-1">—</div>
             <div class="text-xs text-[var(--ink-muted)] mt-1">บาท/เดือน</div>
           </div>
-          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-4">
+          <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] px-4 py-2.5">
             <div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide">จำนวนลูกค้า</div>
             <div id="fee-count" class="text-3xl font-black text-[var(--ink)] mt-1">—</div>
             <div class="text-xs text-[var(--ink-muted)] mt-1">บริษัท</div>
@@ -1731,6 +1722,31 @@ function fmtDate(d) {
 function fmtMoney(n) {
   if (!n && n !== 0) return '—';
   return Number(n).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+// วันที่รับเงิน (crm_invoices.payment_received_at, timestamptz) — เก็บ/อ่านต้องอิงเวลาไทย ไม่ใช่ UTC
+// ตรงๆ (พนักงานทุกคนอยู่ไทย เวลาเครื่องตรงกับเวลาไทยเสมอในทางปฏิบัติ — แพทเทิร์นเดียวกับ yeYmdStr/
+// openEditFee/openEditType ทั้งไฟล์นี้) new Date().toISOString() ตรงๆ แปลงเป็น UTC จากเวลาปัจจุบันทันที
+// ไทยเป็น UTC+7 ถ้ากดช่วง 00:00-06:59 น. ตามเวลาไทยจะได้วันที่ "เมื่อวาน" ผิด (บั๊กคลาสเดียวกับที่เคยแก้ใน
+// yeYmdStr/parseDDMMYYYY จุดอื่นของไฟล์นี้มาแล้ว) — ห้ามใช้ new Date().toISOString() ตรงๆ กับวันที่นี้เด็ดขาด
+// ทางแก้: แปลง Y/M/D (ตามเวลาเครื่อง) เป็น Date ที่เวลา "เที่ยงวัน" ก่อนค่อย toISOString() — เที่ยงวันอยู่
+// ไกลจากเที่ยงคืนทั้งสองฝั่งที่สุด อ่านค่ากลับที่เขตเวลาไหนก็ยังตกอยู่ในวันปฏิทินเดียวกันเสมอ
+function paymentDateToIso_(ymd) {
+  const [y, m, d] = (ymd || '').split('-').map(Number);
+  if (!y || !m || !d) return new Date().toISOString();
+  return new Date(y, m - 1, d, 12, 0, 0, 0).toISOString();
+}
+// "วันนี้" ตามเวลาเครื่อง คืนเป็น "YYYY-MM-DD" — ใช้เป็นค่าเริ่มต้นของช่องวันที่รับเงิน ทั้งตอนเปิดฟอร์ม
+// บันทึกรับเงินและตอนกดเร็วในหน้าการเก็บเงิน (ดู markInvoicePaidCore_/openMarkPaid/toggleFinCollected)
+function todayYmd_() {
+  const t = new Date();
+  return yeYmdStr(t.getFullYear(), t.getMonth() + 1, t.getDate());
+}
+// แปลง payment_received_at (timestamptz จาก DB) กลับเป็น "YYYY-MM-DD" ตามเวลาเครื่อง (ไม่ใช่ UTC) — คู่กับ
+// paymentDateToIso_ ด้านบน อ่านค่ากลับด้วย getFullYear/getMonth/getDate เหมือน fmtDate() ทุกจุดในไฟล์นี้
+function paymentYmdFromIso_(iso) {
+  if (!iso) return '';
+  const dt = new Date(iso);
+  return yeYmdStr(dt.getFullYear(), dt.getMonth() + 1, dt.getDate());
 }
 function invBadge(status) {
   const cls = { draft:'draft', sent:'sent', paid:'paid', cancelled:'cancelled' }[status] || 'draft';
@@ -3417,6 +3433,10 @@ async function renderOldClients() {
 function showClientsSubTab(tab) {
   document.getElementById('clients-sub-current').classList.toggle('hidden', tab !== 'current');
   document.getElementById('clients-sub-old').classList.toggle('hidden', tab !== 'old');
+  // toolbar ของแท็บย่อยที่ย้ายขึ้นไปรวมแถวเดียวกับหัวข้อ (2026-09-01) ต้องสลับโชว์/ซ่อนคู่กับเนื้อหาแท็บ
+  // ย่อยเป๊ะๆ เหมือนกัน — เพิ่มแค่ 2 บรรทัดนี้ ไม่แตะ logic อื่นในฟังก์ชันเลย
+  document.getElementById('clients-toolbar-current').classList.toggle('hidden', tab !== 'current');
+  document.getElementById('clients-toolbar-old').classList.toggle('hidden', tab !== 'old');
   document.getElementById('clientsTab-current').classList.toggle('active', tab === 'current');
   document.getElementById('clientsTab-old').classList.toggle('active', tab === 'old');
   if (tab === 'current') renderClientList();
@@ -4483,6 +4503,11 @@ function openMarkPaid(clientId) {
           class="w-full px-3.5 py-2.5 rounded-lg border border-[var(--border)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]">
         <p class="text-xs text-[var(--ink-muted)] mt-1">ที่คาดว่าจะรับ: ${fmtMoney(inv.expected_payment)}</p>
       </div>
+      ${dateFieldHtml({
+        label: 'วันที่รับเงิน', textId: 'paid-date-disp', hiddenId: 'paid-date', isoVal: todayYmd_(),
+        cls: 'w-full px-3.5 py-2.5 rounded-lg border border-[var(--border)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]',
+      })}
+      <div id="paid-date-err" class="hidden text-sm text-red-600"></div>
       <div class="flex items-center gap-2">
         <input id="paid-update-task" type="checkbox" checked class="w-4 h-4 rounded text-[var(--accent)]">
         <label class="text-sm text-[var(--ink)]">อัปเดต Acct Fee เป็น "เสร็จแล้ว" ด้วย</label>
@@ -4494,15 +4519,19 @@ function openMarkPaid(clientId) {
     </div>`);
 }
 
-// ── แกนกลาง "บันทึกรับเงิน" — ใช้ร่วมกันทั้ง modal เดิม (confirmMarkPaid ด้านล่าง พิมพ์ยอดเองได้) และปุ่ม
-// คลิกเดียวในแท็บการเก็บเงิน (toggleFinCollected, auto-fill ยอด — ดูหัวข้อ PAGE: FINANCE) ต่างกันแค่ "ยอดมา
-// จากไหน" เท่านั้น ตัวเขียน DB (status/payment_amount/payment_received_at + อัปเดต Acct Fee) เหมือนกันทุกจุด
-// ไม่มี logic แยกกันสองชุด คืนค่าใบแจ้งหนี้ที่อัปเดตแล้ว หรือ null ถ้าบันทึกไม่สำเร็จ (แสดง toast ให้แล้วในนี้)
-async function markInvoicePaidCore_(clientId, inv, amount, updateTask) {
+// ── แกนกลาง "บันทึกรับเงิน" — ใช้ร่วมกันทั้ง modal เดิม (confirmMarkPaid ด้านล่าง พิมพ์ยอดเองได้), ปุ่ม
+// คลิกเดียวในแท็บการเก็บเงิน (toggleFinCollected, auto-fill ยอด — ดูหัวข้อ PAGE: FINANCE) และการแก้ไข
+// วันที่รับเงินทีหลังของใบที่เก็บแล้ว (saveEditPaymentDate — ส่งยอด/updateTask เดิมกลับเข้ามา แก้แค่ paidYmd)
+// ต่างกันแค่ "ยอดมาจากไหน" / "อัปเดต Acct Fee ไหม" / "วันที่รับเงินไหน" เท่านั้น ตัวเขียน DB (status/
+// payment_amount/payment_received_at + อัปเดต Acct Fee) เหมือนกันทุกจุด ไม่มี logic แยกกันหลายชุด
+// paidYmd = "YYYY-MM-DD" ตามเวลาไทยที่ผู้ใช้เลือก (ไม่ส่งมา = วันนี้) แปลงผ่าน paymentDateToIso_() เสมอ
+// (ห้ามใช้ new Date().toISOString() ตรงๆ — ดูคอมเมนต์ที่ paymentDateToIso_ ว่าทำไม) คืนค่าใบแจ้งหนี้ที่
+// อัปเดตแล้ว หรือ null ถ้าบันทึกไม่สำเร็จ (แสดง toast ให้แล้วในนี้)
+async function markInvoicePaidCore_(clientId, inv, amount, updateTask, paidYmd) {
   const { data, error } = await sb.from('crm_invoices').update({
     status: 'paid',
     payment_amount: amount,
-    payment_received_at: new Date().toISOString()
+    payment_received_at: paymentDateToIso_(paidYmd || todayYmd_())
   }).eq('id', inv.id).select().single();
   if (error) { showToast('บันทึกไม่สำเร็จ', 'error'); return null; }
 
@@ -4525,9 +4554,16 @@ async function confirmMarkPaid(clientId) {
   const inv = invoiceMap[clientId];
   if (!inv) return;
   const amount = parseFloat(document.getElementById('paid-amount').value) || 0;
+  const paidYmd = (document.getElementById('paid-date')?.value || '').trim();
   const updateTask = document.getElementById('paid-update-task').checked;
+  const dateErr = document.getElementById('paid-date-err');
+  if (!paidYmd) {
+    if (dateErr) { dateErr.textContent = 'กรุณาระบุวันที่รับเงิน'; dateErr.classList.remove('hidden'); }
+    return;
+  }
+  if (dateErr) dateErr.classList.add('hidden');
 
-  const data = await markInvoicePaidCore_(clientId, inv, amount, updateTask);
+  const data = await markInvoicePaidCore_(clientId, inv, amount, updateTask, paidYmd);
   if (!data) return;
 
   closeModal();
@@ -5297,6 +5333,10 @@ async function createBatchInvoices(year, month) {
 function showFinanceSubTab(tab) {
   document.getElementById('fin-sub-collection').classList.toggle('hidden', tab !== 'collection');
   document.getElementById('fin-sub-fee').classList.toggle('hidden', tab !== 'fee');
+  // toolbar ของแท็บย่อยที่ย้ายขึ้นไปรวมแถวเดียวกับหัวข้อ (2026-09-01) ต้องสลับโชว์/ซ่อนคู่กับเนื้อหาแท็บ
+  // ย่อยเป๊ะๆ เหมือนกัน — เพิ่มแค่ 2 บรรทัดนี้ ไม่แตะ logic อื่นในฟังก์ชันเลย
+  document.getElementById('fin-toolbar-collection').classList.toggle('hidden', tab !== 'collection');
+  document.getElementById('fin-toolbar-fee').classList.toggle('hidden', tab !== 'fee');
   document.getElementById('finTab-collection').classList.toggle('active', tab === 'collection');
   document.getElementById('finTab-fee').classList.toggle('active', tab === 'fee');
   if (tab === 'collection') renderFinanceCollection();
@@ -5440,6 +5480,17 @@ function finStatusCellHtml(c, inv) {
   const handler = editable ? ` onclick="event.stopPropagation();toggleFinCollected(${c.id})"` : '';
   return `<span id="fin-status-${c.id}" class="${cls}"${handler}>${label}</span>`;
 }
+// วันที่รับเงิน — ว่างเปล่าถ้ายังไม่เก็บ (ธรรมเนียมเดียวกับ computeClientNo: ค่าที่ไม่มี ปล่อยว่าง ไม่ใช่
+// ขีด "—") คลิกแก้ได้เฉพาะใบที่เก็บเงินแล้วเท่านั้น (openEditPaymentDate ด้านล่าง) สิทธิ์การแก้ใช้เกณฑ์
+// เดียวกับ toggleFinCollected เป๊ะ (canEdit()) ไม่ตั้งเกณฑ์ใหม่ — คนอื่นเห็นวันที่เป็นตัวหนังสือเฉยๆ กดไม่ได้
+function finPaymentDateCellHtml(c, inv) {
+  const isPaid = !!inv && inv.status === 'paid';
+  if (!isPaid) return `<span class="w-24 flex-shrink-0 text-center text-xs text-[var(--ink-muted)]"></span>`;
+  const dateStr = fmtDDMMYYYY(paymentYmdFromIso_(inv.payment_received_at));
+  const editable = canEdit();
+  const handler = editable ? ` onclick="event.stopPropagation();openEditPaymentDate(${c.id})" title="แก้ไขวันที่รับเงิน"` : '';
+  return `<span class="w-24 flex-shrink-0 text-center text-xs text-[var(--ink-muted)] ${editable ? 'cursor-pointer hover:text-[var(--accent)]' : ''}"${handler}>${e(dateStr)}${editable ? ' <span class="text-[var(--ink-muted)]">✎</span>' : ''}</span>`;
+}
 function financeCollectionRowHtml(c) {
   const inv = finInvoiceMap[c.id];
   // มีใบแจ้งหนี้แล้ว → ใช้ยอดที่บันทึกไว้จริงบนใบนั้น (ค่าที่ถูกต้องที่สุดเพราะเป็นยอดที่ตัดสินใจ ณ ตอนออก
@@ -5457,6 +5508,7 @@ function financeCollectionRowHtml(c) {
       <span class="flex-1 min-w-0 text-sm font-semibold text-[var(--ink)] overflow-hidden text-ellipsis whitespace-nowrap">${e(c.thai_name)}</span>
       <span class="w-24 flex-shrink-0 text-right text-xs font-mono text-[var(--ink)]">${fmtMoney(amount)}</span>
       <span class="w-36 flex-shrink-0 text-center">${finStatusCellHtml(c, inv)}</span>
+      ${finPaymentDateCellHtml(c, inv)}
     </div>`;
 }
 function renderFinanceCollection() {
@@ -5534,7 +5586,10 @@ async function toggleFinCollected(clientId) {
   }
 
   const amount = inv.expected_payment ?? inv.fee_amount ?? 0;
-  const updated = await markInvoicePaidCore_(clientId, inv, amount, true);
+  // กดเร็ว = จบในคลิกเดียวเสมอ ไม่เปิดฟอร์มถามวันที่ (ตามที่เจ้าของระบบสั่งไว้) วันที่รับเงินจึงเป็น
+  // "วันนี้" (ตามเวลาเครื่อง = เวลาไทย) เสมอ — แก้ย้อนหลังทีหลังได้ที่คอลัมน์วันที่ในแถวเดียวกัน (คลิก
+  // เปิด openEditPaymentDate)
+  const updated = await markInvoicePaidCore_(clientId, inv, amount, true, todayYmd_());
   if (cell) cell.classList.remove('saving');
   if (!updated) return;
 
@@ -5578,6 +5633,55 @@ async function undoFinCollected_(clientId, inv, cell) {
   renderFinanceCollection();
   renderTrackingSummary();
   if (curPage === 'tracking') renderTracking();
+  if (panelClientId === clientId) renderPanelBilling();
+}
+
+// ── แก้ไขวันที่รับเงินของใบที่เก็บเงินแล้ว (finPaymentDateCellHtml คลิกคอลัมน์วันที่ในหน้าการเก็บเงิน) —
+// สิทธิ์เดียวกับ toggleFinCollected/canEdit() เป๊ะ ไม่ตั้งเกณฑ์ใหม่ เปิดได้เฉพาะใบที่ status==='paid' แล้ว
+// เท่านั้น (ปุ่มเรียกจากช่องที่โผล่เฉพาะตอนนั้นอยู่แล้ว เช็คซ้ำในนี้ด้วยกันเผลอเรียกตรงๆ)
+function openEditPaymentDate(clientId) {
+  if (!canEdit()) return;
+  const inv = finInvoiceMap[clientId];
+  if (!inv || inv.status !== 'paid') return;
+  const c = clients.find(x => x.id === clientId);
+  if (!c) return;
+  const curYmd = paymentYmdFromIso_(inv.payment_received_at) || todayYmd_();
+  openModal(`
+    <h3 class="text-base font-bold text-[var(--ink)] mb-1">แก้ไขวันที่รับเงิน</h3>
+    <p class="text-xs text-[var(--ink-muted)] mb-4">${e(c.thai_name)}</p>
+    <div class="space-y-3">
+      ${dateFieldHtml({
+        label: 'วันที่รับเงิน', textId: 'epd-date-disp', hiddenId: 'epd-date', isoVal: curYmd,
+        cls: 'w-full px-3 py-2 rounded-lg border border-[var(--border)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]',
+      })}
+      <div id="epd-err" class="hidden text-sm text-red-600"></div>
+    </div>
+    <div class="flex justify-end gap-2 mt-6">
+      <button onclick="closeModal()" class="px-4 py-2 text-sm text-[var(--ink-muted)] font-medium hover:text-[var(--ink)]">ยกเลิก</button>
+      <button onclick="saveEditPaymentDate(${clientId})" class="px-4 py-2 bg-[var(--accent)] hover:bg-[color-mix(in_oklab,var(--accent)_85%,black)] text-white text-sm font-semibold rounded-lg transition-colors">บันทึก</button>
+    </div>`);
+}
+
+// แก้แค่วันที่ ไม่แตะยอด/Acct Fee — ผ่าน markInvoicePaidCore_ ตัวเดียวกับที่ confirmMarkPaid/
+// toggleFinCollected ใช้ (ไม่เขียน logic บันทึก crm_invoices แยกอีกชุด) ส่งยอดเดิมกลับเข้าไปเฉยๆ (สถานะ
+// เป็น paid อยู่แล้ว set ซ้ำไม่มีผลอะไรเพิ่ม) updateTask=false เพราะ Acct Fee ถูกอัปเดตไปแล้วตอนกดเก็บเงิน
+// ครั้งแรก ไม่เกี่ยวกับการแก้วันที่ทีหลัง
+async function saveEditPaymentDate(clientId) {
+  if (!canEdit()) return;
+  const inv = finInvoiceMap[clientId];
+  if (!inv || inv.status !== 'paid') { closeModal(); return; }
+  const ymd = (document.getElementById('epd-date')?.value || '').trim();
+  const err = document.getElementById('epd-err');
+  if (!ymd) { err.textContent = 'กรุณาระบุวันที่รับเงิน'; err.classList.remove('hidden'); return; }
+  err.classList.add('hidden');
+
+  const amount = inv.payment_amount ?? inv.expected_payment ?? 0;
+  const data = await markInvoicePaidCore_(clientId, inv, amount, false, ymd);
+  if (!data) return;
+
+  closeModal();
+  showToast('บันทึกวันที่รับเงินสำเร็จ');
+  renderFinanceCollection();
   if (panelClientId === clientId) renderPanelBilling();
 }
 
