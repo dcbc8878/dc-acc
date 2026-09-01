@@ -355,6 +355,44 @@
   }
   .logout-btn:hover { background: var(--surface-2); color: var(--ink); }
   .logout-btn svg { width: 16px; height: 16px; }
+
+  /* ── สมัครสมาชิก (public sign-up screen) ──
+     Purely additive rules -- nothing above this comment is edited. Reuses the
+     .login-card box model (border/radius/shadow/padding) so the sign-up card
+     matches the login card automatically; only what's new for this form (a
+     wider card, select/textarea inputs, the two-column prefix+first-name row,
+     and low-key "text link" buttons) is defined here. */
+  .signup-card { max-width: 420px; }
+  .login-card select,
+  .login-card textarea {
+    width: 100%; box-sizing: border-box; padding: 10px 12px; margin-bottom: 14px;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--bg);
+    color: var(--ink); font-family: inherit; font-size: 0.9rem;
+  }
+  .login-card select:focus, .login-card textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring); }
+  .login-card textarea { min-height: 64px; resize: vertical; }
+  .field-row { display: flex; gap: 10px; margin-bottom: 14px; }
+  .field-row .field-col { flex: 1; }
+  .field-row .field-col-sm { flex: 0 0 108px; }
+  .field-row select, .field-row input { margin-bottom: 0; }
+  #signupSubmitBtn { margin-top: 6px; }
+  /* Higher specificity than the generic ".login-card button" rule (2 classes
+     beats 1 class + 1 element) -- same reason #pwToggle above needs an ID
+     selector, otherwise these would render as full-width solid accent
+     buttons instead of low-key text links. */
+  .login-card .text-link-btn {
+    width: auto; display: block; margin: 12px auto 0; padding: 4px 6px;
+    background: transparent; color: var(--accent); font-weight: 600; font-size: 0.82rem;
+    text-align: center; text-decoration: underline; text-underline-offset: 2px;
+  }
+  .login-card .text-link-btn:hover { color: var(--ink); background: transparent; }
+  .signup-success-icon {
+    width: 44px; height: 44px; border-radius: 50%; margin: 0 auto 14px;
+    background: var(--surface-2); color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .signup-success-icon svg { width: 22px; height: 22px; }
+  #signupSuccessCard p.sub { margin-bottom: 18px; line-height: 1.7; }
 </style>
 </head>
 <body>
@@ -375,7 +413,62 @@
       </button>
     </div>
     <button type="submit" id="loginBtn">เข้าสู่ระบบ</button>
+    <button type="button" class="text-link-btn" id="signupLinkBtn">สมัครสมาชิก</button>
   </form>
+</div>
+
+<div class="login-screen" id="signupScreen" style="display:none">
+  <form class="login-card signup-card" id="signupForm" novalidate>
+    <div class="mark">DC</div>
+    <h1>สมัครสมาชิก</h1>
+    <p class="sub">กรอกข้อมูลให้ครบ ระบบจะส่งคำขอไปให้ผู้ดูแลอนุมัติต่อไป</p>
+    <div class="login-error" id="signupError"></div>
+
+    <div class="field-row">
+      <div class="field-col-sm">
+        <label for="signup-prefix">คำนำหน้า</label>
+        <select id="signup-prefix" autocomplete="honorific-prefix">
+          <option value="นาย">นาย</option>
+          <option value="นาง">นาง</option>
+          <option value="นางสาว">นางสาว</option>
+        </select>
+      </div>
+      <div class="field-col">
+        <label for="signup-firstname">ชื่อ</label>
+        <input id="signup-firstname" type="text" autocomplete="given-name" required />
+      </div>
+    </div>
+
+    <label for="signup-lastname">นามสกุล</label>
+    <input id="signup-lastname" type="text" autocomplete="family-name" required />
+
+    <label for="signup-nickname">ชื่อเล่น</label>
+    <input id="signup-nickname" type="text" required />
+
+    <label for="signup-taxid">เลขบัตรประชาชน (13 หลัก)</label>
+    <input id="signup-taxid" type="text" inputmode="numeric" maxlength="20" placeholder="X-XXXX-XXXXX-XX-X" required />
+
+    <label for="signup-birthdate">วันเดือนปีเกิด</label>
+    <input id="signup-birthdate" type="date" autocomplete="bday" required />
+
+    <label for="signup-address">ที่อยู่ตามบัตรประชาชน</label>
+    <textarea id="signup-address" autocomplete="street-address" required></textarea>
+
+    <label for="signup-email">อีเมลส่วนตัว</label>
+    <input id="signup-email" type="email" autocomplete="email" required />
+
+    <button type="submit" id="signupSubmitBtn">ส่งคำขอสมัคร</button>
+    <button type="button" class="text-link-btn" id="signupBackBtn">← กลับไปหน้าเข้าสู่ระบบ</button>
+  </form>
+
+  <div class="login-card" id="signupSuccessCard" style="display:none">
+    <div class="signup-success-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+    </div>
+    <h1>ส่งคำขอสมัครแล้ว</h1>
+    <p class="sub">ระบบได้รับคำขอสมัครของคุณเรียบร้อยแล้ว กรุณารอผู้ดูแลระบบตรวจสอบและอนุมัติ เมื่อได้รับการอนุมัติแล้ว ท่านจะได้รับบัญชีสำหรับเข้าใช้งานระบบ</p>
+    <button type="button" id="signupSuccessBackBtn">กลับไปหน้าเข้าสู่ระบบ</button>
+  </div>
 </div>
 
 <div id="app" style="display:none">
@@ -709,6 +802,152 @@
   aiClose.addEventListener('click', closeAi);
   aiBackdrop.addEventListener('click', closeAi);
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAi(); });
+
+  // ── สมัครสมาชิก (public sign-up request) ──────────────────────────────
+  // Nothing above this block is touched: checkSession/showApp/showLogin/
+  // loadStaffName, the signedIn/staffNameGen race guards, the original
+  // onAuthStateChange listener, loginForm's submit handler, the Supabase
+  // client config, and logoutBtn's signOut() call are all exactly as they
+  // were. This is a second, independent screen added alongside the login
+  // gate, reusing the same `sb` client (read-only for it: it only ever
+  // calls sb.from(...).insert(...), never sb.auth.*).
+  //
+  // org_staff_requests' RLS lets an anonymous (not-signed-in) visitor INSERT
+  // a row, but only when every approval-only column (status/role/staff_code/
+  // assigned_username/new_staff_id/approved_by/approved_at/rejected_by/
+  // rejected_at) is left out entirely -- so the payload below must contain
+  // ONLY the 8 applicant-supplied fields, exactly as staging/staff/index.html's
+  // submitEmployeeRequest() (the staff-side equivalent of this form) does it.
+  const signupScreenEl = document.getElementById('signupScreen');
+  const signupForm = document.getElementById('signupForm');
+  const signupSuccessCard = document.getElementById('signupSuccessCard');
+  const signupError = document.getElementById('signupError');
+  const signupSubmitBtn = document.getElementById('signupSubmitBtn');
+  const signupLinkBtn = document.getElementById('signupLinkBtn');
+  const signupBackBtn = document.getElementById('signupBackBtn');
+  const signupSuccessBackBtn = document.getElementById('signupSuccessBackBtn');
+  const signupBirthdateEl = document.getElementById('signup-birthdate');
+
+  // Local-time "today" as a plain YYYY-MM-DD string -- deliberately NOT
+  // `new Date().toISOString().slice(0,10)`, which reads UTC fields and can
+  // report the wrong calendar day for part of the day in UTC+7 (this exact
+  // class of bug has bitten this project's date handling more than once).
+  function localTodayISODate() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+  signupBirthdateEl.max = localTodayISODate();
+
+  function showSignupError(msg) {
+    signupError.textContent = msg;
+    signupError.classList.add('show');
+  }
+  function resetSignupForm() {
+    signupForm.reset();
+    signupError.classList.remove('show');
+    signupError.textContent = '';
+    signupSubmitBtn.disabled = false;
+    signupSubmitBtn.textContent = 'ส่งคำขอสมัคร';
+    signupForm.style.display = 'block';
+    signupSuccessCard.style.display = 'none';
+  }
+  function showSignupScreen() {
+    loginScreen.style.display = 'none';
+    signupScreenEl.style.display = 'flex';
+  }
+  // Used both by the two "back" buttons and by the defensive SIGNED_OUT
+  // listener below -- always lands back on the actual login screen, and
+  // always wipes the form (it holds a name/ID-card number/address/personal
+  // email -- real personal data that must never sit visible for whoever
+  // uses this device next).
+  function backToLoginFromSignup() {
+    resetSignupForm();
+    signupScreenEl.style.display = 'none';
+    loginScreen.style.display = 'flex';
+  }
+  signupLinkBtn.addEventListener('click', showSignupScreen);
+  signupBackBtn.addEventListener('click', backToLoginFromSignup);
+  signupSuccessBackBtn.addEventListener('click', backToLoginFromSignup);
+
+  const SIGNUP_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  signupForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (signupSubmitBtn.disabled) return; // belt-and-braces guard against a re-entrant submit
+    signupError.classList.remove('show');
+
+    const prefix = document.getElementById('signup-prefix').value;
+    const firstName = document.getElementById('signup-firstname').value.trim();
+    const lastName = document.getElementById('signup-lastname').value.trim();
+    const nickname = document.getElementById('signup-nickname').value.trim();
+    const taxIdRaw = document.getElementById('signup-taxid').value.trim();
+    const taxId = taxIdRaw.replace(/\D/g, '');
+    // Native <input type="date">.value is always a plain "YYYY-MM-DD" Gregorian/
+    // CE string per the HTML spec (never Buddhist-era, never timezone-shifted) --
+    // used exactly as-is, with no Date object / toISOString() in between.
+    const birthdate = signupBirthdateEl.value;
+    const idCardAddress = document.getElementById('signup-address').value.trim();
+    const personalEmail = document.getElementById('signup-email').value.trim();
+
+    // Checked against the RAW tax-id text (not the digit-stripped one) so
+    // "typed something, just not 13 digits" (e.g. letters, or too few
+    // digits) reaches the more specific 13-digit message below instead of
+    // being misreported as an empty/missing field.
+    if (!prefix || !firstName || !lastName || !nickname || !taxIdRaw || !birthdate || !idCardAddress || !personalEmail) {
+      showSignupError('กรุณากรอกข้อมูลให้ครบทุกช่อง');
+      return;
+    }
+    if (taxId.length !== 13) {
+      showSignupError('เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก');
+      return;
+    }
+    if (!SIGNUP_EMAIL_RE.test(personalEmail)) {
+      showSignupError('รูปแบบอีเมลไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง');
+      return;
+    }
+
+    signupSubmitBtn.disabled = true;
+    signupSubmitBtn.textContent = 'กำลังส่ง...';
+    let res = null, thrown = null;
+    try {
+      // Exactly these 8 columns -- see the RLS note above the block comment.
+      res = await sb.from('org_staff_requests').insert({
+        prefix, first_name: firstName, last_name: lastName, nickname,
+        tax_id: taxId, birthdate, id_card_address: idCardAddress, personal_email: personalEmail,
+      });
+    } catch (err) {
+      thrown = err;
+    }
+    signupSubmitBtn.disabled = false;
+    signupSubmitBtn.textContent = 'ส่งคำขอสมัคร';
+    if (thrown) {
+      showSignupError('เชื่อมต่อไม่ได้ กรุณาลองใหม่อีกครั้ง');
+      return;
+    }
+    const { error } = res || {};
+    if (error) {
+      showSignupError(error.message || 'ส่งคำขอไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+      return;
+    }
+    signupForm.style.display = 'none';
+    signupSuccessCard.style.display = 'block';
+  });
+
+  // A second, independent onAuthStateChange listener -- supabase-js supports
+  // registering more than one, and this does NOT replace or alter the
+  // original registration above. It only ever touches the sign-up screen it
+  // owns, so if SIGNED_OUT ever fires while that screen happens to be open
+  // (e.g. a stale session from a previous person on this shared device
+  // silently expires while someone else is midway through this form), it
+  // doesn't get left stranded off to the side instead of the login card.
+  sb.auth.onAuthStateChange((event) => {
+    if (event === 'SIGNED_OUT') {
+      resetSignupForm();
+      signupScreenEl.style.display = 'none';
+    }
+  });
 </script>
 </body>
 </html>
