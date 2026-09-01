@@ -185,6 +185,14 @@
     #yearend-fin-tbody td,
     #yearend-dissolved-tbody td { padding-top: 6px; padding-bottom: 6px; }
 
+    /* ช่องโน๊ตในหน้ารายเดือน: ผู้ใช้ขอให้คลิกได้ทั้งช่อง ไม่ใช่แค่ตรงตัวหนังสือหรือปุ่ม "+ โน๊ต"
+       เล็กๆ กลางช่อง — onclick จึงย้ายไปอยู่บน <td> และ hover ก็ต้องย้ายตามมาที่ระดับช่องด้วย
+       ไม่งั้นจะกดได้ทั้งช่องแต่ดูเหมือนกดได้แค่ตรงกลาง (.note-td-editable ใส่เฉพาะคนที่แก้ได้
+       LV1-3 — LV4-5 ไม่มีทั้ง onclick และ hover ตามกฎเดิมของ noteCell) */
+    .note-td-editable:hover { background: var(--surface-2); }
+    .note-td-editable:hover .note-add-chip { color: var(--accent); border-color: var(--accent-soft); }
+    .note-td-editable:hover > div { color: var(--accent); }
+
     /* Shared empty footer bar — a single fixed strip pinned to the viewport bottom on every
        page/sub-tab (markup: one <div id="app-footer"> as the last child of #app, right
        after </main> — see body below). Intentionally content-free (no text), per spec, just
@@ -1654,13 +1662,25 @@ function noteCell(clientId, note, prevNote) {
     // taskMap เอง (แหล่งเดียวกับที่ renderTracking ใช้ส่งเข้ามาอยู่แล้ว)
     // LV4-5 อ่านได้อย่างเดียว (editNote คืนค่าทันทีถ้า !canEdit) จึงไม่ใส่ cursor-pointer/hover/onclick ให้
     // ไม่งั้นโน๊ตจะดูกดได้แต่กดแล้วเงียบ — สองกิ่งล่างของฟังก์ชันนี้แยกกรณีอ่านอย่างเดียวไว้ถูกอยู่แล้ว
-    const noteEditable = canEdit();
-    return `<div class="text-xs text-[var(--ink)] leading-tight truncate${noteEditable ? ' cursor-pointer hover:text-[var(--accent)]' : ''}" title="${e(note)}"${noteEditable ? ` onclick="editNote(${clientId})"` : ''}>${e(note)}</div>`;
+    // ตัว onclick/cursor ย้ายไปอยู่ที่ <td> ทั้งช่องแล้ว (ดู noteTdAttrs_ ด้านล่าง) ผู้ใช้ขอให้
+    // "คลิกได้ทั้งช่อง" ไม่ใช่เฉพาะบนตัวหนังสือ/ปุ่มเล็กๆ — ตรงนี้จึงเหลือแค่การแสดงผลล้วนๆ
+    return `<div class="text-xs text-[var(--ink)] leading-tight truncate" title="${e(note)}">${e(note)}</div>`;
   }
   if (!canEdit()) {
     return prevNote ? `<div class="text-xs text-[var(--ink-muted)] italic leading-tight truncate" title="โน๊ตเดือนก่อน: ${e(prevNote)}">${e(prevNote)}</div>` : '';
   }
-  return `<button onclick="editNote(${clientId})" class="text-xs text-[var(--ink-muted)] hover:text-[var(--accent)] border border-dashed border-[var(--border)] hover:border-[var(--accent-soft)] px-1.5 py-0.5 rounded transition-colors whitespace-nowrap">+ โน๊ต</button>`;
+  return `<span class="note-add-chip text-xs text-[var(--ink-muted)] border border-dashed border-[var(--border)] px-1.5 py-0.5 rounded transition-colors whitespace-nowrap">+ โน๊ต</span>`;
+}
+// แอตทริบิวต์ของ <td> ช่องโน๊ต — คลิกได้ทั้งช่อง (ผู้ใช้ขอ) ไม่ใช่แค่ตรงตัวหนังสือหรือปุ่ม "+ โน๊ต"
+// เล็กๆ กลางช่อง · LV4-5 แก้ไม่ได้ (editNote คืนค่าทันทีถ้า !canEdit) จึงไม่ใส่ onclick/cursor ให้เลย
+// ไม่งั้นช่องจะดูกดได้แต่กดแล้วเงียบ — เหมือนกฎเดิมที่ noteCell ใช้อยู่ก่อนแล้ว
+function noteTdAttrs_(clientId) {
+  return canEdit() ? ` onclick="editNote(${clientId})"` : '';
+}
+// คลาสของ <td> ช่องโน๊ต — ต้องรวมกับคลาสเดิมในสตริงเดียว ห้ามคืนเป็น class="..." อีกอันแยก
+// (HTML มี class ซ้ำ 2 อันบน element เดียวไม่ได้ ตัวหลังจะถูกทิ้งเงียบๆ)
+function noteTdClass_() {
+  return 'px-2 py-0.5 text-left border-l border-[var(--border)] note-td' + (canEdit() ? ' note-td-editable cursor-pointer' : '');
 }
 function editNote(clientId) {
   if (!canEdit()) return;
@@ -2453,7 +2473,7 @@ function renderTracking() {
         <div class="text-sm text-[var(--ink)] leading-tight overflow-hidden text-ellipsis whitespace-nowrap">${e(c.thai_name)}</div>
       </td>
       ${canSeeAssignees() ? assigneeCellHtml(c.id) : ''}
-      <td class="px-2 py-0.5 text-left border-l border-[var(--border)]" style="overflow:hidden">
+      <td class="${noteTdClass_()}" style="overflow:hidden"${noteTdAttrs_(c.id)}>
         ${noteCell(c.id, t.notes||'', (prevTaskMap[c.id]||[])[0]?.note||'')}
       </td>
       <td class="px-2 py-0.5 ${gb}">${docCell}</td>
