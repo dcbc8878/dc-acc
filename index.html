@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="./theme.js?v=1"></script>
+<script src="./theme.js?v=__BUILD__"></script>
 <style>
   /* palette: warm cream + forest green — matches the "ธีม" reference the user sent (a
      Claude Design .dc.html artboard) whose applyTheme() derives every token from one
@@ -775,6 +775,7 @@
   // sign-out so the next person to log in on this device doesn't land
   // wherever the previous person left off.
   let currentCrmSection = 'crm';
+  const BUILD_ID = '__BUILD__';
   function loadIframes() {
     if (iframesLoaded) return;
     iframesLoaded = true;
@@ -782,8 +783,16 @@
     // the sub-apps' own JS ever runs its own getSession() check on load --
     // otherwise each iframe loads too early, sees no session yet, and gets
     // stuck showing its own login screen even after the shell logs in.
+    // ?v=<commit sha> ต่อท้าย URL ของแอพย่อยทุกตัว — GitHub Pages ส่ง HTML มาพร้อม
+    // Cache-Control: max-age=600 เบราว์เซอร์จึงเสิร์ฟไฟล์เดิมซ้ำได้อีกถึง 10 นาทีหลัง deploy
+    // ทำให้ผู้ใช้รีเฟรชหน้ารวมแล้วเห็นของใหม่ แต่ข้างใน iframe ยังเป็นของเก่า (เจอจริงมาแล้ว:
+    // ธีมใหม่มาแล้วแต่ปุ่มที่ลบไปยังอยู่) — ค่า __BUILD__ ถูกแทนด้วย commit sha ตอน deploy
+    // (ดูขั้น "Stamp build id" ใน .github/workflows/deploy.yml) ทุกครั้งที่ deploy URL จึง
+    // เปลี่ยน แคชเก่าใช้ไม่ได้อัตโนมัติ · ถ้าเปิดไฟล์ตรงๆ ในเครื่อง (ไม่ผ่าน deploy) ค่าจะ
+    // ยังเป็น __BUILD__ ตามเดิม ซึ่งไม่กระทบอะไร แค่ไม่ได้ล้างแคชให้
     document.querySelectorAll('#app iframe[data-src]').forEach(f => {
-      f.src = f.id === 'crmIframe' ? f.dataset.src + '#section=' + currentCrmSection : f.dataset.src;
+      const url = f.dataset.src + '?v=' + BUILD_ID;
+      f.src = f.id === 'crmIframe' ? url + '#section=' + currentCrmSection : url;
     });
   }
   const shellStaffName = document.getElementById('shellStaffName');

@@ -24,6 +24,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # แทน __BUILD__ ในไฟล์ HTML ทุกไฟล์ด้วย commit sha ของรอบนี้ — ใช้เป็นตัวล้างแคช
+      # ของเบราว์เซอร์ (GitHub Pages ส่ง HTML มาพร้อม max-age=600 ถ้าไม่ทำแบบนี้ ผู้ใช้จะ
+      # เห็นแอพย่อยเวอร์ชันเก่าค้างอยู่ใน iframe ได้อีกถึง 10 นาทีหลัง deploy) แก้เฉพาะไฟล์
+      # ที่จะอัปโหลด ไม่ commit กลับเข้า repo
+      - name: Stamp build id for cache-busting
+        run: |
+          find . -name '*.html' -not -path './.git/*' -print0 \
+            | xargs -0 --no-run-if-empty sed -i "s/__BUILD__/$GITHUB_SHA/g"
+          echo "stamped $GITHUB_SHA"
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
         with:
