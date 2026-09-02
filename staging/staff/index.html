@@ -380,6 +380,12 @@ function isValidThaiPhone_(v) {
 function isValidEmailFormat_(v) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 }
+// เลขผู้เสียภาษี/บัตรประชาชนไทย: 13 หลัก อนุญาตให้พิมพ์คั่นด้วยขีดได้ (เช่น X-XXXX-XXXXX-XX-X
+// ตาม placeholder ของฟอร์ม) เช็คแค่จำนวนหลักหลังตัดขีดออก ไม่เช็ค checksum (เกินขอบเขตของฟอร์มนี้)
+function isValidThaiTaxId_(v) {
+  if (!/^[0-9\-\s]+$/.test(v)) return false;
+  return v.replace(/\D/g, '').length === 13;
+}
 
 // ── modal ทั่วไปที่ใช้ร่วมกัน (เพิ่ม/แก้ไขพนักงาน · ทีม · คำขอสมัคร) ──
 function openGenModal(html, opts) {
@@ -1061,6 +1067,19 @@ async function submitEmployeeRequest() {
   errEl.style.display = 'none';
   if (!firstName || !lastName || !nickname || !taxId || !birthDate || !idCardAddress || !personalEmail) {
     errEl.textContent = 'กรุณากรอกข้อมูลให้ครบทุกช่อง';
+    errEl.style.display = 'block';
+    return;
+  }
+  // เช็ครูปแบบฝั่ง client ก่อนส่ง (แพทเทิร์นเดียวกับเบอร์โทร/อีเมลส่วนตัวของ "แก้ไขข้อมูลพนักงาน" —
+  // isValidEmailFormat_ ถูกใช้กับฟิลด์ personal_email แบบเดียวกันนี้อยู่แล้วที่อื่นในไฟล์นี้) กันข้อมูล
+  // เพี้ยนหลุดไปถึง trigger ป้องกันสแปมฝั่ง DB (ซึ่งจะคืน error แบบ raw ที่ผู้ใช้ทั่วไปอ่านไม่รู้เรื่อง)
+  if (!isValidThaiTaxId_(taxId)) {
+    errEl.textContent = 'รูปแบบเลขผู้เสียภาษีไม่ถูกต้อง (ต้องเป็นตัวเลข 13 หลัก)';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (!isValidEmailFormat_(personalEmail)) {
+    errEl.textContent = 'รูปแบบอีเมลไม่ถูกต้อง';
     errEl.style.display = 'block';
     return;
   }
