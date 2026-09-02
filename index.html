@@ -219,6 +219,14 @@
     z-index: 40;
     transition: transform 0.16s ease;
   }
+  /* ปุ่มลอย "น้องบัญชี" อยู่คนละ document กับแอพย่อยใน iframe จึงลอยทับ popup/แผงของแอพย่อยได้
+     เสมอ ไม่ว่าแอพย่อยจะตั้ง z-index สูงแค่ไหน (ผู้ใช้เจอจริง: ทับปุ่ม "บันทึก" ของแผงข้อมูลลูกค้า)
+     แอพย่อยจึงส่งข้อความบอกมาว่ามีหน้าต่างเปิดอยู่ไหม แล้วปุ่มนี้หลบให้เอง — ดู dcacc-overlay
+     ด้านล่าง · ใช้ visibility ควบคู่ opacity เพื่อให้ปุ่มหายไปจากลำดับ tab ของคีย์บอร์ดด้วย */
+  body.overlay-open .ai-fab,
+  body.overlay-open .ai-fab-label {
+    opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(10px);
+  }
   .ai-fab:hover { transform: translateY(-2px) scale(1.04); }
   .ai-fab:focus-visible { outline: none; box-shadow: var(--shadow-lg), 0 0 0 4px var(--ring); }
   .ai-fab svg { width: 26px; height: 26px; }
@@ -840,6 +848,7 @@
     const wasSignedIn = signedIn;
     signedIn = false;
     appEl.style.display = 'none'; loginScreen.style.display = 'flex'; signupScreenEl.style.display = 'none';
+    document.body.classList.remove('overlay-open');
     staffNameLoaded = false; staffNameGen++; shellStaffName.textContent = '';
     // Signing out never reloads this page, so without this the previous user's
     // username *and* password stay sitting in the form -- re-submittable, and
@@ -991,6 +1000,8 @@
   // which section to show via postMessage instead, using the protocol agreed
   // with the CRM app: { type: 'dcacc-nav', section }.
   function goToSection(key, target, section) {
+    document.body.classList.remove('overlay-open'); // ดู dcacc-overlay
+
     pages.forEach(p => p.classList.toggle('active', p.id === 'page-' + target));
     pageTitle.textContent = TITLES[key] || '';
     const railKey = SETTINGS_CHILDREN.includes(key) ? 'settings' : key;
@@ -1014,6 +1025,13 @@
   }
 
   const aiFab = document.getElementById('aiFab');
+  window.addEventListener('message', (ev) => {
+    if (ev.origin !== location.origin) return;
+    const d = ev.data;
+    if (!d || d.type !== 'dcacc-overlay') return;
+    document.body.classList.toggle('overlay-open', !!d.open);
+  });
+
   const aiPanel = document.getElementById('aiPanel');
   const aiBackdrop = document.getElementById('aiBackdrop');
   const aiClose = document.getElementById('aiClose');

@@ -7139,6 +7139,38 @@ new MutationObserver(scheduleFitBottom).observe(document.querySelector('main'), 
 // ─────────────────────────────────────────────────────────────
 // START
 // ─────────────────────────────────────────────────────────────
+
+/* ===== แจ้งหน้าหลักว่ามี "หน้าต่าง/แผง" เปิดอยู่หรือไม่ =====
+   ปุ่มลอย "น้องบัญชี" ของหน้าหลักอยู่คนละ document (คนละ iframe) จึงลอยทับของเราได้เสมอ
+   ไม่ว่าเราจะตั้ง z-index สูงแค่ไหน — ผู้ใช้เจอจริงว่ามันทับปุ่ม "บันทึก" ของแผงข้อมูลลูกค้า
+   จึงส่งสถานะไปให้หน้าหลักซ่อนปุ่มนั้นให้เองระหว่างที่เรามีหน้าต่างเปิดอยู่
+   ใช้ MutationObserver ดักที่ตัว element โดยตรง แทนการไปเรียกทุกจุดที่เปิด/ปิดหน้าต่าง
+   (มีหลายสิบจุด ถ้าไล่ใส่เองย่อมมีตกหล่น และจุดใหม่ในอนาคตจะลืมอีก) */
+let overlaySent_ = null;
+function overlayOpen_() {
+  const po = document.getElementById('panel-overlay');
+  const ma = document.getElementById('modal-area');
+  return !!(po && !po.classList.contains('hidden')) || !!(ma && ma.childElementCount > 0);
+}
+function notifyOverlay_() {
+  const open = overlayOpen_();
+  if (open === overlaySent_) return;          // ส่งเฉพาะตอนสถานะเปลี่ยนจริง
+  overlaySent_ = open;
+  try {
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'dcacc-overlay', open }, location.origin);
+    }
+  } catch (e) { /* เปิดไฟล์ตรงๆ นอก iframe — ไม่ต้องทำอะไร */ }
+}
+(function watchOverlay_() {
+  const po = document.getElementById('panel-overlay');
+  const ma = document.getElementById('modal-area');
+  const ob = new MutationObserver(notifyOverlay_);
+  if (po) ob.observe(po, { attributes: true, attributeFilter: ['class'] });
+  if (ma) ob.observe(ma, { childList: true });
+  notifyOverlay_();
+})();
+
 init();
 </script>
 </body>

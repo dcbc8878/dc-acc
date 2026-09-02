@@ -2347,8 +2347,34 @@ function init(){
   document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeEventModal(); closeTaskModal(); } });
 
   switchMenu('calendar');
+  watchOverlay_();
   initAuthOnLoad();
 }
+
+/* ===== แจ้งหน้าหลักว่ามีหน้าต่างเปิดอยู่หรือไม่ (เหตุผลเดียวกับฝั่ง CRM) =====
+   ปุ่มลอย "น้องบัญชี" ของหน้าหลักอยู่คนละ document จึงลอยทับหน้าต่างของเราได้เสมอ
+   ส่งสถานะไปให้หน้าหลักซ่อนปุ่มนั้นให้เองระหว่างที่เรามีหน้าต่างเปิด
+   ดักที่ตัว element โดยตรงด้วย MutationObserver แทนการไล่ใส่ทุกจุดที่เปิด/ปิด (ตกหล่นง่าย) */
+let overlaySent_ = null;
+function overlayOpen_() { return !!document.querySelector('.modal-backdrop.open'); }
+function notifyOverlay_() {
+  const open = overlayOpen_();
+  if (open === overlaySent_) return;
+  overlaySent_ = open;
+  try {
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'dcacc-overlay', open }, location.origin);
+    }
+  } catch (e) { /* เปิดไฟล์ตรงๆ นอก iframe */ }
+}
+function watchOverlay_() {
+  const ob = new MutationObserver(notifyOverlay_);
+  document.querySelectorAll('.modal-backdrop').forEach(el => {
+    ob.observe(el, { attributes: true, attributeFilter: ['class'] });
+  });
+  notifyOverlay_();
+}
+
 document.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
