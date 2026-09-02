@@ -20,6 +20,12 @@
   --brand: #2F5D50;
   --bg:color-mix(in oklab, var(--brand) 6%, #EDEAE3); --panel:color-mix(in oklab, var(--brand) 4%, #FBFAF7); --panel-2:color-mix(in oklab, var(--brand) 8%, #F4F2EC); --text:#1D1B17; --muted:#7C766B;
   --border:#DFDACF; --accent:var(--brand); --accent-2:color-mix(in oklab, var(--brand) 80%, black); --danger:#dc2626; --success:#16a34a;
+  /* --accent-text = สีเน้นในรูปแบบที่ใช้เป็น "สีตัวอักษรขนาดเล็ก" บนพื้นการ์ด/ช่องวันได้จริง (ตอนนี้ใช้ที่
+     .more-link "+N กิจกรรม" จุดเดียว) แยกจาก --accent เปล่าๆ ที่ใช้เป็นสีเส้นขอบ และจาก --accent-2 ที่ใช้
+     เป็นพื้นหลังคู่กับตัวอักษรขาว — โหมดสว่างค่าเท่ากับ --accent เป๊ะ หน้าตาไม่เปลี่ยน (วัดได้ 5.24:1 ผ่าน
+     อยู่แล้ว) แต่โหมดมืด --accent (= สีที่ผู้ใช้เลือกเอง) บนพื้นเกือบดำ วัดได้ต่ำสุด 1.77:1 อ่านแทบไม่ออก
+     จึงใช้สูตรผสมให้อ่อนลงแบบเดียวกับ --accent-soft ของหน้ารวม/CRM (สูตรเดียวกันเป๊ะ ให้ทั้งเว็บสีตรงกัน) */
+  --accent-text:var(--accent);
   --sidebar-bg:var(--panel); --sidebar-text:var(--text); --sidebar-active:var(--panel-2);--shadow:none;
   --radius:12px;
 }
@@ -27,12 +33,14 @@
   :root:not([data-theme="light"]){
     --bg:color-mix(in oklab, var(--brand) 10%, #171614); --panel:color-mix(in oklab, var(--brand) 8%, #1F1E1B); --panel-2:color-mix(in oklab, var(--brand) 14%, #262420); --text:#EFECE5; --muted:#9C958C;
     --border:#35322C; --accent:var(--brand); --accent-2:color-mix(in oklab, var(--brand) 90%, black); --danger:#f87171; --success:#34d399;
+    --accent-text:color-mix(in oklab, var(--brand) 45%, white);
     --sidebar-bg:var(--panel); --sidebar-text:var(--text); --sidebar-active:var(--panel-2);--shadow:0 1px 3px rgba(29,27,23,.4);
   }
 }
 :root[data-theme="dark"]{
   --bg:color-mix(in oklab, var(--brand) 10%, #171614); --panel:color-mix(in oklab, var(--brand) 8%, #1F1E1B); --panel-2:color-mix(in oklab, var(--brand) 14%, #262420); --text:#EFECE5; --muted:#9C958C;
   --border:#35322C; --accent:var(--brand); --accent-2:color-mix(in oklab, var(--brand) 90%, black); --danger:#f87171; --success:#34d399;
+  --accent-text:color-mix(in oklab, var(--brand) 45%, white);
   --sidebar-bg:var(--panel); --sidebar-text:var(--text); --sidebar-active:var(--panel-2);--shadow:0 1px 3px rgba(29,27,23,.4);
 }
 *{box-sizing:border-box;}
@@ -125,7 +133,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
 .day-cell .holiday-tag{font-size:10px;color:var(--danger);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .day-cell .tax-tag{font-size:10px;color:#fff;background:#dc2626;border-radius:3px;padding:0 3px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px;}
 .event-pill{margin-top:2px;font-size:11px;padding:2px 5px;border-radius:5px;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;}
-.more-link{font-size:10px;color:var(--accent);margin-top:2px;cursor:pointer;}
+.more-link{font-size:10px;color:var(--accent-text);margin-top:2px;cursor:pointer;}
 /* กิจกรรมข้ามพนักงาน (crm_activity_log) ที่ขึ้นตรงบนตารางปฏิทิน — สีน้ำเงินตัวเดียวกับหน้า "กิจกรรมประจำวัน"
    กันสับสนกับ event-pill สีตามหมวดหมู่ของผู้ใช้เอง / tax-tag สีแดงของกำหนดส่งภาษี */
 .activity-tag{margin-top:2px;font-size:10px;padding:2px 5px;border-radius:5px;background:#3b82f622;color:#3b82f6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;}
@@ -1060,6 +1068,15 @@ function calNavNext(){
 }
 function calNavToday(){ curDate = new Date(); renderCalendar(); }
 
+// id ที่มาจาก DOM (dataset.id ของปุ่ม/pill ที่คลิก หรือค่าใน <input type="hidden"> ของฟอร์ม) เป็น string
+// เสมอตามสเปกของ HTML — ส่วน id ของข้อมูลจริงตอนนี้เป็น string ทั้งสองโหมด (โหมดคลาวด์: cal_events.id /
+// cal_tasks.id เป็น uuid ตรวจกับฐานข้อมูลจริงแล้ว · โหมด Local: lsId() คืน 'id_xxx') ดังนั้น === ก็ใช้ได้
+// ถูกต้องอยู่แล้ว ไม่ได้มีบั๊กค้างอยู่ ณ ตอนนี้ — sameId() เป็นการกันไว้ล่วงหน้าเฉยๆ เผื่อวันหลังมีใครเปลี่ยน
+// ชนิดคอลัมน์ id เป็นตัวเลข (bigint/serial) ซึ่งจะทำให้ 4242 === '4242' เป็น false แล้วการคลิกเพื่อแก้ไข/
+// ลบ/ย้ายสถานะจะหา .find()/.filter() ไม่เจอแบบเงียบๆ (เปิดเป็นฟอร์ม "เพิ่มใหม่" เปล่าแทน "แก้ไข")
+// เทียบผ่าน String() จึงถูกต้องทั้งกรณีปัจจุบันและกรณีนั้น
+function sameId(a, b){ return a!=null && b!=null && String(a) === String(b); }
+
 /* ---- Event modal ---- */
 const DEFAULT_EVENT_CATEGORY = 'client';
 function fillCategorySelect(sel){
@@ -1070,7 +1087,7 @@ function openEventModal(id, presetDate){
   const isEdit = !!id;
   document.getElementById('eventModalTitle').textContent = isEdit ? 'แก้ไขกิจกรรม' : 'เพิ่มกิจกรรม';
   document.getElementById('ev_delete').classList.toggle('hidden', !isEdit);
-  const ev = isEdit ? events.find(e=>e.id===id) : null;
+  const ev = isEdit ? events.find(e=>sameId(e.id,id)) : null;
   document.getElementById('ev_id').value = ev ? ev.id : '';
   document.getElementById('ev_title').value = ev ? ev.title : '';
   populateClientDatalist();
@@ -1212,7 +1229,7 @@ async function saveEventForm(e){
             : 'บันทึกไม่สำเร็จ: ไม่มีสิทธิ์แก้ไขรายการนี้ (ไม่ใช่กิจกรรมของคุณ)');
           return;
         }
-        const ev = events.find(x=>x.id===id);
+        const ev = events.find(x=>sameId(x.id,id));
         if(ev) Object.assign(ev, data, {updated_at:new Date().toISOString()});
       } else {
         const nowIso = new Date().toISOString();
@@ -1232,7 +1249,7 @@ async function saveEventForm(e){
     finally{ if(saveBtn) saveBtn.disabled = false; }
   } else {
     if(id){
-      const ev = events.find(x=>x.id===id);
+      const ev = events.find(x=>sameId(x.id,id));
       Object.assign(ev, data, {updated_at:new Date().toISOString()});
     } else {
       events.push(Object.assign({id:lsId(), user_id:'local', source:'local', external_id:null, created_at:new Date().toISOString(), updated_at:new Date().toISOString()}, data));
@@ -1255,11 +1272,11 @@ async function deleteEvent(){
       const { data, error } = await client.from('cal_events').delete().eq('id', id).select();
       if(error){ toast('ลบไม่สำเร็จ: ' + (error.message || 'เกิดข้อผิดพลาด')); return; }
       if(!data || !data.length){ toast('ลบไม่สำเร็จ: ไม่มีสิทธิ์ลบรายการนี้ (นัดส่วนตัวลบได้เฉพาะเจ้าของนัด · กิจกรรมทีมลบได้เฉพาะสมาชิกทีมนั้นหรือเจ้าของ/ผู้จัดการ)'); return; }
-      events = events.filter(e=>e.id!==id);
+      events = events.filter(e=>!sameId(e.id,id));
     }catch(err){ toast('ลบไม่สำเร็จ (เชื่อมต่อคลาวด์ไม่ได้)'); return; }
     finally{ if(delBtn) delBtn.disabled = false; }
   } else {
-    events = events.filter(e=>e.id!==id);
+    events = events.filter(e=>!sameId(e.id,id));
     lsSet('dcbc_events', events);
   }
   closeEventModal();
@@ -1297,7 +1314,7 @@ function renderTasks(){
   }).join('');
 }
 async function moveTask(id, toStatus){
-  const t = tasks.find(x=>x.id===id);
+  const t = tasks.find(x=>sameId(x.id,id));
   if(!t) return;
   const wasDone = t.status === 'done';
   if(dataMode==='cloud'){
@@ -1317,7 +1334,7 @@ function openTaskModal(id){
   const isEdit = !!id;
   document.getElementById('taskModalTitle').textContent = isEdit ? 'แก้ไขงาน' : 'เพิ่มงาน';
   document.getElementById('tk_delete').classList.toggle('hidden', !isEdit);
-  const t = isEdit ? tasks.find(x=>x.id===id) : null;
+  const t = isEdit ? tasks.find(x=>sameId(x.id,id)) : null;
   document.getElementById('tk_id').value = t ? t.id : '';
   document.getElementById('tk_title').value = t ? t.title : '';
   document.getElementById('tk_desc').value = t ? (t.description||'') : '';
@@ -1355,7 +1372,7 @@ async function saveTaskForm(e){
         due_time: data.due_time||null, priority: data.priority, category: data.category, status: data.status
       };
       if(id){
-        const t = tasks.find(x=>x.id===id);
+        const t = tasks.find(x=>sameId(x.id,id));
         const wasDone = t && t.status==='done';
         const { data: upd, error } = await client.from('cal_tasks')
           .update(Object.assign({}, payload, {updated_at:new Date().toISOString()})).eq('id', id).select();
@@ -1379,7 +1396,7 @@ async function saveTaskForm(e){
     finally{ if(saveBtn) saveBtn.disabled = false; }
   } else {
     if(id){
-      const t = tasks.find(x=>x.id===id);
+      const t = tasks.find(x=>sameId(x.id,id));
       const wasDone = t.status === 'done';
       Object.assign(t, data, {updated_at:new Date().toISOString()});
       if(t.status==='done' && !wasDone) logTaskCompletion(t);
@@ -1405,11 +1422,11 @@ async function deleteTask(){
       const { data, error } = await client.from('cal_tasks').delete().eq('id', id).select();
       if(error){ toast('ลบไม่สำเร็จ: ' + (error.message||'เกิดข้อผิดพลาด')); return; }
       if(!data || !data.length){ toast('ลบไม่สำเร็จ: ไม่พบงานนี้ หรือไม่มีสิทธิ์ลบ'); return; }
-      tasks = tasks.filter(t=>t.id!==id);
+      tasks = tasks.filter(t=>!sameId(t.id,id));
     }catch(err){ toast('ลบไม่สำเร็จ (เชื่อมต่อคลาวด์ไม่ได้)'); return; }
     finally{ if(delBtn) delBtn.disabled = false; }
   } else {
-    tasks = tasks.filter(t=>t.id!==id);
+    tasks = tasks.filter(t=>!sameId(t.id,id));
     lsSet('dcbc_tasks', tasks);
   }
   closeTaskModal();
@@ -2373,6 +2390,16 @@ function watchOverlay_() {
     ob.observe(el, { attributes: true, attributeFilter: ['class'] });
   });
   notifyOverlay_();
+  // ผู้ใช้เปิดหน้าต่างค้างไว้ (เช่น กำลังกรอกฟอร์ม) แล้วสลับไปแท็บอื่นของหน้ารวมแล้วกลับมาที่ปฏิทิน — หน้ารวม
+  // (goToSection() ใน index.html) ล้างสถานะ overlay-open ของตัวเองทุกครั้งที่มีการนำทาง "ไม่ว่าจะไปหรือกลับมา
+  // ก็ตาม" โดยไม่รู้ว่าหน้าต่างของเรายังเปิดค้างอยู่จริง (document ของ iframe ไม่ได้ถูกทำลายตอนสลับแท็บ แค่ถูก
+  // ซ่อนด้วย CSS ฝั่งหน้ารวม สถานะ/หน้าต่างที่เปิดค้างจึงยังอยู่เหมือนเดิมทุกอย่าง) เพราะ MutationObserver ด้านบน
+  // จะไม่ยิงข้อความซ้ำถ้าคลาส "open" ไม่ได้เปลี่ยนเลยระหว่างนั้น (กันสแปม) ปุ่มลอย "น้องบัญชี" จึงโผล่ทับ
+  // หน้าต่างที่ยังเปิดอยู่ได้จริงตอนกลับมาที่แท็บนี้อีกครั้ง (พิสูจน์แล้วด้วยเทสจำลองการสลับแท็บจริง) — แก้ด้วย
+  // การยืนยันสถานะซ้ำเป็นระยะ (เมิน overlaySent_ ที่จำไว้) เฉพาะตอนมีหน้าต่างเปิดอยู่จริงเท่านั้น (ปิดอยู่ไม่ต้อง
+  // ส่งซ้ำ เพราะค่าเริ่มต้น/ค่าที่หน้ารวมล้างเองตรงกับ "ปิด" อยู่แล้ว ไม่มีอะไรต้องแก้) ให้สถานะที่หน้ารวมเห็นตรง
+  // กับความจริงเสมอภายในไม่เกิน 1 วินาที ไม่ว่าจะสลับแท็บกี่รอบก็ตาม
+  setInterval(() => { if (overlayOpen_()) { overlaySent_ = null; notifyOverlay_(); } }, 1000);
 }
 
 document.addEventListener('DOMContentLoaded', init);
