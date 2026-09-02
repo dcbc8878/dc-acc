@@ -188,6 +188,7 @@
             <span class="col-code">CODE</span>
             <span class="col-name" style="text-transform:none;font-weight:700">NAME</span>
             <span style="width:190px;flex-shrink:0">ตำแหน่ง</span>
+            <span style="width:110px;flex-shrink:0;text-align:center">เบอร์โทร</span>
             <span style="width:110px;flex-shrink:0;text-align:center">เริ่มงาน</span>
             <span style="width:90px;flex-shrink:0;text-align:center">สถานะ</span>
           </div>
@@ -360,6 +361,25 @@ function fmtServiceDate(input) {
   }
   return `${d} ${SVC_MONTHS_SHORT[mIdx]} ${y}`;
 }
+// วันเริ่มงาน: ใช้ start_date จริงถ้ามี (เพิ่มเข้ามาใหม่ — org_staff.start_date) ถ้ายังไม่เคยกรอก (พนักงาน
+// เก่าก่อนมีฟีเจอร์นี้ทุกคน) fallback ไปโชว์วันที่สร้างบัญชีแทนแบบที่คอลัมน์นี้เคยทำมาก่อน แต่ทำให้จางลง
+// + มี title อธิบายกำกับ กันเข้าใจผิดว่าเป็นวันเริ่มงานจริงที่มีคนกรอกไว้
+function staffStartInfo_(s) {
+  if (s.start_date) return { text: fmtServiceDate(s.start_date), muted: false, title: '' };
+  if (s.created_at) return { text: fmtServiceDate(s.created_at), muted: true, title: 'ยังไม่ได้บันทึกวันเริ่มงาน — แสดงวันที่สร้างบัญชีในระบบแทน' };
+  return { text: '—', muted: false, title: '' };
+}
+// เบอร์โทร: อนุญาตเฉพาะตัวเลข/เว้นวรรค/ขีด/วงเล็บ/เครื่องหมายบวกนำหน้า ต้องมีตัวเลข 9 หรือ 10 หลักหลังตัด
+// อักขระคั่นออก (เลขที่ตั้งโต๊ะไทยรวมรหัสพื้นที่ 9 หลัก เช่น 02-123-4567 · เบอร์มือถือ 10 หลัก เช่น
+// 081-234-5678) — ครอบคลุม "รูปแบบไทยทั่วไป" ตามที่ขอ ไม่รับอักขระอื่นปนเลย
+function isValidThaiPhone_(v) {
+  if (!/^[0-9+\-()\s]+$/.test(v)) return false;
+  const digits = v.replace(/\D/g, '');
+  return digits.length === 9 || digits.length === 10;
+}
+function isValidEmailFormat_(v) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+}
 
 // ── modal ทั่วไปที่ใช้ร่วมกัน (เพิ่ม/แก้ไขพนักงาน · ทีม · คำขอสมัคร) ──
 function openGenModal(html, opts) {
@@ -437,13 +457,21 @@ function showNotLoggedIn(msg) {
 
 // ── ทะเบียนพนักงาน: list + add/edit + รีเซ็ทรหัสผ่าน ──
 function employeeRowHtml(s, idx) {
+  const start = staffStartInfo_(s);
+  // มีวันที่ออกบันทึกไว้แล้ว แต่บัญชียังไม่ถูกปิดใช้งาน — ไม่ใช่ error (end_date ไม่ผูกกับ is_active ตั้งใจ
+  // ให้แยกกัน) แค่ต้องเตือนให้เห็นชัดว่าต้องไปยกเลิกติ๊ก "ยังทำงานอยู่" เองถ้าต้องการปิดใช้งานจริง
+  const endMismatch = s.is_active && s.end_date;
+  const statusHtml = s.is_active
+    ? `<span style="color:var(--success-text);font-weight:600">ทำงาน</span>${endMismatch ? ` <span title="มีวันที่ออก (${e(fmtServiceDate(s.end_date))}) บันทึกไว้แล้ว แต่บัญชียังไม่ถูกปิดใช้งาน" style="color:var(--amber-600)">⚠</span>` : ''}`
+    : '<span style="color:var(--gray-400)">ปิดใช้งาน</span>';
   return `<div class="lrow" onclick="openEmployeeModal('${s.id}')" style="${s.is_active ? '' : 'opacity:.5'}">
       <span class="col-num">${idx + 1}</span>
       <span class="col-code"><span>${e(s.staff_code || '—')}</span></span>
       <span class="col-name">${e(s.display_name)}${s.nickname ? ` <span style="color:var(--gray-400);font-size:11.5px">(${e(s.nickname)})</span>` : ''}${s.is_active ? '' : ' <span style=\'font-size:11px;color:var(--gray-400)\'>(ออกแล้ว)</span>'}</span>
       <span style="width:190px;flex-shrink:0;font-size:12.5px;color:var(--gray-600);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e(ROLE_LABEL[s.role] || s.role)}</span>
-      <span style="width:110px;flex-shrink:0;text-align:center;font-size:12.5px;color:var(--gray-600)">${fmtServiceDate(s.created_at)}</span>
-      <span style="width:90px;flex-shrink:0;text-align:center;font-size:12.5px">${s.is_active ? '<span style="color:var(--success-text);font-weight:600">ทำงาน</span>' : '<span style="color:var(--gray-400)">ปิดใช้งาน</span>'}</span>
+      <span data-col="phone" style="width:110px;flex-shrink:0;text-align:center;font-size:12.5px;color:var(--gray-600);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${e(s.phone || '')}">${e(s.phone) || '—'}</span>
+      <span data-col="start" style="width:110px;flex-shrink:0;text-align:center;font-size:12.5px;color:${start.muted ? 'var(--gray-400)' : 'var(--gray-600)'}" title="${e(start.title)}">${e(start.text)}</span>
+      <span style="width:90px;flex-shrink:0;text-align:center;font-size:12.5px">${statusHtml}</span>
     </div>`;
 }
 function renderEmployees() {
@@ -455,21 +483,21 @@ function renderEmployees() {
   const el = document.getElementById('employeeList');
   el.innerHTML = rows.length ? rows.map((s, i) => employeeRowHtml(s, i)).join('') : '<div style="padding:32px;text-align:center;color:var(--gray-400);font-size:13px">ไม่พบพนักงาน</div>';
 }
-function openEmployeeModal(employeeId) {
+async function openEmployeeModal(employeeId) {
   const s = employeeId ? staffList.find(x => x.id === employeeId) : null;
   if (employeeId && !s) { showToast('ไม่พบพนักงาน', 'error'); return; }
   if (!s && !canCreateStaff()) return; // ปุ่มถูกซ่อนอยู่แล้ว กันไว้อีกชั้นเผื่อเรียกตรงๆ
 
   // ── สร้างพนักงานใหม่ (LV1-3) — org_staff ไม่มี INSERT policy ให้ client เขียนตรงได้เลย ต้องผ่าน
   // Edge Function action "create" เท่านั้น ซึ่งรับแค่ username/display_name/role (ไม่มีช่อง staff_code/
-  // nickname ให้ตั้งตอนสร้าง) — ตั้งได้ทีหลังผ่าน "แก้ไข" (LV1-2 เท่านั้น เพราะ UPDATE ของ org_staff
-  // เข้มกว่า — ดู canEditStaffRow) ──
+  // nickname/เบอร์โทร/วันเริ่มงาน/วันที่ออก/อีเมลส่วนตัว ให้ตั้งตอนสร้าง) — ตั้งได้ทีหลังผ่าน "แก้ไข"
+  // (LV1-2 เท่านั้น เพราะ UPDATE ของ org_staff เข้มกว่า — ดู canEditStaffRow) ──
   if (!s) {
     const roleOptions = assignableRoles().map(p => `<option value="${p}" ${p === 'junior' ? 'selected' : ''}>${e(ROLE_LABEL[p])}</option>`).join('');
     openGenModal(`
       <div style="padding:16px">
         <div style="font-size:15px;font-weight:700;color:var(--ink)">เพิ่มพนักงานใหม่</div>
-        <div style="font-size:11px;color:var(--ink-muted);margin-top:2px;margin-bottom:12px">รหัสผ่านเริ่มต้นคือ 123456 (บังคับเปลี่ยนตอนเข้าสู่ระบบครั้งแรก) — กำหนดรหัสพนักงาน/ชื่อเล่นได้ทีหลังจากเมนู "แก้ไข" (เจ้าของ/ผู้จัดการเท่านั้น)</div>
+        <div style="font-size:11px;color:var(--ink-muted);margin-top:2px;margin-bottom:12px">รหัสผ่านเริ่มต้นคือ 123456 (บังคับเปลี่ยนตอนเข้าสู่ระบบครั้งแรก) — กำหนดรหัสพนักงาน/ชื่อเล่น/เบอร์โทร/วันเริ่มงาน/วันที่ออก/อีเมลส่วนตัว ได้ทีหลังจากเมนู "แก้ไข" (เจ้าของ/ผู้จัดการเท่านั้น)</div>
         <div style="display:flex;flex-direction:column;gap:10px">
           <div>
             <div style="font-size:11px;font-weight:600;color:var(--gray-600);margin-bottom:4px">ชื่อ-นามสกุล</div>
@@ -493,13 +521,40 @@ function openEmployeeModal(employeeId) {
     return;
   }
 
+  // ── อีเมลส่วนตัวอยู่ใน org_staff_private (ตารางแยก RLS ของตัวเองคนละชุดกับ org_staff เอง ไม่ได้ติด
+  // มากับ loadStaff()/select('*') ของ org_staff ที่ preload ตอนเปิดหน้า) — ดึงเพิ่มเฉพาะตอนเปิดฟอร์มของ
+  // คนที่มีสิทธิ์เห็นจริงเท่านั้น (เจ้าของแถวเอง หรือ LV1-2 ตรงกับ RLS ของตารางนี้เป๊ะ: id = auth.uid()
+  // OR role IN (owner, manager)) จงใจไม่ query ล่วงหน้าเก็บไว้ใน staffList ตอนโหลดหน้า กันไม่ให้อีเมล
+  // ส่วนตัวของทุกคนหลุดไปกับ list ที่โหลดทุกคนพร้อมกันทีเดียว (แพทเทิร์นเดียวกับที่ CRM แยกค่าบริการออกไป
+  // ตารางเฉพาะ ไม่รวมมากับ select('*') ของลูกค้า) ──
+  const showEmail = s.id === profile.id || myLevel() <= 2;
+  let personalEmail = '';
+  if (showEmail) {
+    const { data: priv, error: privErr } = await sb.from('org_staff_private').select('personal_email').eq('id', s.id).maybeSingle();
+    if (privErr) showToast('โหลดอีเมลส่วนตัวไม่สำเร็จ: ' + privErr.message, 'error');
+    personalEmail = priv?.personal_email || '';
+  }
+  const emailFieldHtml = showEmail ? `
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--gray-600);margin-bottom:4px">อีเมลส่วนตัว (สำหรับหนังสือรับรองหัก ณ ที่จ่าย)</div>
+          <input type="email" id="emp-personalemail" class="search-input" style="width:100%" value="${e(personalEmail)}">
+        </div>` : '';
+
   const resetBtnHtml = (canManageStaffAuth() && s.is_active && s.id !== profile.id)
     ? `<button class="btn-ghost" onclick="resetStaffPassword('${s.id}')">รีเซ็ทรหัสผ่าน</button>` : '<span></span>';
 
   // ── ไม่มีสิทธิ์แก้ไขแถวนี้ (senior/junior/parttime ทุกแถว, หรือ manager ที่แถวเป็น owner/manager
   // คนอื่น) — โชว์ข้อมูลอย่างเดียว ปุ่มรีเซ็ทรหัสผ่านยังโชว์ได้ถ้ามีสิทธิ์ (independent จากสิทธิ์แก้ไข
-  // ข้อมูล — ตรงกับที่ Edge Function เช็คแยกกันจริง) ──
+  // ข้อมูล — ตรงกับที่ Edge Function เช็คแยกกันจริง) — ถ้าเป็นแถวของตัวเอง หรือผู้เปิดเป็น LV1-2 จะยังแก้ไข
+  // "อีเมลส่วนตัว" ได้ผ่านฟิลด์+ปุ่มแยกด้านล่างนี้ (org_staff_private เป็นคนละตารางคนละ RLS จาก org_staff
+  // เอง ไม่ได้ผูกกับ canEditStaffRow) ──
   if (!canEditStaffRow(s.role)) {
+    const emailSaveHtml = showEmail ? `
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--gray-100)">
+          ${emailFieldHtml}
+          <div id="emp-email-err" style="display:none;color:var(--danger-text);font-size:12px;margin-top:6px"></div>
+          <button id="emp-email-save-btn" class="btn-ghost" style="margin-top:8px;padding-left:0" onclick="savePersonalEmail('${s.id}')">บันทึกอีเมล</button>
+        </div>` : '';
     openGenModal(`
       <div style="padding:16px">
         <div style="font-size:15px;font-weight:700;color:var(--ink)">ข้อมูลพนักงาน</div>
@@ -508,9 +563,13 @@ function openEmployeeModal(employeeId) {
           <div><span style="color:var(--gray-400)">ชื่อ-นามสกุล:</span> ${e(s.display_name)}</div>
           <div><span style="color:var(--gray-400)">ชื่อเล่น:</span> ${e(s.nickname) || '—'}</div>
           <div><span style="color:var(--gray-400)">ตำแหน่ง:</span> ${e(ROLE_LABEL[s.role] || s.role)}</div>
+          <div><span style="color:var(--gray-400)">เบอร์โทร:</span> ${e(s.phone) || '—'}</div>
+          <div><span style="color:var(--gray-400)">วันเริ่มงาน:</span> ${e(staffStartInfo_(s).text)}</div>
+          ${s.end_date ? `<div><span style="color:var(--gray-400)">วันที่ออก:</span> ${e(fmtServiceDate(s.end_date))}${s.is_active ? ' <span style="color:var(--amber-600)">⚠ บัญชียังไม่ถูกปิดใช้งาน</span>' : ''}</div>` : ''}
           <div><span style="color:var(--gray-400)">สถานะ:</span> ${s.is_active ? 'ทำงาน' : 'ปิดใช้งาน'}</div>
         </div>
-        <div style="font-size:11px;color:var(--ink-muted);margin-top:10px">ไม่มีสิทธิ์แก้ไขพนักงานคนนี้</div>
+        ${emailSaveHtml}
+        <div style="font-size:11px;color:var(--ink-muted);margin-top:10px">${showEmail ? 'ไม่มีสิทธิ์แก้ไขข้อมูลอื่นของพนักงานคนนี้' : 'ไม่มีสิทธิ์แก้ไขพนักงานคนนี้'}</div>
         <div style="display:flex;justify-content:space-between;margin-top:14px">
           ${resetBtnHtml}
           <button class="btn-ghost" onclick="closeGenModal()">ปิด</button>
@@ -540,12 +599,26 @@ function openEmployeeModal(employeeId) {
           <input id="emp-nickname" class="search-input" style="width:100%" value="${e(s.nickname || '')}">
         </div>
         <div>
+          <div style="font-size:11px;font-weight:600;color:var(--gray-600);margin-bottom:4px">เบอร์โทร</div>
+          <input id="emp-phone" class="search-input" style="width:100%" placeholder="เช่น 081-234-5678" value="${e(s.phone || '')}">
+        </div>
+        <div>
           <div style="font-size:11px;font-weight:600;color:var(--gray-600);margin-bottom:4px">ตำแหน่ง</div>
           <select id="emp-role" class="search-input" style="width:100%">${roleOptions}</select>
         </div>
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--gray-600);margin-bottom:4px">วันเริ่มงาน</div>
+          <input type="date" id="emp-startdate" class="search-input" style="width:100%" value="${e(s.start_date || '')}">
+        </div>
+        ${emailFieldHtml}
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--gray-700);cursor:pointer">
-          <input type="checkbox" id="emp-active" ${s.is_active ? 'checked' : ''}> ยังทำงานอยู่
+          <input type="checkbox" id="emp-active" ${s.is_active ? 'checked' : ''} onchange="updateEndDateWarn()"> ยังทำงานอยู่
         </label>
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--gray-600);margin-bottom:4px">วันที่ออก</div>
+          <input type="date" id="emp-enddate" class="search-input" style="width:100%" value="${e(s.end_date || '')}" oninput="updateEndDateWarn()">
+          <div id="emp-enddate-warn" style="display:none;font-size:11px;color:var(--amber-600);margin-top:5px;line-height:1.5">⚠ ระบบไม่ปิดบัญชีให้อัตโนมัติเมื่อกรอกวันที่ออก — ถ้าต้องการปิดใช้งานจริง ต้องยกเลิกติ๊ก "ยังทำงานอยู่" ด้วยตัวเองด้วย</div>
+        </div>
       </div>
       <div id="emp-err" style="display:none;color:var(--danger-text);font-size:12px;margin-top:8px"></div>
       <button id="emp-save-btn" class="btn-blue" style="width:100%;margin-top:14px" onclick="saveEmployee('${s.id}')">บันทึก</button>
@@ -554,6 +627,17 @@ function openEmployeeModal(employeeId) {
         <button class="btn-ghost" onclick="closeGenModal()">ปิด</button>
       </div>
     </div>`);
+  updateEndDateWarn();
+}
+// เตือนกรณีกรอก "วันที่ออก" ไว้แล้วแต่ยังไม่ได้ยกเลิกติ๊ก "ยังทำงานอยู่" — วันที่ออกไม่มีผลปิดบัญชีให้เอง
+// ตั้งใจแยก 2 อย่างนี้ออกจากกัน (กรอกวันที่ออกล่วงหน้าได้โดยไม่ปิดบัญชีทันที เช่นประกาศลาออกล่วงหน้า)
+// เรียกทั้งตอนเปิดฟอร์ม (เผื่อข้อมูลเดิมขัดกันอยู่ก่อนแล้ว) และทุกครั้งที่แก้ช่องวันที่ออก/ติ๊กสถานะ
+function updateEndDateWarn() {
+  const warn = document.getElementById('emp-enddate-warn');
+  if (!warn) return;
+  const endVal = document.getElementById('emp-enddate')?.value;
+  const active = document.getElementById('emp-active')?.checked;
+  warn.style.display = (endVal && active) ? 'block' : 'none';
 }
 async function saveEmployee(employeeId) {
   const errEl = document.getElementById('emp-err');
@@ -569,7 +653,20 @@ async function saveEmployee(employeeId) {
     const staff_code = document.getElementById('emp-code').value.trim().toUpperCase();
     const roleVal = document.getElementById('emp-role').value;
     const is_active = document.getElementById('emp-active').checked;
+    const phoneRaw = document.getElementById('emp-phone').value.trim();
+    // input[type=date].value เป็น "YYYY-MM-DD" ล้วนๆ (หรือ "" ถ้ายังไม่เลือก) อยู่แล้วในตัว ไม่ผ่าน
+    // new Date(...).toISOString() เด็ดขาด (จะเลื่อนวันได้ตามเขตเวลาเครื่อง) — ส่งค่าตรงๆ จาก input ได้เลย
+    const start_date = document.getElementById('emp-startdate').value || null;
+    const end_date = document.getElementById('emp-enddate').value || null;
     if (!display_name) { errEl.textContent = 'กรุณากรอกชื่อ-นามสกุล'; errEl.style.display = 'block'; return; }
+    if (phoneRaw && !isValidThaiPhone_(phoneRaw)) { errEl.textContent = 'รูปแบบเบอร์โทรไม่ถูกต้อง (ตัวเลข 9-10 หลัก เว้นวรรค/ขีดได้)'; errEl.style.display = 'block'; return; }
+    if (start_date && end_date && end_date < start_date) { errEl.textContent = 'วันที่ออกต้องไม่ก่อนวันเริ่มงาน'; errEl.style.display = 'block'; return; }
+    const phone = phoneRaw || null;
+
+    // อีเมลส่วนตัว (ถ้าช่องนี้แสดงอยู่ — ดู showEmail ใน openEmployeeModal) อยู่คนละตาราง (org_staff_private)
+    // คนละ RLS จาก org_staff เอง จึงต้องยิงแยกคำสั่ง แล้วเช็ค error ของทั้งสองฝั่งเป็นอิสระต่อกันเสมอ ห้าม
+    // ขึ้น "สำเร็จ" รวมๆ ถ้ามีฝั่งใดฝั่งหนึ่งพลาด (บทเรียนจากบั๊กเงียบที่เจอมาหลายรอบในโปรเจกต์นี้)
+    const emailInput = document.getElementById('emp-personalemail');
 
     if (btn) { btn.disabled = true; btn.textContent = 'กำลังบันทึก…'; }
     // .select('id') (ไม่ใช้ .single()) เพื่อเช็คว่า UPDATE นี้แตะแถวจริงกี่แถว — ถ้าไม่เช็ค การเขียนที่ถูก
@@ -584,21 +681,31 @@ async function saveEmployee(employeeId) {
     //   RETURNING ว่างเปล่าเพราะ "มองไม่เห็น" ไม่ใช่เพราะ "ไม่ได้เขียน") จึงเช็ค data.length===0 ว่าเป็น
     //   ความล้มเหลวจริง เฉพาะตอนที่คำสั่งนี้ "ไม่ได้" ตั้ง is_active เป็น false เท่านั้น (ตรงกับเงื่อนไขที่
     //   ทำให้แถวมองไม่เห็นได้จริงจุดเดียวที่มี — ไม่มีเงื่อนไขอื่นที่ทำให้ manager มองไม่เห็นแถวที่เพิ่งแก้ไข)
-    const { data, error } = await sb.from('org_staff')
-      .update({ display_name, nickname, staff_code, role: roleVal, is_active })
-      .eq('id', employeeId)
-      .select('id');
+    const [{ data, error }, emailResult] = await Promise.all([
+      sb.from('org_staff')
+        .update({ display_name, nickname, staff_code, role: roleVal, is_active, phone, start_date, end_date })
+        .eq('id', employeeId)
+        .select('id'),
+      emailInput ? upsertPersonalEmail_(employeeId, emailInput.value) : Promise.resolve(null),
+    ]);
     if (btn) { btn.disabled = false; btn.textContent = 'บันทึก'; }
-    if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; return; }
+    // ต่อท้ายข้อความ error/สำเร็จของ org_staff ด้วยผลของอีเมลส่วนตัวเสมอ (ถ้ามีช่องนี้ให้บันทึก) — กัน
+    // ไม่ให้ฝั่งใดฝั่งหนึ่งพลาดแบบเงียบๆ โดยผู้ใช้เห็นแค่ "สำเร็จ" ของอีกฝั่ง
+    const emailSuffix = !emailResult ? '' : (emailResult.ok ? ' (อีเมลส่วนตัวบันทึกสำเร็จด้วย)' : (' (แต่บันทึกอีเมลส่วนตัวไม่สำเร็จ: ' + emailResult.message + ')'));
+    if (error) { errEl.textContent = error.message + emailSuffix; errEl.style.display = 'block'; return; }
     if ((!data || data.length === 0) && is_active) {
-      errEl.textContent = 'บันทึกไม่สำเร็จ — ข้อมูล/สิทธิ์ของพนักงานคนนี้อาจเปลี่ยนไปแล้ว กรุณาโหลดหน้าใหม่แล้วลองอีกครั้ง';
+      errEl.textContent = 'บันทึกไม่สำเร็จ — ข้อมูล/สิทธิ์ของพนักงานคนนี้อาจเปลี่ยนไปแล้ว กรุณาโหลดหน้าใหม่แล้วลองอีกครั้ง' + emailSuffix;
       errEl.style.display = 'block';
       return;
     }
-    Object.assign(s, { display_name, nickname, staff_code, role: roleVal, is_active });
+    Object.assign(s, { display_name, nickname, staff_code, role: roleVal, is_active, phone, start_date, end_date });
     closeGenModal();
     renderEmployees();
-    showToast('บันทึกข้อมูลพนักงานแล้ว');
+    if (emailResult && !emailResult.ok) {
+      showToast('บันทึกข้อมูลพนักงานแล้ว แต่บันทึกอีเมลส่วนตัวไม่สำเร็จ: ' + emailResult.message, 'error');
+    } else {
+      showToast('บันทึกข้อมูลพนักงานแล้ว' + (emailResult && emailResult.ok ? ' (พร้อมอีเมลส่วนตัว)' : ''));
+    }
   } else {
     // ── เพิ่มพนักงานใหม่ผ่าน Edge Function (LV1-3) ──
     if (!canCreateStaff()) { showToast('ไม่มีสิทธิ์เพิ่มพนักงาน', 'error'); return; }
@@ -633,6 +740,41 @@ async function resetStaffPassword(staffId) {
   const { data, error } = await sb.functions.invoke(ADMIN_STAFF_FN, { body: { action: 'reset', staff_id: staffId } });
   if (error || data?.error) { showToast(data?.error || await invokeErrorMessage(error) || 'รีเซ็ทไม่สำเร็จ', 'error'); return; }
   showToast('รีเซ็ทรหัสผ่านแล้ว (รหัสเริ่มต้น: 123456)');
+}
+// upsert อีเมลส่วนตัวไปที่ org_staff_private (ตารางแยก RLS ของตัวเอง — id = auth.uid() OR role IN
+// (owner, manager) ทั้ง insert/select/update) คืน {ok:true} หรือ {ok:false, message} เสมอ ไม่โยน error
+// ออกไปให้ผู้เรียกต้อง try/catch เอง เพื่อให้ผู้เรียก (saveEmployee / savePersonalEmail) เอาไปรวมกับผล
+// ของ org_staff ได้ง่ายโดยไม่ขึ้น "สำเร็จ" รวมๆ ถ้ามีฝั่งใดฝั่งหนึ่งพลาด
+async function upsertPersonalEmail_(staffId, rawEmail) {
+  const val = (rawEmail || '').trim();
+  if (val && !isValidEmailFormat_(val)) return { ok: false, message: 'รูปแบบอีเมลไม่ถูกต้อง' };
+  // .select('id') เช็คว่าคำสั่งนี้แตะแถวจริง — แพทเทิร์นเดียวกับ saveEmployee() ด้านบน (ถ้าสิทธิ์เปลี่ยนไป
+  // แล้วก่อนกดบันทึก เช่นถูกลดตำแหน่งกลางอากาศพอดี upsert จะไม่ error แต่ก็ไม่แตะแถวจริงเงียบๆ ได้เหมือนกัน)
+  const { data, error } = await sb.from('org_staff_private')
+    .upsert({ id: staffId, personal_email: val }, { onConflict: 'id' })
+    .select('id');
+  if (error) return { ok: false, message: error.message };
+  if (!data || data.length === 0) return { ok: false, message: 'ไม่มีสิทธิ์บันทึกอีเมลส่วนตัวของพนักงานคนนี้' };
+  return { ok: true };
+}
+// ปุ่ม "บันทึกอีเมล" แยกในโมดัลแบบอ่านอย่างเดียว (senior/junior/parttime เปิดดูแถวของตัวเอง หรือ manager
+// เปิดดูแถวของ owner) — org_staff เองแก้ไม่ได้ในโมดัลนี้ (ดู canEditStaffRow) แต่อีเมลส่วนตัวเป็นคนละ
+// ตารางคนละ RLS จึงแยกปุ่ม/error ออกมาต่างหาก ไม่ปนกับ saveEmployee()
+async function savePersonalEmail(staffId) {
+  const input = document.getElementById('emp-personalemail');
+  if (!input) return;
+  const btn = document.getElementById('emp-email-save-btn');
+  const errEl = document.getElementById('emp-email-err');
+  if (errEl) errEl.style.display = 'none';
+  if (btn) { btn.disabled = true; btn.textContent = 'กำลังบันทึก…'; }
+  const res = await upsertPersonalEmail_(staffId, input.value);
+  if (btn) { btn.disabled = false; btn.textContent = 'บันทึกอีเมล'; }
+  if (!res.ok) {
+    if (errEl) { errEl.textContent = res.message; errEl.style.display = 'block'; }
+    else showToast(res.message, 'error');
+    return;
+  }
+  showToast('บันทึกอีเมลส่วนตัวแล้ว');
 }
 
 // ── ทีม: list + add/edit/delete ──
