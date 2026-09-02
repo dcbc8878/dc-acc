@@ -441,7 +441,14 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
         <select id="ev_category"></select>
       </div>
       <div class="chk-row" id="ev_team_row" style="margin-bottom:12px;"><input type="checkbox" id="ev_team"><label for="ev_team">ปฏิทินทีม (ให้ทีมเห็นด้วย)</label></div>
-      <div class="desc hidden" id="ev_team_hint" style="margin:-8px 0 12px;color:var(--danger);">เฉพาะเจ้าของ (LV1) และผู้จัดการ (LV2) เท่านั้นที่สร้าง/แก้ไข "ปฏิทินทีม" ได้ (กำหนดไว้ที่ฐานข้อมูล)</div>
+      <div class="desc hidden" id="ev_team_hint" style="margin:-8px 0 12px;color:var(--danger);">คุณไม่ได้อยู่ในทีมไหนเลย จึงสร้าง/แก้ไข "ปฏิทินทีม" ไม่ได้ (ต้องเป็นสมาชิกทีมอย่างน้อย 1 ทีม หรือเป็นเจ้าของ/ผู้จัดการ)</div>
+      <!-- โผล่เฉพาะติ๊ก "ปฏิทินทีม" แล้วเท่านั้น (toggleEventTeamRow()) — อยู่ทีมเดียวจะซ่อน select ไว้แล้วโชว์
+           ข้อความแทน (เลือกให้อัตโนมัติ) อยู่หลายทีมถึงจะโชว์ select ให้เลือกจริง (บังคับเลือกก่อนบันทึกได้) -->
+      <div class="field hidden" id="ev_team_select_row">
+        <label>ทีม *</label>
+        <select id="ev_team_id"></select>
+        <div class="desc hidden" id="ev_team_single_label" style="margin-top:2px;"></div>
+      </div>
       <div class="field"><label>โน้ต</label><textarea id="ev_note"></textarea></div>
       <div class="modal-actions">
         <button type="button" class="btn danger sm hidden" id="ev_delete">ลบกิจกรรม</button>
@@ -744,6 +751,10 @@ let sb = null;             // supabase client, lazy-created on first use
 let authUser = null;       // supabase auth user once logged in (shared account with CRM)
 let cloudProfile = null;   // matching row from cal_profiles
 let cloudClients = [];     // crm_clients loaded live once logged in, for the event client picker
+// ทีมที่ผู้ใช้ปัจจุบัน "ใช้ปฏิทินทีมได้" — [{id,name}] เจ้าของ/ผู้จัดการ = ทุกทีมในบริษัท (จัดการได้ทุกทีมตาม
+// RLS ของ cal_events) คนอื่นๆ = เฉพาะทีมที่ตัวเองเป็นสมาชิกหรือหัวหน้าทีม — โหลดโดย loadMyTeams() ด้านล่าง
+// ว่างเปล่า ([]) เสมอในโหมด Local (ยังไม่ล็อกอิน ไม่มีทีมจริง)
+let myTeams = [];
 // 'local' = events/tasks อ่าน-เขียนผ่าน localStorage เหมือนเดิมทุกอย่าง (ยังไม่ได้ล็อกอิน CRM)
 // 'cloud' = events/tasks อ่าน-เขียนผ่าน Supabase (cal_events/cal_tasks) แทน — สลับเป็น cloud หลัง enterCloudMode()
 // ทำงานเสร็จเท่านั้น (ไม่ใช่ทันทีที่ authUser!=null เฉยๆ เพราะต้องรอขั้นตอนย้ายข้อมูล/โหลดข้อมูลคลาวด์ก่อน)
@@ -847,9 +858,10 @@ function eventsOn(iso){ return getFilteredEvents().filter(e=>e.date===iso).sort(
 function isTopRole(){ return profile && profile.role === ROLES[0].label; }
 // เดิมใช้คุมสิทธิ์ดูแท็บ "กิจกรรมประจำวัน"/แท็กกิจกรรมบนตารางปฏิทิน (จำกัดแค่ LV1-2) — ผู้ใช้ยืนยันให้เปิดกว้างขึ้น
 // เป็นพนักงานทุกระดับที่ล็อกอินอยู่แล้ว (ดู refreshDailyActivityAccess/ensureCalendarActivityLoaded/renderDailyActivity
-// ด้านล่าง ที่เปลี่ยนไปเช็คแค่ !!authUser แทนแล้ว) จึงไม่ได้ใช้คุมจุดนั้นอีกต่อไป — แต่ยังใช้งานอยู่จริงอีกจุดหนึ่งคือ
-// คุม UI hint ตอนสร้าง/แก้ "ปฏิทินทีม" (ev_team checkbox ใน openEventModal) ให้ตรงกับ RLS จริงของ cal_events ที่
-// อนุญาตแค่ owner/manager เขียนแถว is_team=true ได้ — เก็บฟังก์ชันนี้ไว้ตามเดิม (ไม่ได้ลบ) แค่เปลี่ยนจุดที่เรียกใช้
+// ด้านล่าง ที่เปลี่ยนไปเช็คแค่ !!authUser แทนแล้ว) จึงไม่ได้ใช้คุมจุดนั้นอีกต่อไป — ตอนนี้ใช้งานอยู่จริงอีกจุดหนึ่ง
+// คือใน loadMyTeams() เพื่อตัดสินว่า "ทีมของฉัน" ควรเป็นทุกทีมในบริษัทหรือแค่ทีมที่เป็นสมาชิก/หัวหน้าทีม ตรงกับ
+// RLS จริงของ cal_events ที่ให้ owner/manager เห็น/จัดการนัดหมายทีมได้ทุกทีม (ส่วนคนอื่นทำได้เฉพาะทีมตัวเอง) —
+// เก็บฟังก์ชันนี้ไว้ตามเดิม (ไม่ได้ลบ) แค่เปลี่ยนจุดที่เรียกใช้
 function isOwnerOrManager(){ return !!profile && (profile.role === ROLES[0].label || profile.role === ROLES[1].label); }
 function enforceFilterAccess(){
   if(calFilter==='all' && !isTopRole()){ calFilter = 'personal'; return true; }
@@ -1075,21 +1087,70 @@ function openEventModal(id, presetDate){
   // ต้องเซ็ตประเภทด้วยทุกครั้ง ไม่งั้นดรอปดาวน์จะค้างค่าที่เปิดไว้ครั้งก่อน — แก้กิจกรรมเดิมแล้วกดบันทึก
   // จะกลายเป็นเปลี่ยนประเภททิ้งแบบเงียบๆ และเปิดฟอร์มใหม่ก็จะได้ประเภทของกิจกรรมที่เพิ่งดูไปแทนค่าเริ่มต้น
   document.getElementById('ev_category').value = (ev && CATEGORIES[ev.category]) ? ev.category : DEFAULT_EVENT_CATEGORY;
-  // เขียนแถว is_team=true ได้แค่ owner/manager จริงๆ (RLS ของ cal_events) — โหมด Local ไม่มี RLS จึงไม่จำกัด
-  // ปิดช่องติ๊กไว้ล่วงหน้าให้คนที่กดไปก็จะเจอแค่ error ตอนบันทึกอยู่ดี (กันสร้างความคาดหวังผิดๆ) และไม่ติ๊กให้
-  // อัตโนมัติตอนเพิ่มกิจกรรมใหม่จากมุมมองตัวกรอง "ทีม" ถ้าคนนี้สร้าง team event ไม่ได้อยู่ดี
-  const canTeam = dataMode!=='cloud' || isOwnerOrManager();
+  // เขียนแถว is_team=true ได้ต้องเป็นสมาชิกของทีมนั้น (รวมหัวหน้าทีม) หรือเป็นเจ้าของ/ผู้จัดการ (จัดการได้ทุกทีม) —
+  // ตรงตาม RLS จริงของ cal_events (myTeams โหลดไว้แล้วตั้งแต่ล็อกอินสำเร็จ ดู loadMyTeams() ด้านล่าง) โหมด Local
+  // ไม่มี RLS และไม่มีทีมจริง จึงปล่อยให้ติ๊กได้เสมอเหมือนเดิม (ไม่โชว์ตัวเลือกทีมเลย — ดู toggleEventTeamRow())
+  // ปิดช่องติ๊กไว้ล่วงหน้าถ้าไม่มีทีมเลย กันสร้างความคาดหวังผิดๆ ว่ากดได้แต่บันทึกไม่ผ่าน และไม่ติ๊กให้อัตโนมัติ
+  // ตอนเพิ่มกิจกรรมใหม่จากมุมมองตัวกรอง "ทีม" ถ้าคนนี้สร้าง team event ไม่ได้อยู่ดี
+  const canTeam = dataMode!=='cloud' || myTeams.length>0;
   const teamChk = document.getElementById('ev_team');
   teamChk.checked = ev ? !!ev.is_team : (calFilter==='team' && canTeam);
   teamChk.disabled = !canTeam;
   document.getElementById('ev_team_hint').classList.toggle('hidden', canTeam);
+  // เตรียมตัวเลือกทีมไว้ก่อนเสมอ (ไม่ว่าติ๊กอยู่หรือไม่ตอนเปิด modal) — toggleEventTeamRow() ด้านล่างแค่โชว์/ซ่อน
+  // แถวเท่านั้น ไม่ได้ populate ตัวเลือกใหม่ทุกครั้งที่ผู้ใช้ติ๊ก/เลิกติ๊กเอง (กันเลือกทีมที่เพิ่งเลือกไว้หายไปเฉยๆ)
+  populateTeamSelectOptions(ev ? ev.team_id : null);
   document.getElementById('ev_note').value = ev ? (ev.note||'') : '';
   toggleEventTimeRow();
+  toggleEventTeamRow();
   modal.classList.add('open');
   document.getElementById('ev_title').focus();
 }
 function toggleEventTimeRow(){
   document.getElementById('ev_timerow').style.display = document.getElementById('ev_allday').checked ? 'none' : 'flex';
+}
+// เติมตัวเลือก "ทีม" จาก myTeams — selectedTeamId ใช้ตอนแก้กิจกรรมเดิมที่มีทีมอยู่แล้ว (โหลดค่าเดิมมาเลือกไว้ให้
+// ถูก) ถ้าทีมเดิมไม่อยู่ใน myTeams แล้ว (กรณีหายากมาก เพราะถ้ายังเห็น/แก้กิจกรรมนี้อยู่ RLS ก็ควรให้เห็นทีมนั้นใน
+// myTeams อยู่แล้ว เว้นแต่ข้อมูลทีมจะเปลี่ยนไปหลังโหลดหน้า) เติมเป็นตัวเลือกพิเศษกำกับไว้ ไม่ทำให้ค่าเดิมหายเงียบๆ
+function populateTeamSelectOptions(selectedTeamId){
+  const select = document.getElementById('ev_team_id');
+  let opts = myTeams.slice();
+  if(selectedTeamId!=null && !opts.some(t=>String(t.id)===String(selectedTeamId))){
+    opts = opts.concat([{id:selectedTeamId, name:'ทีมเดิม (ไม่อยู่ในรายชื่อทีมของคุณแล้ว)'}]);
+  }
+  select.innerHTML = '<option value="">— เลือกทีม —</option>' + opts.map(t=>`<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
+  select.value = (selectedTeamId!=null) ? String(selectedTeamId) : '';
+}
+// โชว์/ซ่อนแถวเลือกทีม — มีความหมายแค่โหมดคลาวด์เท่านั้น (โหมด Local ไม่มีทีมจริง คงพฤติกรรมเดิมไว้: มีแค่
+// ช่องติ๊กเฉยๆ ไม่มีการเลือกทีม) อยู่ทีมเดียวจะซ่อน select ไว้แล้วโชว์ข้อความแทน (เลือกให้อัตโนมัติ ไม่ต้องเลือก)
+// อยู่หลายทีมถึงจะโชว์ select ให้เลือกจริง
+function toggleEventTeamRow(){
+  const teamChk = document.getElementById('ev_team');
+  const row = document.getElementById('ev_team_select_row');
+  const select = document.getElementById('ev_team_id');
+  const singleLabel = document.getElementById('ev_team_single_label');
+  const show = dataMode==='cloud' && teamChk.checked && !teamChk.disabled;
+  row.classList.toggle('hidden', !show);
+  if(!show) return;
+  // นับจากตัวเลือกที่ populateTeamSelectOptions() เติมไว้จริง (ไม่ใช่ myTeams.length เฉยๆ) — กรณีแก้ไข
+  // กิจกรรมที่ทีมเดิมไม่อยู่ใน myTeams แล้ว populateTeamSelectOptions() จะเติมตัวเลือกพิเศษ "ทีมเดิม (ไม่อยู่ใน
+  // รายชื่อทีมของคุณแล้ว)" เพิ่มมาอีก 1 ตัว ทำให้ต้องโชว์ dropdown ให้เลือกจริง ไม่ใช่ auto-select แบบทีมเดียว
+  // ปกติ — ถ้านับแค่ myTeams.length เฉยๆ (ของเดิมที่เคยพลาด) จะเข้าใจผิดว่า "มีทีมเดียว" แล้วเขียนทับ select
+  // ด้วยทีมของตัวเองไปเงียบๆ (พิสูจน์แล้วด้วยเทส: เปิดฟอร์มแก้กิจกรรมทีมเดิมที่หลุดจาก myTeams แล้วกดบันทึกโดย
+  // ไม่ได้แก้อะไรเลย จะกลายเป็นเปลี่ยนทีมของกิจกรรมนั้นไปเป็นทีมของตัวเองแทนแบบไม่มีใครตั้งใจ) — ไม่เขียนทับ
+  // innerHTML ซ้ำที่นี่เลย (populateTeamSelectOptions() เติม+เลือกค่าไว้ถูกต้องอยู่แล้วเสมอ) ยกเว้น auto-select
+  // ให้กิจกรรม "ใหม่" ที่มีทีมเดียวแท้ๆ (ไม่มีตัวเลือกพิเศษ) ซึ่ง select ยังไม่มีค่าเลือกไว้เลย
+  const realOpts = [...select.querySelectorAll('option')].filter(o=>o.value!=='');
+  if(realOpts.length<=1){
+    select.classList.add('hidden');
+    singleLabel.classList.remove('hidden');
+    if(realOpts.length===1 && !select.value) select.value = realOpts[0].value;
+    const chosen = select.options[select.selectedIndex];
+    singleLabel.textContent = chosen ? ('จะลงในปฏิทินทีม: ' + chosen.textContent) : '';
+  } else {
+    select.classList.remove('hidden');
+    singleLabel.classList.add('hidden');
+  }
 }
 function closeEventModal(){ document.getElementById('eventModal').classList.remove('open'); }
 
@@ -1108,6 +1169,10 @@ async function saveEventForm(e){
   e.preventDefault();
   const id = document.getElementById('ev_id').value;
   const clientName = document.getElementById('ev_client').value.trim();
+  const isTeam = document.getElementById('ev_team').checked;
+  // team_id มีความหมายแค่โหมดคลาวด์ (โหมด Local ไม่มีทีมจริง — select ถูกซ่อนไว้เสมอ ค่าจึงเป็น null คงที่
+  // ดู toggleEventTeamRow()) ตอนติ๊กทีมเดียว select ถูกเติม option เดียวไว้ให้อัตโนมัติแล้วใน toggleEventTeamRow()
+  const teamIdRaw = document.getElementById('ev_team_id').value;
   const data = {
     title: document.getElementById('ev_title').value.trim(),
     client: clientName,
@@ -1117,10 +1182,14 @@ async function saveEventForm(e){
     time: document.getElementById('ev_allday').checked ? '' : document.getElementById('ev_time').value,
     end_time: document.getElementById('ev_allday').checked ? '' : document.getElementById('ev_endtime').value,
     category: document.getElementById('ev_category').value,
-    is_team: document.getElementById('ev_team').checked,
+    is_team: isTeam,
+    team_id: (dataMode==='cloud' && isTeam) ? (teamIdRaw ? Number(teamIdRaw) : null) : null,
     note: document.getElementById('ev_note').value.trim()
   };
   if(!data.title || !data.date){ toast('กรุณากรอกชื่อกิจกรรมและวันที่'); return; }
+  // บังคับเลือกทีมก่อนบันทึกถ้าติ๊ก "ปฏิทินทีม" ไว้ (เช็คฝั่งนี้ก่อนยิง DB เลย ไม่ต้องรอ error จากเซิร์ฟเวอร์ —
+  // สำคัญมากสำหรับคนที่อยู่หลายทีมที่ select ไม่มีค่าเริ่มต้น ต้องเลือกเองเสมอ)
+  if(dataMode==='cloud' && data.is_team && !data.team_id){ toast('กรุณาเลือกทีมก่อนบันทึก "ปฏิทินทีม"'); return; }
   if(dataMode==='cloud'){
     const saveBtn = document.querySelector('#eventForm button[type="submit"]');
     if(saveBtn) saveBtn.disabled = true;
@@ -1133,13 +1202,13 @@ async function saveEventForm(e){
         const { data: updData, error } = await client.from('cal_events').update({
           title: data.title, client_id: data.client_id, client_name: data.client || null, date: data.date,
           all_day: data.all_day, time: data.time || null, end_time: data.end_time || null,
-          category: data.category, is_team: data.is_team, note: data.note || null,
+          category: data.category, is_team: data.is_team, team_id: data.team_id, note: data.note || null,
           updated_at: new Date().toISOString()
         }).eq('id', id).select();
         if(error){ toast(cloudEventErrorMessage(error, data.is_team)); return; }
         if(!updData || !updData.length){
           toast(data.is_team
-            ? 'บันทึกไม่สำเร็จ: เฉพาะเจ้าของ (LV1) และผู้จัดการ (LV2) เท่านั้นที่แก้ไข "ปฏิทินทีม" ได้'
+            ? 'บันทึกไม่สำเร็จ: แก้ไข "ปฏิทินทีม" ได้เฉพาะสมาชิกของทีมนั้น (รวมหัวหน้าทีม) หรือเจ้าของ/ผู้จัดการเท่านั้น'
             : 'บันทึกไม่สำเร็จ: ไม่มีสิทธิ์แก้ไขรายการนี้ (ไม่ใช่กิจกรรมของคุณ)');
           return;
         }
@@ -1150,7 +1219,7 @@ async function saveEventForm(e){
         const row = {
           user_id: authUser.id, title: data.title, client_id: data.client_id, client_name: data.client || null, date: data.date,
           all_day: data.all_day, time: data.time || null, end_time: data.end_time || null,
-          category: data.category, is_team: data.is_team, note: data.note || null, source:'local',
+          category: data.category, is_team: data.is_team, team_id: data.team_id, note: data.note || null, source:'local',
           created_at: nowIso, updated_at: nowIso
         };
         const { data: inserted, error } = await client.from('cal_events').insert(row).select();
@@ -1185,7 +1254,7 @@ async function deleteEvent(){
       // .select() หลัง delete() ด้วยเหตุผลเดียวกับ update ด้านบน — ลบไม่ติด (0 แถว) ก็ไม่คืน error เสมอไป
       const { data, error } = await client.from('cal_events').delete().eq('id', id).select();
       if(error){ toast('ลบไม่สำเร็จ: ' + (error.message || 'เกิดข้อผิดพลาด')); return; }
-      if(!data || !data.length){ toast('ลบไม่สำเร็จ: ไม่มีสิทธิ์ลบรายการนี้ (กิจกรรมทีมลบได้เฉพาะคนที่สร้างไว้เท่านั้น)'); return; }
+      if(!data || !data.length){ toast('ลบไม่สำเร็จ: ไม่มีสิทธิ์ลบรายการนี้ (นัดส่วนตัวลบได้เฉพาะเจ้าของนัด · กิจกรรมทีมลบได้เฉพาะสมาชิกทีมนั้นหรือเจ้าของ/ผู้จัดการ)'); return; }
       events = events.filter(e=>e.id!==id);
     }catch(err){ toast('ลบไม่สำเร็จ (เชื่อมต่อคลาวด์ไม่ได้)'); return; }
     finally{ if(delBtn) delBtn.disabled = false; }
@@ -1762,6 +1831,7 @@ async function initAuthOnLoad(){
       authUser = data.session.user;
       await loadCloudProfile();
       await loadCrmClients();
+      await loadMyTeams();      // ต้องมาหลัง loadCloudProfile() เสมอ (ต้องรู้ profile.role ก่อน)
       await enterCloudMode();   // สลับ events/tasks เป็นคลาวด์ (ถามย้ายข้อมูล localStorage เดิมถ้ายังไม่เคยถาม)
     }
   }catch(e){ /* ออฟไลน์ หรือโหลด SDK ไม่ได้ — ใช้โหมด Local ต่อได้ตามปกติ ไม่ต้องแจ้งเตือน */ }
@@ -1795,6 +1865,7 @@ async function loginWithCrmAccount(){
     toast('เข้าสู่ระบบสำเร็จ กำลังโหลดโปรไฟล์...');
     await loadCloudProfile();
     await loadCrmClients();
+    await loadMyTeams();      // ต้องมาหลัง loadCloudProfile() เสมอ (ต้องรู้ profile.role ก่อน)
     await enterCloudMode();   // สลับ events/tasks เป็นคลาวด์ (ถามย้ายข้อมูล localStorage เดิมถ้ายังไม่เคยถาม)
     renderSettings();
   }catch(e){ toast('เชื่อมต่อไม่สำเร็จ (ตรวจสอบอินเทอร์เน็ต)'); }
@@ -1804,7 +1875,7 @@ async function logoutCrmAccount(){
   // กดปุ่มนี้ = ออกจากระบบทั้งโปรแกรม ไม่ใช่แค่ปลดการเชื่อมบัญชีของปฏิทิน จึงต้องถามยืนยันก่อนเสมอ
   if(!confirm('ยืนยันออกจากระบบทั้งหมด (CRM, ปฏิทิน, พนักงาน)? ปุ่มนี้ไม่ได้ออกจากระบบเฉพาะปฏิทิน ต้องเข้าสู่ระบบใหม่ทุกส่วน')) return;
   try{ const client = await getSupabaseClient(); await client.auth.signOut(); }catch(e){}
-  authUser = null; cloudProfile = null; cloudClients = []; staffNameMap = {};
+  authUser = null; cloudProfile = null; cloudClients = []; staffNameMap = {}; myTeams = [];
   // ข้อมูลกิจกรรมข้ามพนักงานที่ดึงมาแล้วต้องล้างทิ้งด้วย ไม่งั้นคนถัดไปที่ใช้เครื่องเดียวกัน (หรือโหมด Local)
   // ยังเห็น tag ของคนก่อนหน้าค้างบนตาราง — RLS ฝั่งเซิร์ฟเวอร์ช่วยไม่ได้เพราะข้อมูลอยู่ในหน่วยความจำแล้ว
   staffCodeMap = {}; clientCodeMap = {};
@@ -1873,6 +1944,34 @@ async function loadCrmClients(){
     if(!error && data) cloudClients = data;
   }catch(e){ /* ดึงรายชื่อลูกค้าไม่สำเร็จ — ช่องลูกค้ายังพิมพ์เป็นข้อความอิสระได้ตามปกติ */ }
 }
+// โหลด "ทีมของฉัน" สำหรับใช้ตอนสร้าง/แก้ "ปฏิทินทีม" — ต้องเรียกหลัง loadCloudProfile() เสมอ (ต้องรู้ profile.role
+// ก่อนถึงจะเช็ค isOwnerOrManager() ได้ถูกต้อง) นโยบาย RLS ของ org_teams/org_team_members เปิดให้พนักงานที่ยัง
+// active ทุกคนอ่านได้ทั้งตาราง (แพทเทิร์นเดียวกับที่ CRM ใช้อยู่แล้ว — ดู myTeamIds()/teams/teamMembersMap ใน
+// staging/crm/index.html) จึงดึงมาทั้งหมดแล้วกรอง "ทีมของฉัน" ฝั่ง JS เอง ไม่ต้องพึ่ง RLS กรองแถวให้แทน
+async function loadMyTeams(){
+  myTeams = [];
+  if(!authUser) return;
+  try{
+    const client = await getSupabaseClient();
+    const [teamsRes, membersRes] = await Promise.all([
+      client.from('org_teams').select('id, name, lead_id'),
+      client.from('org_team_members').select('team_id, staff_id')
+    ]);
+    if(teamsRes.error || membersRes.error) throw (teamsRes.error || membersRes.error);
+    const allTeams = teamsRes.data || [];
+    if(isOwnerOrManager()){
+      // เจ้าของ/ผู้จัดการเห็นและจัดการได้ทุกทีมในบริษัท ตรงตาม RLS ของ cal_events ("admin sees/writes all teams")
+      myTeams = allTeams.map(t=>({id:t.id, name:t.name}));
+    } else {
+      // หัวหน้าทีมไม่ถูกใส่ซ้ำในตาราง org_team_members เอง (ยืนยันแล้วจากข้อมูลจริง — ดูคอมเมนต์เดียวกันที่
+      // myTeamIds() ใน staging/crm/index.html) ต้องเช็ค lead_id ควบคู่กันเสมอ ไม่งั้นหัวหน้าทีมจะไม่เห็นทีม
+      // ตัวเองเลยในตัวเลือก "ปฏิทินทีม"
+      const memberTeamIds = new Set((membersRes.data||[]).filter(m=>m.staff_id===authUser.id).map(m=>m.team_id));
+      myTeams = allTeams.filter(t => t.lead_id===authUser.id || memberTeamIds.has(t.id)).map(t=>({id:t.id, name:t.name}));
+    }
+  }catch(e){ myTeams = []; /* โหลดทีมไม่สำเร็จ — ถือว่าไม่มีทีม ปิดช่องติ๊ก "ปฏิทินทีม" ไว้ก่อน (fail-closed: เขียน
+    ผิดทีมจะโดน RLS ปฏิเสธอยู่ดี แต่ปิดไว้เลยดีกว่าเปิดให้เลือกทีมที่สุดท้ายเขียนไม่ได้จริง) */ }
+}
 
 /* ========================= CLOUD EVENTS/TASKS (cal_events / cal_tasks — team calendar) =========================
    นัดหมาย/งานถูกเก็บใน localStorage ล้วนๆ มาตลอด (ดู STATE ด้านบน) — ตั้งแต่ล็อกอิน CRM สำเร็จ ให้สลับไปอ่าน-เขียน
@@ -1901,13 +2000,16 @@ function cloudEventToLocal(row){
   return Object.assign({}, row, { client });
 }
 // แปล error จาก Supabase เป็นข้อความที่บอกสาเหตุจริงให้ผู้ใช้เข้าใจ (ห้ามล้มเหลวเงียบๆ) — เคสที่สำคัญที่สุดคือ
-// RLS ปฏิเสธเพราะพยายามเขียนแถว is_team=true (ปฏิทินทีม) ทั้งที่ role ไม่ใช่ owner/manager (cal_events RLS
-// "manager+ can write/update team events" อนุญาตแค่ owner/admin/manager) — ข้อความนี้ชี้เป้าให้ตรงจุดแทนข้อความกำกวม
+// RLS ปฏิเสธเพราะพยายามเขียนแถว is_team=true (ปฏิทินทีม) ให้ทีมที่ตัวเองไม่ได้สังกัด (cal_events RLS อนุญาต
+// เฉพาะสมาชิกของทีมนั้น รวมหัวหน้าทีม หรือเจ้าของ/ผู้จัดการซึ่งจัดการได้ทุกทีม) — ข้อความนี้ชี้เป้าให้ตรงจุด
+// แทนข้อความกำกวม เกิดได้ 2 แบบหลักๆ: (1) ติ๊ก "ปฏิทินทีม" ไว้แต่ team_id เป็นค่าว่าง (ไม่ควรเกิดแล้วเพราะ
+// saveEventForm() กันไว้ตั้งแต่ก่อนยิง DB) (2) ส่ง team_id ของทีมที่ตัวเองไม่ได้สังกัด (เช่น URL/ข้อมูลเก่าที่
+// ไม่ตรงกับ myTeams ปัจจุบัน)
 function cloudEventErrorMessage(error, isTeam){
   const raw = (error && error.message) || '';
   const isPermissionError = !!error && (error.code === '42501' || /row-level security|permission denied/i.test(raw));
   if(isPermissionError && isTeam){
-    return 'บันทึกไม่สำเร็จ: เฉพาะเจ้าของ (LV1) และผู้จัดการ (LV2) เท่านั้นที่สร้าง/แก้ไข "ปฏิทินทีม" ได้ — ลองไม่ติ๊ก "ปฏิทินทีม" แล้วบันทึกเป็นนัดหมายส่วนตัวแทน';
+    return 'บันทึกไม่สำเร็จ: ลงนัด "ปฏิทินทีม" ให้ทีมที่คุณไม่ได้สังกัดไม่ได้ (ต้องเป็นสมาชิกของทีมนั้น หรือเป็นเจ้าของ/ผู้จัดการ) — ลองเลือกทีมอื่น หรือไม่ติ๊ก "ปฏิทินทีม" แล้วบันทึกเป็นนัดหมายส่วนตัวแทน';
   }
   if(isPermissionError) return 'บันทึกไม่สำเร็จ: ไม่มีสิทธิ์ทำรายการนี้';
   return 'บันทึกไม่สำเร็จ: ' + (raw || 'เกิดข้อผิดพลาดไม่ทราบสาเหตุ');
@@ -2183,6 +2285,7 @@ function init(){
     if(cell){ openEventModal(null, cell.dataset.date); return; }
   });
   document.getElementById('ev_allday').addEventListener('change', toggleEventTimeRow);
+  document.getElementById('ev_team').addEventListener('change', toggleEventTeamRow);
   document.getElementById('eventForm').addEventListener('submit', saveEventForm);
   document.getElementById('ev_cancel').addEventListener('click', closeEventModal);
   document.getElementById('ev_delete').addEventListener('click', deleteEvent);

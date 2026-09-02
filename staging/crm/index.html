@@ -1649,6 +1649,17 @@ const canSeeAllTeamClients = () => myLevel() <= 2;        // LV1-2: ไม่ถ
 // insert/delete ของตารางนี้ที่เพิ่งเปิดให้ LV1-3 แก้ได้ (เดิม owner เท่านั้น) ดู toggleClientAssignee_()/
 // หน้า "มอบหมายงาน" (page-assign)
 const canSeeAssignees = () => true;
+// เกตต่อลูกค้า — เฉพาะ "งานติ๊ก" ที่เขียนลง crm_tax_tasks (งานภาษีรายเดือน+โน๊ต) และ crm_year_end_tasks
+// (งานรายปี) เท่านั้น สะท้อนกฎ RLS ของ 2 ตารางนี้เป๊ะ (แก้ไว้ให้ตรงกันแล้วที่ฐานข้อมูล 2026-09-02):
+// LV1-3 ทำได้ทุกลูกค้าเหมือนเดิม (canEdit) หรือพนักงานที่ถูกมอบหมายเป็นผู้รับผิดชอบลูกค้ารายนั้น (มีแถวใน
+// crm_staff_clients staff_id=ตัวเอง client_id=รายนี้) — เช็คจาก clientStaffMap ที่โหลดไว้แล้วทุกระดับตอน
+// init() (loadStaffAssignments) ไม่ยิง query ใหม่ต่อการเรนเดอร์หนึ่งครั้ง ใช้แทน canEdit() เฉพาะจุดที่เขียน/
+// เปิดช่องแก้ไขงานภาษีรายเดือน+โน๊ต+งานรายปีเท่านั้น — จุดอื่นทั้งหมด (การเงิน/เลิกกิจการ/แก้ข้อมูลลูกค้า/
+// รหัสผ่าน/จัดการทีม/มอบหมายงาน) ยังใช้ canEdit()/canEditBasic()/canManageTeams() เดิม ไม่เกี่ยวกับเกตนี้เลย
+function canDoClientTask(clientId) {
+  if (canEdit()) return true;
+  return (clientStaffMap[clientId] || []).includes(profile?.id);
+}
 function myTeamIds() {
   return teams.filter(t => t.lead_id === profile.id || (teamMembersMap[t.id] || []).includes(profile.id)).map(t => t.id);
 }
@@ -1773,30 +1784,32 @@ function noteCell(clientId, note, prevNote) {
     // ไม่ได้ escape ให้ — พอหลุดเข้าไปใน string literal ของ JS จะกลายเป็น syntax error ทั้งบรรทัด กดแก้ไม่ได้
     // อีกเลยตลอดไป (ปุ่ม "+ โน๊ต" ขึ้นเฉพาะตอนโน๊ตว่าง) ส่ง id อย่างเดียวแล้วให้ editNote ไปอ่านค่าจาก
     // taskMap เอง (แหล่งเดียวกับที่ renderTracking ใช้ส่งเข้ามาอยู่แล้ว)
-    // LV4-5 อ่านได้อย่างเดียว (editNote คืนค่าทันทีถ้า !canEdit) จึงไม่ใส่ cursor-pointer/hover/onclick ให้
-    // ไม่งั้นโน๊ตจะดูกดได้แต่กดแล้วเงียบ — สองกิ่งล่างของฟังก์ชันนี้แยกกรณีอ่านอย่างเดียวไว้ถูกอยู่แล้ว
-    // ตัว onclick/cursor ย้ายไปอยู่ที่ <td> ทั้งช่องแล้ว (ดู noteTdAttrs_ ด้านล่าง) ผู้ใช้ขอให้
-    // "คลิกได้ทั้งช่อง" ไม่ใช่เฉพาะบนตัวหนังสือ/ปุ่มเล็กๆ — ตรงนี้จึงเหลือแค่การแสดงผลล้วนๆ
+    // LV4-5 ที่ไม่ได้เป็นผู้รับผิดชอบลูกค้ารายนี้อ่านได้อย่างเดียว (editNote คืนค่าทันทีถ้า
+    // !canDoClientTask) จึงไม่ใส่ cursor-pointer/hover/onclick ให้ ไม่งั้นโน๊ตจะดูกดได้แต่กดแล้วเงียบ —
+    // สองกิ่งล่างของฟังก์ชันนี้แยกกรณีอ่านอย่างเดียวไว้ถูกอยู่แล้ว ตัว onclick/cursor ย้ายไปอยู่ที่ <td>
+    // ทั้งช่องแล้ว (ดู noteTdAttrs_ ด้านล่าง) ผู้ใช้ขอให้ "คลิกได้ทั้งช่อง" ไม่ใช่เฉพาะบนตัวหนังสือ/
+    // ปุ่มเล็กๆ — ตรงนี้จึงเหลือแค่การแสดงผลล้วนๆ
     return `<div class="text-xs text-[var(--ink)] leading-tight truncate" title="${e(note)}">${e(note)}</div>`;
   }
-  if (!canEdit()) {
+  if (!canDoClientTask(clientId)) {
     return prevNote ? `<div class="text-xs text-[var(--ink-muted)] italic leading-tight truncate" title="โน๊ตเดือนก่อน: ${e(prevNote)}">${e(prevNote)}</div>` : '';
   }
   return `<span class="note-add-chip text-xs text-[var(--ink-muted)] border border-dashed border-[var(--border)] px-1.5 py-0.5 rounded transition-colors whitespace-nowrap">+ โน๊ต</span>`;
 }
 // แอตทริบิวต์ของ <td> ช่องโน๊ต — คลิกได้ทั้งช่อง (ผู้ใช้ขอ) ไม่ใช่แค่ตรงตัวหนังสือหรือปุ่ม "+ โน๊ต"
-// เล็กๆ กลางช่อง · LV4-5 แก้ไม่ได้ (editNote คืนค่าทันทีถ้า !canEdit) จึงไม่ใส่ onclick/cursor ให้เลย
+// เล็กๆ กลางช่อง · คนที่ทำไม่ได้ (editNote คืนค่าทันทีถ้า !canDoClientTask) จึงไม่ใส่ onclick/cursor ให้เลย
 // ไม่งั้นช่องจะดูกดได้แต่กดแล้วเงียบ — เหมือนกฎเดิมที่ noteCell ใช้อยู่ก่อนแล้ว
 function noteTdAttrs_(clientId) {
-  return canEdit() ? ` onclick="editNote(${clientId})"` : '';
+  return canDoClientTask(clientId) ? ` onclick="editNote(${clientId})"` : '';
 }
 // คลาสของ <td> ช่องโน๊ต — ต้องรวมกับคลาสเดิมในสตริงเดียว ห้ามคืนเป็น class="..." อีกอันแยก
-// (HTML มี class ซ้ำ 2 อันบน element เดียวไม่ได้ ตัวหลังจะถูกทิ้งเงียบๆ)
-function noteTdClass_() {
-  return 'px-2 py-0.5 text-left border-l border-[var(--border)] note-td' + (canEdit() ? ' note-td-editable cursor-pointer' : '');
+// (HTML มี class ซ้ำ 2 อันบน element เดียวไม่ได้ ตัวหลังจะถูกทิ้งเงียบๆ) รับ clientId เพิ่ม (เดิมไม่มีพารามิเตอร์
+// เพราะเช็คแค่ canEdit() ระดับเดียว — ตอนนี้ต้องเช็คต่อลูกค้าแล้ว)
+function noteTdClass_(clientId) {
+  return 'px-2 py-0.5 text-left border-l border-[var(--border)] note-td' + (canDoClientTask(clientId) ? ' note-td-editable cursor-pointer' : '');
 }
 function editNote(clientId) {
-  if (!canEdit()) return;
+  if (!canDoClientTask(clientId)) return;
   // อ่านโน๊ตปัจจุบันจาก state ในหน่วยความจำ ไม่ใช่รับมาทาง argument (ดูเหตุผลใน noteCell ด้านบน)
   const current = taskMap[clientId]?.notes || '';
   const TM = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
@@ -1833,6 +1846,9 @@ function editNote(clientId) {
   setTimeout(() => { const inp = document.getElementById('note-popup-input'); if(inp){inp.focus();inp.setSelectionRange(inp.value.length,inp.value.length);} }, 50);
 }
 async function saveNote(clientId, val) {
+  // เดิมฟังก์ชันนี้ไม่มีด่านสิทธิ์ของตัวเองเลย (พึ่งแค่ editNote ที่เรียกก่อนหน้า) — เพิ่มด่านตรงนี้ด้วย
+  // กันเรียกตรงจาก console/ที่อื่นข้าม editNote ไปได้ (แพทเทิร์นเดียวกับฟังก์ชันเขียน DB อื่นในไฟล์นี้)
+  if (!canDoClientTask(clientId)) return;
   const note = val.trim();
   if (!taskMap[clientId]) taskMap[clientId] = { client_id: clientId, year: curYear, month: curMonth };
   taskMap[clientId].notes = note;
@@ -2549,15 +2565,19 @@ function renderTracking() {
     const docItems = (t.doc_items||'').split(',').filter(Boolean);
     // ป้าย "รับเอกสารแล้ว" ต้องเห็นได้ทุกระดับ แต่กดแก้ไขได้เฉพาะ LV1-3 (openDocModal คืนค่าทันทีถ้า
     // !canEdit) — ระดับที่แก้ไม่ได้จึงไม่ใส่ onclick/cursor-pointer และไม่ขึ้น title ว่า "คลิกเพื่อแก้ไข"
+    // "รับเอกสาร" เขียนลง crm_tax_tasks ตารางเดียวกับช่องติ๊กงานรายเดือน/โน๊ต จึงใช้เกตเดียวกัน
+    // (canDoClientTask = LV1-3 หรือผู้รับผิดชอบลูกค้ารายนั้น) — เป็นงานประจำเดือนชุดเดียวกัน ถ้าติ๊ก
+    // งานและเขียนโน๊ตของลูกค้าตัวเองได้แต่ลงรับเอกสารไม่ได้ จะขาดตอนกลางทางโดยไม่มีเหตุผล
+    const docEditable = canDoClientTask(c.id);
     const docTitle = docItems.length
       ? docItems.length + ' รายการ: ' + docItems.join(', ')
-      : (canEdit() ? 'คลิกเพื่อแก้ไข' : '');
+      : (docEditable ? 'คลิกเพื่อแก้ไข' : '');
     const docBadge = t.doc_date
-      ? `<span ${canEdit() ? `onclick="openDocModal(${c.id})"` : ''} title="${e(docTitle)}"
-           class="inline-flex items-center bg-green-50 text-green-700 border border-green-200 text-xs font-semibold px-2 py-0.5 rounded leading-tight whitespace-nowrap${canEdit() ? ' cursor-pointer hover:bg-green-100' : ''}">
+      ? `<span ${docEditable ? `onclick="openDocModal(${c.id})"` : ''} title="${e(docTitle)}"
+           class="inline-flex items-center bg-green-50 text-green-700 border border-green-200 text-xs font-semibold px-2 py-0.5 rounded leading-tight whitespace-nowrap${docEditable ? ' cursor-pointer hover:bg-green-100' : ''}">
            📄 ${e(thaiDate(t.doc_date))}
          </span>`
-      : (canEdit()
+      : (docEditable
           ? `<button onclick="openDocModal(${c.id})"
                class="text-xs text-[var(--ink-muted)] hover:text-[var(--accent)] border border-dashed border-[var(--border)] hover:border-[var(--accent-soft)] px-2 py-0.5 rounded transition-colors">
                + รับเอกสาร</button>`
@@ -2570,9 +2590,10 @@ function renderTracking() {
     const mkCell = (f, bc = '', off = false, grp = '') => {
       if (off) return `<td class="px-1 py-0.5 ${bc} ${grp}"><span class="dot na">—</span></td>`;
       const v = t[f] || 'todo';
-      return `<td class="status-td px-1 py-0.5 ${bc} ${grp} ${canEdit() ? 'clickable' : ''}"
+      const canTask = canDoClientTask(c.id);
+      return `<td class="status-td px-1 py-0.5 ${bc} ${grp} ${canTask ? 'clickable' : ''}"
                   data-cid="${c.id}" data-field="${f}"
-                  ${canEdit() ? `onclick="toggleField(${c.id},'${f}',this)"` : ''}>
+                  ${canTask ? `onclick="toggleField(${c.id},'${f}',this)"` : ''}>
                 ${statusDot(v)}</td>`;
     };
 
@@ -2590,6 +2611,7 @@ function renderTracking() {
       const gDone = gItems.filter(it => (t[it.field]||'todo') === 'done').length;
       const progTitle = gItems.length ? `${gDone}/${gApp} รายการเสร็จแล้ว` : '';
       let chip;
+      const canTask = canDoClientTask(cid);
       if (paid) {
         const pc = pillColors_('green');
         chip = `<span class="tog-chip" style="background:${pc.bg};color:${pc.fg};border-color:${pc.border}" title="${progTitle}">✓ PAID</span>`;
@@ -2597,9 +2619,9 @@ function renderTracking() {
         const pc = pillColors_('amber');
         chip = `<span class="tog-chip" style="background:${pc.bg};color:${pc.fg};border-color:${pc.border}" title="${progTitle}">→ SENT</span>`;
       } else {
-        chip = canEdit() ? `<span class="tog-chip tog-empty" title="${progTitle}">—</span>` : `<span class="dot na" title="${progTitle}">—</span>`;
+        chip = canTask ? `<span class="tog-chip tog-empty" title="${progTitle}">—</span>` : `<span class="dot na" title="${progTitle}">—</span>`;
       }
-      return `<td class="px-1 py-0.5 text-center border-l border-[var(--border)] ${canEdit()?'cursor-pointer':''}" ${canEdit()?`onclick="openGroupModal(${cid},'${group}')"`:''}>${chip}</td>`;
+      return `<td class="px-1 py-0.5 text-center border-l border-[var(--border)] ${canTask?'cursor-pointer':''}" ${canTask?`onclick="openGroupModal(${cid},'${group}')"`:''}>${chip}</td>`;
     };
 
     const trkIsFav = favoriteClientIds.has(c.id);
@@ -2619,7 +2641,7 @@ function renderTracking() {
         <div class="text-sm text-[var(--ink)] leading-tight overflow-hidden text-ellipsis whitespace-nowrap">${e(c.thai_name)}</div>
       </td>
       ${canSeeAssignees() ? assigneeCellHtml(c.id) : ''}
-      <td class="${noteTdClass_()}" style="overflow:hidden"${noteTdAttrs_(c.id)}>
+      <td class="${noteTdClass_(c.id)}" style="overflow:hidden"${noteTdAttrs_(c.id)}>
         ${noteCell(c.id, t.notes||'', (prevTaskMap[c.id]||[])[0]?.note||'')}
       </td>
       <td class="px-2 py-0.5 ${gb}">${docCell}</td>
@@ -2648,7 +2670,7 @@ async function changeMonth(delta) {
 }
 
 async function toggleField(clientId, field, cell) {
-  if (!canEdit()) return;
+  if (!canDoClientTask(clientId)) return;
   const cur  = taskMap[clientId]?.[field] || 'todo';
   const next = cur === 'todo' ? 'done' : cur === 'done' ? (FIELDS.includes(field) ? 'todo' : 'na') : 'todo';
   if (!taskMap[clientId]) {
@@ -2676,7 +2698,7 @@ async function toggleField(clientId, field, cell) {
 }
 
 function openGroupModal(clientId, group) {
-  if (!canEdit()) return;
+  if (!canDoClientTask(clientId)) return;
   const conf = GROUP_ITEMS[group];
   if (!conf) return;
   const t = taskMap[clientId] || {};
@@ -2767,7 +2789,7 @@ function toggleItemNa(clientId, field, group) {
 }
 
 async function saveGroupItemField(clientId, field, value, group) {
-  if (!canEdit()) return;
+  if (!canDoClientTask(clientId)) return;
   if (!taskMap[clientId]) taskMap[clientId] = { client_id: clientId, year: curYear, month: curMonth };
   const prev = taskMap[clientId][field];
   taskMap[clientId][field] = value;
@@ -2788,7 +2810,7 @@ async function saveGroupItemField(clientId, field, value, group) {
 }
 
 async function cycleGroupFromModal(clientId, group, action) {
-  if (!canEdit()) return;
+  if (!canDoClientTask(clientId)) return;
   const conf = GROUP_ITEMS[group];
   const t = taskMap[clientId] || {};
   const sent = t[conf.sentField] || false;
@@ -2885,7 +2907,7 @@ let docModalItemQty = {};        // { label: {qty, unit} } — เอกสา�
 function bankLabel(b) { return `BANK ${b.bank_name || '—'} ${b.account_no || ''}`.trim(); }
 
 async function openDocModal(clientId) {
-  if (!canEdit()) return;
+  if (!canDoClientTask(clientId)) return;
   docModalClientId = clientId;
   const t = taskMap[clientId] || {};
   const c = clients.find(x => x.id === clientId);
@@ -2993,6 +3015,8 @@ function docToggleBankChecked(bankId) {
 }
 
 async function saveDocModal(clientId) {
+  // ด่านของตัวเอง ไม่พึ่งว่า openDocModal เช็คมาแล้ว (เรียกตรงจาก console ได้) — แพทเทิร์นเดียวกับ saveNote
+  if (!canDoClientTask(clientId)) { showToast('ไม่มีสิทธิ์แก้ไขข้อมูลนี้', 'error'); return; }
   const dateVal = (document.getElementById('doc-date-input')?.value || '').trim();
   const qtyEntries = Object.entries(docModalItemQty)
     .filter(([label, v]) => docModalOtherItems.includes(label) && (v.qty ?? '') !== '');
@@ -3479,7 +3503,7 @@ function renderYeGroupModalBody(clientId, groupsKind, groupKey) {
     const applicable = !s.condKey || c[s.condKey];
     const field = yeGroupField(group, s);
     const v = applicable ? (t[field] || 'todo') : 'na';
-    const clickable = applicable && canEdit();
+    const clickable = applicable && canDoClientTask(clientId);
     return `<div class="flex items-center justify-between py-2.5 px-2 -mx-2 border-b border-[var(--border)] last:border-0 rounded ${clickable ? 'cursor-pointer hover:bg-[var(--surface-2)]' : ''}"
                  ${clickable ? `onclick="toggleYeStep(${clientId},'${groupsKind}','${groupKey}','${field}')"` : ''}>
               <span class="text-sm text-[var(--ink)]">${e(s.label)}</span>
@@ -3496,7 +3520,7 @@ function renderYeGroupModalBody(clientId, groupsKind, groupKey) {
     </div>`);
 }
 async function toggleYeStep(clientId, groupsKind, groupKey, field) {
-  if (!canEdit()) return;
+  if (!canDoClientTask(clientId)) return;
   const cur = yearEndMap[clientId]?.[field] || 'todo';
   const next = cur === 'todo' ? 'done' : 'todo';
   if (!yearEndMap[clientId]) yearEndMap[clientId] = { client_id: clientId, year: yearEndYear };
