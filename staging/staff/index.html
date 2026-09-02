@@ -572,15 +572,29 @@ async function saveEmployee(employeeId) {
     if (!display_name) { errEl.textContent = 'กรุณากรอกชื่อ-นามสกุล'; errEl.style.display = 'block'; return; }
 
     if (btn) { btn.disabled = true; btn.textContent = 'กำลังบันทึก…'; }
-    // ห้ามใช้ .select().single() อ่านค่ากลับ — ถ้า manager ปิดการใช้งาน (is_active=false) ในคำสั่ง
-    // เดียวกันนี้ แถวที่เพิ่งเขียนจะหลุดจาก SELECT policy ของ manager ทันที (crm_staff_sel: non-owner
-    // เห็นได้แค่ is_active=true) ทำให้ RETURNING ว่างเปล่า แล้วขึ้นว่า "บันทึกไม่สำเร็จ" ทั้งที่จริงบันทึก
-    // สำเร็จแล้ว — ค่าที่เขียนอยู่ในมือครบอยู่แล้ว ไม่ต้องอ่านกลับ
-    const { error } = await sb.from('org_staff')
+    // .select('id') (ไม่ใช้ .single()) เพื่อเช็คว่า UPDATE นี้แตะแถวจริงกี่แถว — ถ้าไม่เช็ค การเขียนที่ถูก
+    // RLS USING clause บล็อกเงียบๆ (เช่น staffList ในเครื่องเก่าค้าง เห็น s.role เป็น 'junior' ตอนเปิดฟอร์ม
+    // แต่จริงๆ มีคนอื่นเปลี่ยนแถวนี้เป็น 'owner'/'manager' ไปแล้วก่อนกดบันทึก — canEditStaffRow('junior')
+    // แม้จะเช็คถูกตอนเปิดฟอร์ม แต่ RLS ประเมินจาก role ปัจจุบันจริงในฐานข้อมูล ไม่ใช่ค่าที่ค้างอยู่บนจอ)
+    // จะได้ response "สำเร็จ" (error เป็น null เสมอ ไม่ว่าจะ affect กี่แถว — ตาม PostgREST, UPDATE ที่ไม่
+    // แมตช์แถวไม่ใช่ error) ทั้งที่ไม่มีอะไรถูกเขียนลงจริงเลย แล้วขึ้น toast "บันทึกข้อมูลพนักงานแล้ว" หลอกๆ
+    //   ── ต้องแยกให้ออกจากอีกเคสหนึ่งที่ data.length===0 แปลว่า "เขียนสำเร็จจริง แค่มองไม่เห็นตอนอ่านกลับ"
+    //   (คอมเมนต์เดิมด้านบนที่เคยเตือนไว้: manager ปิดการใช้งาน is_active=false ในคำสั่งเดียวกัน ทำให้แถว
+    //   หลุดจาก SELECT policy ของ manager ทันที (crm_staff_sel: non-owner เห็นได้แค่ is_active=true) —
+    //   RETURNING ว่างเปล่าเพราะ "มองไม่เห็น" ไม่ใช่เพราะ "ไม่ได้เขียน") จึงเช็ค data.length===0 ว่าเป็น
+    //   ความล้มเหลวจริง เฉพาะตอนที่คำสั่งนี้ "ไม่ได้" ตั้ง is_active เป็น false เท่านั้น (ตรงกับเงื่อนไขที่
+    //   ทำให้แถวมองไม่เห็นได้จริงจุดเดียวที่มี — ไม่มีเงื่อนไขอื่นที่ทำให้ manager มองไม่เห็นแถวที่เพิ่งแก้ไข)
+    const { data, error } = await sb.from('org_staff')
       .update({ display_name, nickname, staff_code, role: roleVal, is_active })
-      .eq('id', employeeId);
+      .eq('id', employeeId)
+      .select('id');
     if (btn) { btn.disabled = false; btn.textContent = 'บันทึก'; }
     if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; return; }
+    if ((!data || data.length === 0) && is_active) {
+      errEl.textContent = 'บันทึกไม่สำเร็จ — ข้อมูล/สิทธิ์ของพนักงานคนนี้อาจเปลี่ยนไปแล้ว กรุณาโหลดหน้าใหม่แล้วลองอีกครั้ง';
+      errEl.style.display = 'block';
+      return;
+    }
     Object.assign(s, { display_name, nickname, staff_code, role: roleVal, is_active });
     closeGenModal();
     renderEmployees();
@@ -747,8 +761,20 @@ async function saveTeam(teamId) {
 
   let savedTeamId = teamId;
   if (teamId) {
-    const { error } = await sb.from('org_teams').update({ name, lead_id: leadId }).eq('id', teamId);
+    // .select('id') เพื่อรู้ว่า UPDATE นี้แตะแถวจริงกี่แถว -- ต่างจาก org_staff (ดูคอมเมนต์ที่
+    // saveEmployee() ด้านบน) org_teams SELECT ไม่จำกัดการมองเห็นตามเงื่อนไขไหนเลย (ทุกพนักงานที่ active
+    // เห็นทุกทีมเสมอ ตามคอมเมนต์ในสาขา insert ด้านล่าง) ดังนั้น data.length===0 ที่นี่แปลว่า "ไม่ได้เขียน
+    // จริง" เพียงอย่างเดียวเท่านั้น ไม่มีเคส false-negative แบบ org_staff ให้ต้องแยก -- ไม่งั้นถ้าทีมนี้ถูก
+    // ลบไปแล้วโดยอีกคนระหว่างที่หน้าต่างแก้ไขยังเปิดค้างอยู่ (teams ในเครื่องเก่าค้าง) UPDATE จะ affect 0
+    // แถวแบบไม่มี error (ไม่ตรงกับ WHERE เลย) แล้วขึ้น toast "บันทึกทีมแล้ว" หลอกๆ ทั้งที่ไม่มีอะไรถูกเขียน
+    const { data, error } = await sb.from('org_teams').update({ name, lead_id: leadId }).eq('id', teamId).select('id');
     if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; reEnable(); return; }
+    if (!data || data.length === 0) {
+      errEl.textContent = 'บันทึกไม่สำเร็จ — ทีมนี้อาจถูกลบไปแล้ว กรุณาโหลดหน้าใหม่แล้วลองอีกครั้ง';
+      errEl.style.display = 'block';
+      reEnable();
+      return;
+    }
   } else {
     // ทุกพนักงานที่ active มองเห็นทีมทุกทีมได้อยู่แล้ว (org_teams SELECT ไม่จำกัดตามสมาชิก) จึงอ่านค่า
     // id ที่เพิ่ง insert กลับมาได้อย่างปลอดภัย (ต่างจากกรณีอื่นในโปรเจกต์นี้ที่ RLS กรอง RETURNING ทิ้ง)
@@ -779,9 +805,34 @@ async function saveTeam(teamId) {
   renderTeams();
   showToast(teamId ? 'บันทึกทีมแล้ว' : 'สร้างทีมใหม่แล้ว');
 }
+// นับผลกระทบก่อนลบทีม — ตั้งแต่ "ทีม" กลายเป็นตัวกำหนดสิทธิ์จริง (CRM ใช้ทีมตัดสินว่าใครติ๊กงาน
+// ลูกค้าได้ / ปฏิทินใช้ทีมตัดสินว่าใครเห็นนัดของทีม) การลบทีมไม่ใช่แค่ลบป้ายชื่ออีกต่อไป
+// FK ของทั้ง crm_clients.team_id และ cal_events.team_id เป็น ON DELETE SET NULL (ยืนยันกับ
+// ฐานข้อมูลจริงแล้ว) ผลคือลบทีมแล้ว: ลูกค้าในทีมนั้นกลายเป็น "ไม่มีทีม" ทันที = ระดับ 4-5 แตะ
+// ไม่ได้เลยจนกว่าจะมีคนจัดทีมใหม่ · นัดของทีมนั้นกลายเป็นนัดไร้ทีม = สมาชิกมองไม่เห็นอีกต่อไป
+// ทั้งสองอย่างเกิดขึ้นเงียบๆ ไม่มี error จึงต้องบอกจำนวนให้เห็นก่อนยืนยัน
+// นับไม่ได้ (เน็ต/สิทธิ์) ก็ไม่บล็อกการลบ — ถามด้วยข้อความธรรมดาแทน ดีกว่าห้ามลบไปเลย
+async function countTeamImpact_(teamId) {
+  try {
+    const [cl, ev] = await Promise.all([
+      sb.from('crm_clients').select('id', { count: 'exact', head: true }).eq('team_id', teamId),
+      sb.from('cal_events').select('id', { count: 'exact', head: true }).eq('team_id', teamId),
+    ]);
+    if (cl.error || ev.error) return null;
+    return { clients: cl.count || 0, events: ev.count || 0 };
+  } catch (e) { return null; }
+}
 async function deleteTeam(teamId) {
   if (!canManageTeams()) { showToast('ไม่มีสิทธิ์ลบทีม', 'error'); return; }
-  if (!confirm('ต้องการลบทีมนี้ใช่หรือไม่?')) return;
+  const impact = await countTeamImpact_(teamId);
+  let msg = 'ต้องการลบทีมนี้ใช่หรือไม่?';
+  if (impact && (impact.clients || impact.events)) {
+    msg = 'ต้องการลบทีมนี้ใช่หรือไม่?\n\nสิ่งที่จะเกิดขึ้น:';
+    if (impact.clients) msg += `\n• ลูกค้า ${impact.clients} ราย จะกลายเป็น "ยังไม่ได้จัดทีม" — พนักงานระดับ 4-5 จะติ๊กงานของลูกค้าเหล่านี้ไม่ได้ จนกว่าจะจัดทีมใหม่ให้`;
+    if (impact.events) msg += `\n• นัดหมายของทีม ${impact.events} รายการ จะไม่มีทีมสังกัด — สมาชิกจะมองไม่เห็นอีก`;
+    msg += '\n\n(ข้อมูลไม่ได้ถูกลบทิ้ง แค่หลุดจากทีมนี้)';
+  }
+  if (!confirm(msg)) return;
   const { error } = await sb.from('org_teams').delete().eq('id', teamId);
   if (error) { showToast(error.message, 'error'); return; }
   await loadTeams();
@@ -1016,10 +1067,23 @@ async function approveRequest(reqId) {
 async function rejectRequest(reqId) {
   if (!canApproveRequest()) { showToast('ไม่มีสิทธิ์ปฏิเสธคำขอนี้', 'error'); return; }
   if (!confirm('ต้องการปฏิเสธคำขอนี้ใช่หรือไม่?')) return;
-  const { error } = await sb.from('org_staff_requests')
+  // .select('id') เพื่อเช็คว่าแตะแถวจริงไหม — เผื่อกรณีอีกคนอนุมัติ/ปฏิเสธคำขอนี้ไปแล้วพอดีระหว่างที่
+  // เรากำลังดูอยู่ (staffRequests ในเครื่องเก่าค้างว่ายังเป็น 'pending') UPDATE จะ affect 0 แถวแบบไม่มี
+  // error เลย (ไม่ตรงกับ WHERE) — org_staff_requests SELECT ของ owner/manager เห็นได้ทุกแถวไม่ขึ้นกับ
+  // status ของแถวเอง (crm_sr_sel อิงจาก role ผู้เรียก ไม่ใช่สถานะแถว) จึงไม่มีเคส false-negative แบบ
+  // org_staff ให้ต้องแยกที่นี่
+  const { data, error } = await sb.from('org_staff_requests')
     .update({ status: 'rejected', rejected_by: profile.id, rejected_at: new Date().toISOString() })
-    .eq('id', reqId);
+    .eq('id', reqId)
+    .select('id');
   if (error) { showToast(error.message, 'error'); return; }
+  if (!data || data.length === 0) {
+    showToast('ปฏิเสธไม่สำเร็จ — คำขอนี้อาจถูกดำเนินการไปแล้ว กรุณาโหลดหน้าใหม่แล้วลองอีกครั้ง', 'error');
+    await loadStaffRequests();
+    openReviewRequestModal(reqId);
+    renderEmployeeRequests();
+    return;
+  }
   await loadStaffRequests();
   showToast('ปฏิเสธคำขอแล้ว');
   openReviewRequestModal(reqId);

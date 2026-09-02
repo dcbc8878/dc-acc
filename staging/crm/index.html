@@ -3749,19 +3749,12 @@ function seqNumCompare_(a, b) {
   const bSeq = b.seq_num == null ? Infinity : b.seq_num;
   return aSeq - bSeq;
 }
-function syncClientNo() {
-  const bt = document.getElementById('no-billing-type').value;
-  const sn = document.getElementById('no-seq-num').value;
-  document.getElementById('no-computed').textContent = computeClientNo(bt, sn);
-  markDirty();
-}
-function suggestSeqNum() {
-  const bt = document.getElementById('no-billing-type').value;
-  const existing = clients.filter(x => x.billing_type === bt && x.seq_num).map(x => x.seq_num);
-  const next = existing.length ? Math.max(...existing) + 1 : 1;
-  document.getElementById('no-seq-num').value = next;
-  syncClientNo();
-}
+// (เคยมี syncClientNo()/suggestSeqNum() ตรงนี้ — ต่อกับช่อง #no-billing-type/#no-seq-num/#no-computed
+// ที่ไม่มีอยู่ในหน้าเว็บมานานแล้ว (เจอตอน audit: ไม่มี element เหล่านี้เหลือในไฟล์เลยสักจุด, ไม่มี onclick
+// ไหนเรียกทั้งสองฟังก์ชันนี้เลยด้วย) เป็นซากของฟอร์มแก้ไข seq_num แบบแยกต่อประเภทรุ่นเก่า ก่อนจะเปลี่ยนเป็น
+// "เลขลำดับเดียวรวมทุกประเภท" (ดู seqNumCompare_/nextClientNo/applyTypeChangeCore_ ด้านบน — suggestSeqNum()
+// เดิมยังคำนวณแบบแยกต่อประเภทด้วย ตรงข้ามกับกฎปัจจุบัน) ลบโค้ดที่เข้าถึงไม่ได้ทิ้งแล้ว ไม่กระทบอะไรเพราะไม่มี
+// ทางเรียกใช้ได้อยู่แล้ว)
 function ncUpdateSeq(force) {
   const typeEl = document.getElementById('nc-ctype');
   const seqEl  = document.getElementById('nc-seq');
@@ -5013,6 +5006,10 @@ function openAddCredItem() {
 }
 
 async function saveCredItem() {
+  // ด่านของตัวเอง ไม่พึ่งว่า openAddCredItem เช็คมาแล้ว (เรียกตรงจาก console ได้ ข้ามปุ่ม "+ เพิ่มรายการ"
+  // ที่ซ่อนไว้แล้ว) แพทเทิร์นเดียวกับ saveNote/saveDocModal — ตารางนี้เก็บรหัสผ่านลูกค้าจริง (RD/DBD/SSO ฯลฯ)
+  // เกณฑ์เดียวกับ openAddCredItem/editCredItem/savePanelCreds ทุกจุด (canEditBasic + panelOrigin==='full')
+  if (!canEditBasic() || panelOrigin !== 'full') return;
   const label = document.getElementById('ci-label').value.trim();
   const username = document.getElementById('ci-username').value.trim();
   const password = document.getElementById('ci-password').value.trim();
@@ -5056,6 +5053,9 @@ function editCredItem(itemId) {
 }
 
 async function saveEditCredItem(itemId) {
+  // ด่านของตัวเอง (แพทเทิร์นเดียวกับ saveCredItem ด้านบน — เรียกตรงจาก console ได้ ข้ามปุ่ม "แก้ไข" ที่
+  // ซ่อนไว้แล้ว) เกณฑ์เดียวกับ editCredItem ที่เปิด modal นี้ทุกจุด
+  if (!canEditBasic() || panelOrigin !== 'full') return;
   const label = document.getElementById('ci-label').value.trim();
   const username = document.getElementById('ci-username').value.trim();
   const password = document.getElementById('ci-password').value.trim();
@@ -5070,6 +5070,10 @@ async function saveEditCredItem(itemId) {
 }
 
 async function deleteCredItem(itemId) {
+  // ด่านของตัวเอง (แพทเทิร์นเดียวกับ saveCredItem/saveEditCredItem ด้านบน) — เดิมฟังก์ชันนี้ไม่มีด่านสิทธิ์
+  // เลยแม้แต่ปุ่ม "ลบ" เองก็ตาม (ปุ่มถูกซ่อนจาก UI ให้คนไม่มีสิทธิ์อยู่แล้วก็จริง แต่เรียกตรงจาก console
+  // ข้ามปุ่มได้เหมือนกัน) ใส่ก่อน confirm() เพื่อไม่ต้องเปิด dialog ยืนยันสำหรับสิ่งที่จะถูกปฏิเสธอยู่แล้ว
+  if (!canEditBasic() || panelOrigin !== 'full') return;
   if (!confirm('ต้องการลบรายการนี้ใช่หรือไม่?')) return;
   const item = panelCredItemsCache.find(x => x.id === itemId);
   const { error } = await sb.from('crm_client_credential_items').delete().eq('id', itemId);
