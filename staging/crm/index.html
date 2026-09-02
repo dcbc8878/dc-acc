@@ -3871,6 +3871,9 @@ async function doHardDeleteClient(expectedCode) {
 }
 
 async function deleteChangeLog(logId) {
+  // ด่านของตัวเอง (แพทเทิร์นเดียวกับ deleteCredItem — ใส่ก่อน confirm() เพื่อไม่ต้องเปิด dialog ยืนยัน
+  // สำหรับสิ่งที่จะถูกปฏิเสธอยู่แล้ว) เกณฑ์เดียวกับปุ่ม "ลบ" ที่ซ่อนไว้แล้วใน renderPanelChanges (canEdit)
+  if (!canEdit()) return;
   if (!confirm('ต้องการลบรายการนี้ใช่หรือไม่?')) return;
   const { error } = await sb.from('crm_client_change_log').delete().eq('id', logId);
   if (error) { showToast('ลบไม่สำเร็จ: ' + error.message, 'error'); return; }
@@ -3880,6 +3883,9 @@ async function deleteChangeLog(logId) {
 }
 
 async function deleteInvoice(invId) {
+  // ด่านของตัวเอง (แพทเทิร์นเดียวกับ deleteCredItem) — เกณฑ์เดียวกับปุ่ม "✕" ที่ซ่อนไว้แล้วใน
+  // loadBillingHistory (isOwner) เรียกตรงจาก console ข้ามปุ่มได้เหมือนกันถ้าไม่ใส่ด่านตรงนี้ด้วย
+  if (!isOwner()) return;
   if (!confirm('ต้องการลบใบแจ้งหนี้นี้ใช่หรือไม่?')) return;
   const { error } = await sb.from('crm_invoices').delete().eq('id', invId);
   if (error) { showToast('ลบไม่สำเร็จ: ' + error.message, 'error'); return; }
@@ -3892,6 +3898,9 @@ async function deleteInvoice(invId) {
 }
 
 async function deleteBillingContract(contractId) {
+  // ด่านของตัวเอง (แพทเทิร์นเดียวกับ deleteCredItem/deleteInvoice ด้านบน) — เกณฑ์เดียวกับปุ่ม "✕" ที่ซ่อน
+  // ไว้แล้วใน loadBillingContracts (isOwner)
+  if (!isOwner()) return;
   if (!confirm('ต้องการลบสัญญาค่าบริการนี้ใช่หรือไม่?')) return;
   const { error } = await sb.from('crm_billing_contracts').delete().eq('id', contractId);
   if (error) { showToast('ลบไม่สำเร็จ: ' + error.message, 'error'); return; }
@@ -4267,14 +4276,22 @@ function editChangeLog(logId) {
 }
 
 async function saveEditChangeLog(logId) {
+  // ด่านของตัวเอง ไม่พึ่งว่า editChangeLog (ที่เปิด modal นี้) เช็คมาแล้ว — เรียกตรงจาก console ข้ามปุ่ม
+  // "แก้ไข" ที่ซ่อนไว้แล้วได้เหมือนกัน แพทเทิร์นเดียวกับ saveNote/saveDocModal/saveCredItem/saveEditCredItem
+  // เกณฑ์เดียวกับ editChangeLog เป๊ะ (canEdit เพราะแถวนี้อาจเป็นประวัติค่าบริการ/ประเภทลูกค้าที่มียอดเงินจริง)
+  if (!canEdit()) return;
   const change_type = document.getElementById('edit-change-type').value;
   const change_date = document.getElementById('edit-change-date').value;
   const new_value   = document.getElementById('edit-change-val').value.trim();
   const note        = document.getElementById('edit-change-note').value.trim();
   if (!change_date) { showToast('กรุณาระบุวันที่มีผล', 'error'); return; }
 
+  // .select().single() แทนการ UPDATE เฉยๆ — ถ้า RLS บล็อก (เช่นเรียกตรงจาก console โดยไม่มี canEdit()
+  // จริง) UPDATE ธรรมดาจะจับคู่ 0 แถวแล้ว "สำเร็จ" เงียบๆ (ไม่มี error) โค้ดจะเดินหน้าขึ้น toast "บันทึก
+  // สำเร็จ" ทั้งที่ไม่ได้เขียนอะไรเลย .single() บังคับให้ 0 แถวกลายเป็น error ที่จับได้จริง (แพทเทิร์น
+  // เดียวกับ toggleField/saveNote/toggleYeStep ที่เขียนตารางเดี่ยวแบบเดียวกันนี้)
   const { error } = await sb.from('crm_client_change_log')
-    .update({ change_type, change_date, new_value, note }).eq('id', logId);
+    .update({ change_type, change_date, new_value, note }).eq('id', logId).select().single();
   if (error) { showToast('บันทึกไม่สำเร็จ: ' + error.message, 'error'); return; }
 
   await logActivity('client_change_edit', 'client_change_log', logId, `แก้ไขรายการเปลี่ยนแปลง #${logId}`);
@@ -6673,12 +6690,20 @@ async function rejectRequest(reqId) {
 // ผู้รับผิดชอบเดิม (ถ้ามี) ยังอยู่ครบเสมอ แค่อาจไม่ตรงกับสมาชิกทีมใหม่อีกต่อไป (แสดงพร้อมป้าย "(ไม่อยู่
 // ในทีมแล้ว)" ตอนเปิดฟอร์มผู้รับผิดชอบครั้งถัดไป ดู openAssigneeModal) ผู้ใช้เอาออกเองได้
 async function applyTeamChangeCore_(clientId, newTeamId) {
+  // ด่านของตัวเอง ไม่พึ่งว่า openEditTeam (ที่เปิดฟอร์มนี้) เช็คมาแล้ว — เรียกตรงจาก console ข้ามฟอร์มที่
+  // ซ่อนไว้แล้วได้เหมือนกัน แพทเทิร์นเดียวกับ toggleClientAssignee_ ด้านล่าง (คนละตาราง แต่เป็นการมอบหมาย
+  // งานเรื่องเดียวกัน — เกณฑ์เดียวกับ openEditTeam เป๊ะ)
+  if (!canManageTeams()) return { ok: false, error: 'ไม่มีสิทธิ์แก้ไข' };
   const c = clients.find(x => x.id === clientId);
   if (!c) return { ok: false, error: 'ไม่พบข้อมูลลูกค้า' };
   if (c.team_id === newTeamId) return { ok: true }; // ไม่มีอะไรเปลี่ยน ไม่ต้องยิง query
-  const { error } = await sb.from('crm_clients').update({ team_id: newTeamId }).eq('id', clientId);
+  // .select().single() กัน RLS บล็อกเงียบ (0 แถว ไม่มี error ถ้าไม่อ่านค่ากลับ) แล้วโค้ดเข้าใจผิดว่าสำเร็จ
+  // ทั้งที่ทีมไม่ถูกเปลี่ยนจริง — ปลอดภัยกับ SELECT-side RLS ด้วย (ต่างจาก own_company_visible_to): หน้า
+  // "มอบหมายงาน" กรอง !is_own_company ไว้แล้วเสมอ (renderAssignPage) ลูกค้าทั่วไปไม่ถูก crm_cli_sel กรอง
+  // ตาม team_id เลย อ่านค่ากลับได้แน่นอนไม่ว่าจะย้ายไปทีมไหน
+  const { data, error } = await sb.from('crm_clients').update({ team_id: newTeamId }).eq('id', clientId).select().single();
   if (error) return { ok: false, error: error.message };
-  c.team_id = newTeamId;
+  c.team_id = data.team_id;
   return { ok: true };
 }
 // ฟอร์มเล็กเลือกทีมของลูกค้า 1 ราย — เปิดจากคลิกคอลัมน์ "ทีม" ในหน้า "มอบหมายงาน" (assignRowHtml)
@@ -7150,7 +7175,15 @@ let overlaySent_ = null;
 function overlayOpen_() {
   const po = document.getElementById('panel-overlay');
   const ma = document.getElementById('modal-area');
-  return !!(po && !po.classList.contains('hidden')) || !!(ma && ma.childElementCount > 0);
+  // #dp-popup (ตัวเลือกวันที่) ก็ต้องนับด้วย — ปกติมันถูกวาดซ้อนอยู่ในแผง/โมดัลที่ po/ma จับได้อยู่แล้ว
+  // (openDatePicker ทุกจุดเรียกจาก dateFieldHtml() ที่อยู่ใน openModal()/แผงลูกค้าเสมอ) ยกเว้นจุดเดียวคือ
+  // ช่อง "วันเดือนปีเกิด" ในหน้า "ตั้งค่าข้อมูลส่วนตัว" (page-settings) ที่เรียก openDatePicker ตรงๆ นอก
+  // แผง/โมดัลเลย (เช็คแล้ว: ทุก dateFieldHtml() อีก 9 จุดอยู่ใน openModal()/แผงลูกค้าหมด มีแค่จุดนี้ที่ไม่ใช่)
+  // ถ้าไม่เช็คแยก ปุ่มลอยของหน้าหลักจะยังทับปฏิทินเล็กๆ นี้ได้ตอนแก้วันเกิดตัวเอง
+  const dp = document.getElementById('dp-popup');
+  return !!(po && !po.classList.contains('hidden'))
+      || !!(ma && ma.childElementCount > 0)
+      || !!(dp && !dp.classList.contains('hidden'));
 }
 function notifyOverlay_() {
   const open = overlayOpen_();
@@ -7165,9 +7198,11 @@ function notifyOverlay_() {
 (function watchOverlay_() {
   const po = document.getElementById('panel-overlay');
   const ma = document.getElementById('modal-area');
+  const dp = document.getElementById('dp-popup');
   const ob = new MutationObserver(notifyOverlay_);
   if (po) ob.observe(po, { attributes: true, attributeFilter: ['class'] });
   if (ma) ob.observe(ma, { childList: true });
+  if (dp) ob.observe(dp, { attributes: true, attributeFilter: ['class'] });
   notifyOverlay_();
 })();
 
