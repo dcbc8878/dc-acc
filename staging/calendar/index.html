@@ -165,6 +165,12 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
 .agenda-item .title{font-weight:600;flex:1;}
 .agenda-item .client{font-size:12px;color:var(--muted);}
 .agenda-empty{color:var(--muted);font-size:13px;padding:20px;text-align:center;}
+/* หัวกลุ่ม "กิจกรรมประจำวัน" ที่รวมลูกค้าคนเดียวกันหลายแถวเป็นบรรทัดเดียว (renderDailyActivityEntryHtml_) —
+   ลูกศรพับ/กาง, ป้ายจำนวนแถวดิบ, กล่องแถวลูกที่เยื้องเข้าไปตอนกาง (เริ่มต้นมีคลาส hidden ติดมาเสมอ) */
+.da-caret{display:inline-block;width:12px;flex:none;font-size:10px;color:var(--muted);text-align:center;}
+.da-count{font-size:11px;color:var(--muted);background:var(--panel-2);border-radius:99px;padding:2px 8px;flex:none;}
+.da-children{margin:-4px 0 6px 28px;}
+.da-children .agenda-item{background:var(--panel-2);}
 
 /* Kanban */
 .kanban{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;align-items:start;}
@@ -772,6 +778,7 @@ let dailyActivityReqId = 0;// bumped per render; a response whose id no longer m
 let staffNameMap = {};     // org_staff id -> display_name, lazy-loaded for the daily activity view
 let staffCodeMap = {};     // org_staff id -> staff_code, for the compact grid tag ("CODE - item - status - staff_code")
 let clientCodeMap = {};    // crm_clients id -> code, same purpose
+let clientNameMap = {};    // crm_clients id -> thai_name, used to merge same-client rows in "กิจกรรมประจำวัน" into one line
 let calActivityByDate = {};   // iso date -> array of {code, item, status, staffCode}, for tags shown right on the calendar grid
 let calActivityRangeKey = ''; // which visible range calActivityByDate currently holds (month/week key) — set only after a fetch actually succeeds
 let calActivityRequestKey = '';// which range is being fetched right now, so out-of-order/stale responses can be dropped
@@ -1526,9 +1533,12 @@ async function loadActivityStaffNames(client){
 }
 async function loadActivityClientCodes(client){
   try{
-    const { data } = await client.from('crm_clients').select('id, code');
-    (data||[]).forEach(c=>{ clientCodeMap[c.id] = c.code || ''; });
-  }catch(e){ /* โหลดรหัสลูกค้าไม่สำเร็จ — tag จะไม่มี CODE นำหน้า ไม่กระทบส่วนอื่น */ }
+    // thai_name เพิ่มเข้ามาเพื่อให้หน้า "กิจกรรมประจำวัน" รวมแถวของลูกค้าคนเดียวกันแล้วโชว์ชื่อได้โดยไม่ต้องแกะจาก
+    // summary (ซึ่งบาง action type เช่น client_info_update ไม่มีชื่อลูกค้าอยู่ในข้อความเลย) — clientCodeMap เดิม
+    // (ใช้โดยแท็กบนตารางปฏิทิน) ยังทำงานเหมือนเดิมทุกประการ แค่เพิ่ม clientNameMap ควบคู่กันไปจากคิวรีเดียวกัน
+    const { data } = await client.from('crm_clients').select('id, code, thai_name');
+    (data||[]).forEach(c=>{ clientCodeMap[c.id] = c.code || ''; clientNameMap[String(c.id)] = c.thai_name || ''; });
+  }catch(e){ /* โหลดรหัส/ชื่อลูกค้าไม่สำเร็จ — tag จะไม่มี CODE นำหน้า, กิจกรรมประจำวันจะ fallback ไปแกะชื่อจาก summary/ไม่ทราบชื่อแทน ไม่กระทบส่วนอื่น */ }
 }
 // แกะข้อความสรุปที่ logActivity() ของ CRM สร้างไว้ (รูปแบบคงที่ทั้ง 3 จุดที่เกี่ยวกับงานติ๊กสถานะ — ดู
 // toggleField/saveGroupItemField/toggleYearEndField ใน crm/index.html): "...: {รายการ} → {สถานะ} (...)"
@@ -1632,6 +1642,134 @@ function calActivityTagsHtml(iso, max){
   if(extra > 0) html += `<div class="more-link" data-action="view-activity" data-date="${iso}">+${extra} กิจกรรม</div>`;
   return html;
 }
+/* ===== "กิจกรรมประจำวัน": รวมแถวของลูกค้าคนเดียวกันในวันเดียวกันให้เหลือ 1 บรรทัด =====
+   ผู้ใช้ขอ: ลูกค้ารายเดียวที่ถูกติ๊กงานหลายรายการในวันเดียว (เช่น TAX1/SSO/TAX2 หลายตัว) เดิมโผล่ซ้ำเป็นสิบบรรทัด
+   — จัดกลุ่มเฉพาะแถวที่ entity_type==='client' ด้วย entity_id เท่านั้น แถวอื่น (staff/client_bulk/ไม่มี entity_id)
+   หรือกลุ่มที่มีแค่ 1 แถว ยังเป็นบรรทัดเดี่ยวรูปแบบเดิมทุกอย่าง ไม่ถูกแตะ */
+
+// จัดกลุ่มแถวดิบจาก crm_activity_log — data ต้องเรียงจากใหม่ไปเก่ามาแล้ว (ตามที่ renderDailyActivity() query ไว้)
+// แต่ละกลุ่ม sort ซ้ำเองอีกชั้นด้วย created_at จริง ไม่พึ่งลำดับเดิมของ data ตรงๆ (กันกรณี grouping ทำให้ลำดับ
+// สัมพัทธ์ในกลุ่มเพี้ยนไปโดยไม่ตั้งใจ) คืน array ของ {rows, entityId} เรียงจากใหม่ไปเก่า โดยใช้เวลาของแถวล่าสุด
+// ในกลุ่ม/แถวเดี่ยวเป็นตัวเรียง (แถวเดี่ยวอื่นๆ กับกลุ่มลูกค้าปนกันในลิสต์เดียว)
+function groupDailyActivityRows_(data){
+  const groupRows = {};   // entity_id (string) -> แถวดิบ[]
+  const order = [];       // ลำดับที่พบครั้งแรก — {key} = กลุ่มลูกค้า, {row} = แถวเดี่ยวอื่นๆ
+  data.forEach(row=>{
+    if(row.entity_type === 'client' && row.entity_id != null){
+      const key = String(row.entity_id);
+      if(!groupRows[key]){ groupRows[key] = []; order.push({ key }); }
+      groupRows[key].push(row);
+    } else {
+      order.push({ row });
+    }
+  });
+  const entries = order.map(entry=>{
+    if(entry.row) return { rows: [entry.row], entityId: null };
+    const rows = groupRows[entry.key].slice().sort((a,b)=> new Date(b.created_at) - new Date(a.created_at));
+    return { rows, entityId: entry.key };
+  });
+  entries.forEach(e=>{ e.latestTs = new Date(e.rows[0].created_at).getTime(); });
+  entries.sort((a,b)=> b.latestTs - a.latestTs);
+  return entries;
+}
+
+// สรุปรายการ "item → status" (จากแถวที่ parseActivitySummary() แกะได้) ต่อด้วยป้าย action ของแถวที่แกะไม่ได้
+// ภายใน 1 กลุ่ม — ตัดรายการซ้ำ ยึดค่าล่าสุดของแต่ละ item ตาม created_at จริง (ไม่ใช่นาทีที่แสดง เพราะหลายแถวมัก
+// อยู่ในนาทีเดียวกัน) rows ต้องเรียงใหม่ไปเก่าแล้ว (groupDailyActivityRows_ จัดมาให้) คืน array ของ string ดิบ
+// ยังไม่ escape/ตัดจำนวน — ตัวเรียกเป็นคนจัดการ join/escape/cap 6 ชิ้นเอง
+function buildDailyActivityGroupParts_(rows){
+  const itemOrder = [], itemStatus = {}, actionOrder = [], actionSeen = {};
+  rows.forEach(row=>{
+    const parsed = parseActivitySummary(row.summary);
+    if(parsed){
+      if(!(parsed.item in itemStatus)){ itemStatus[parsed.item] = parsed.status; itemOrder.push(parsed.item); }
+    } else {
+      const lbl = ACTIVITY_ACTION_LABEL_TH[row.action] || row.action;
+      if(!actionSeen[lbl]){ actionSeen[lbl] = true; actionOrder.push(lbl); }
+    }
+  });
+  return itemOrder.map(it=> it + ' → ' + itemStatus[it]).concat(actionOrder);
+}
+
+// ชื่อลูกค้าของกลุ่ม: ต้องได้จากฐานข้อมูลก่อนเสมอ (clientNameMap) — fallback ไปแกะจาก summary ของแถวที่เป็น
+// รูปแบบ "ติ๊กงาน" (ขึ้นต้นด้วยชื่อลูกค้าจริงก่อน ": " ตัวแรก) เฉพาะตอนหาใน map ไม่เจอ (เช่น สิทธิ์ไม่พอเห็น
+// บริษัทภายใน) — action อื่น (เช่น client_info_update) ไม่มีชื่อลูกค้าอยู่ใน summary เลย จึงลองแค่แถวที่
+// parseActivitySummary() แกะสำเร็จเท่านั้น ถ้ายังไม่เจอจริงๆ ใช้ป้าย "ลูกค้า (ไม่ทราบชื่อ)" ไม่ซ่อนแถวทิ้ง
+function resolveDailyActivityClientName_(entityId, rows){
+  const fromMap = clientNameMap[String(entityId)];
+  if(fromMap) return fromMap;
+  for(const row of rows){
+    if(!row.summary || !parseActivitySummary(row.summary)) continue;
+    const idx = row.summary.indexOf(': ');
+    if(idx === -1) continue;
+    const name = row.summary.slice(0, idx).trim();
+    if(name) return name;
+  }
+  return 'ลูกค้า (ไม่ทราบชื่อ)';
+}
+
+// ผู้ทำในกลุ่ม: rows ต้องเรียงใหม่ไปเก่าแล้ว — คืนชื่อคนล่าสุด + จำนวนคนที่ต่างกันทั้งหมด + รายชื่อครบ (ไม่ซ้ำ
+// เรียงตามที่ปรากฏล่าสุดก่อน ใช้ใส่ title= ตอนมีมากกว่า 1 คน)
+function buildDailyActivityActors_(rows){
+  const order = [], seenNames = {};
+  rows.forEach(row=>{
+    const id = row.actor_id;
+    if(!(id in seenNames)){ seenNames[id] = staffNameMap[id] || 'ไม่ทราบชื่อ'; order.push(id); }
+  });
+  return { latestName: seenNames[rows[0].actor_id], count: order.length, names: order.map(id=>seenNames[id]) };
+}
+
+// บรรทัดแถวดิบ 1 แถว — รูปแบบเดิมของ renderDailyActivity() ก่อนมีการรวมกลุ่ม แยกออกมาเป็นฟังก์ชันเพื่อใช้ซ้ำทั้งกับ
+// แถว/กลุ่มที่มีแค่ 1 รายการ (แสดงแบบเดิมเป๊ะ ไม่มีลูกศร ไม่กางได้) และกับแถวลูกที่กางออกมาจากกลุ่ม (เยื้องเพิ่ม)
+function dailyActivityRowHtml_(a){
+  const t = new Date(a.created_at);
+  const nm = staffNameMap[a.actor_id] || 'ไม่ทราบชื่อ';
+  const roleLbl = mapRoleToLabel(a.actor_role);
+  const actLbl = ACTIVITY_ACTION_LABEL_TH[a.action] || a.action;
+  return `<div class="agenda-item" style="cursor:default;">
+    <span class="dot" style="background:#3b82f6"></span>
+    <span class="time">${pad(t.getHours())}:${pad(t.getMinutes())}</span>
+    <span class="title">${escapeHtml(actLbl)}${a.summary?': '+escapeHtml(a.summary):''}</span>
+    <span class="client">${escapeHtml(nm)} <span class="pill" style="background:#3b82f622;color:#3b82f6">${escapeHtml(roleLbl)}</span></span>
+  </div>`;
+}
+
+// 1 entry จาก groupDailyActivityRows_() → HTML: บรรทัดเดียวแบบเดิม (rows.length===1) หรือหัวกลุ่ม+ลูกที่พับ/กาง
+// ได้ (rows.length>1, entity_type==='client' เท่านั้นที่มาถึงจุดนี้ได้เพราะ groupDailyActivityRows_ คุมไว้แล้ว)
+function renderDailyActivityEntryHtml_(entry){
+  const rows = entry.rows;
+  if(rows.length === 1) return dailyActivityRowHtml_(rows[0]);
+  const newest = new Date(rows[0].created_at);
+  const oldest = new Date(rows[rows.length-1].created_at);
+  const newestHM = pad(newest.getHours())+':'+pad(newest.getMinutes());
+  const oldestHM = pad(oldest.getHours())+':'+pad(oldest.getMinutes());
+  const timeText = newestHM===oldestHM ? newestHM : (oldestHM+'–'+newestHM);
+  const code = clientCodeMap[entry.entityId] || '';
+  const name = resolveDailyActivityClientName_(entry.entityId, rows);
+  const namePart = code ? `${escapeHtml(code)} · ${escapeHtml(name)}` : escapeHtml(name);
+  const parts = buildDailyActivityGroupParts_(rows);
+  const fullText = parts.join(' · ');
+  const shownText = parts.length > 6 ? (parts.slice(0,6).join(' · ') + ' +' + (parts.length-6)) : fullText;
+  const actors = buildDailyActivityActors_(rows);
+  const roleLbl = mapRoleToLabel(rows[0].actor_role);
+  const clientHtml = actors.count <= 1
+    ? `${escapeHtml(actors.latestName)} <span class="pill" style="background:#3b82f622;color:#3b82f6">${escapeHtml(roleLbl)}</span>`
+    : `<span title="${escapeHtml(actors.names.join(', '))}">${escapeHtml(actors.latestName)} +${actors.count-1} คน</span>`;
+  // ลูกศรเริ่มที่ ▸ (พับ) เสมอเพราะ .da-children มีคลาส hidden ติดมาด้วยตั้งแต่แรก — สลับเป็น ▾ ตอนกางผ่าน
+  // ตัวจัดการคลิกที่ #dailyActivityBody (ดู init() ด้านล่าง) .time ใส่ width:auto เฉพาะบรรทัดกลุ่ม เพราะช่วงเวลา
+  // แบบ "08:15–09:40" อาจยาวเกิน 48px ที่ตั้งไว้สำหรับเวลาแบบจุดเดียวของบรรทัดปกติ (ไม่แตะ .agenda-item .time เดิม)
+  const header = `<div class="agenda-item" data-action="toggle-da-group">
+    <span class="da-caret">▸</span>
+    <span class="dot" style="background:#3b82f6"></span>
+    <span class="time" style="width:auto;white-space:nowrap;">${timeText}</span>
+    <span class="title" title="${escapeHtml(fullText)}"><b>${namePart}</b> — ${escapeHtml(shownText)}</span>
+    <span class="client">${clientHtml}</span>
+    <span class="da-count">${rows.length} รายการ</span>
+  </div>`;
+  const children = `<div class="da-children hidden">${rows.map(dailyActivityRowHtml_).join('')}</div>`;
+  return `<div class="da-group">${header}${children}</div>`;
+}
+
 async function renderDailyActivity(){
   // กด ◀/▶ เปลี่ยนวันเร็วๆ แล้วผลของวันเก่า (ที่ช้ากว่า) มาถึงทีหลัง จะเขียนทับผลของวันที่กำลังดูอยู่ ทำให้
   // ป้ายวันที่กับรายการข้างล่างเป็นคนละวันกัน — กันด้วย request id แบบเดียวกับ calActivityRequestKey ของตารางปฏิทิน
@@ -1648,6 +1786,11 @@ async function renderDailyActivity(){
   try{
     const client = await getSupabaseClient();
     if(!Object.keys(staffNameMap).length) await loadActivityStaffNames(client);
+    // clientNameMap ใช้เฉพาะหน้านี้ (ต่างจาก clientCodeMap ที่ตารางปฏิทินโหลดไว้ก่อนแล้วก็ได้) — เช็คจาก
+    // clientNameMap เอง ไม่ใช่ clientCodeMap เพราะสองอันนี้โหลดมาจากคิวรีเดียวกันเสมอ (loadActivityClientCodes)
+    // แต่ถ้ามีแค่ clientCodeMap ถูกโหลดไว้ก่อนหน้านี้จากโค้ดเวอร์ชันเก่า (ไม่ควรเกิดแล้วในไฟล์นี้) เช็คจาก
+    // clientNameMap จะปลอดภัยกว่า เพราะบังคับให้โหลดครบทั้งคู่เสมอถ้ายังไม่เคยมีชื่อเลย
+    if(!Object.keys(clientNameMap).length) await loadActivityClientCodes(client);
     const dayStart = parseISODate(selIso);
     const dayEnd = addDays(dayStart, 1);
     const { data, error } = await client.from('crm_activity_log')
@@ -1658,18 +1801,7 @@ async function renderDailyActivity(){
     if(reqId !== dailyActivityReqId) return;   // ผู้ใช้เปลี่ยนวันไปแล้วระหว่างรอผล — ทิ้งผลของวันเก่า
     if(error){ body.innerHTML = '<div class="agenda-empty">โหลดไม่สำเร็จ: '+escapeHtml(error.message||'')+'</div>'; return; }
     if(!data || !data.length){ body.innerHTML = '<div class="agenda-empty">ไม่มีกิจกรรมในวันนี้</div>'; return; }
-    body.innerHTML = data.map(a=>{
-      const t = new Date(a.created_at);
-      const nm = staffNameMap[a.actor_id] || 'ไม่ทราบชื่อ';
-      const roleLbl = mapRoleToLabel(a.actor_role);
-      const actLbl = ACTIVITY_ACTION_LABEL_TH[a.action] || a.action;
-      return `<div class="agenda-item" style="cursor:default;">
-        <span class="dot" style="background:#3b82f6"></span>
-        <span class="time">${pad(t.getHours())}:${pad(t.getMinutes())}</span>
-        <span class="title">${escapeHtml(actLbl)}${a.summary?': '+escapeHtml(a.summary):''}</span>
-        <span class="client">${escapeHtml(nm)} <span class="pill" style="background:#3b82f622;color:#3b82f6">${escapeHtml(roleLbl)}</span></span>
-      </div>`;
-    }).join('');
+    body.innerHTML = groupDailyActivityRows_(data).map(renderDailyActivityEntryHtml_).join('');
   }catch(e){
     if(reqId !== dailyActivityReqId) return;
     body.innerHTML = '<div class="agenda-empty">เกิดข้อผิดพลาด ลองใหม่อีกครั้ง</div>';
@@ -1895,7 +2027,7 @@ async function logoutCrmAccount(){
   authUser = null; cloudProfile = null; cloudClients = []; staffNameMap = {}; myTeams = [];
   // ข้อมูลกิจกรรมข้ามพนักงานที่ดึงมาแล้วต้องล้างทิ้งด้วย ไม่งั้นคนถัดไปที่ใช้เครื่องเดียวกัน (หรือโหมด Local)
   // ยังเห็น tag ของคนก่อนหน้าค้างบนตาราง — RLS ฝั่งเซิร์ฟเวอร์ช่วยไม่ได้เพราะข้อมูลอยู่ในหน่วยความจำแล้ว
-  staffCodeMap = {}; clientCodeMap = {};
+  staffCodeMap = {}; clientCodeMap = {}; clientNameMap = {};
   calActivityByDate = {}; calActivityRangeKey = ''; calActivityRequestKey = '';
   // คืน events/tasks กลับไปเป็นชุดที่เก็บใน localStorage เดิม (ไม่เคยถูกแตะเลยระหว่างอยู่ในโหมดคลาวด์) —
   // ไม่งั้นตัวแปร events/tasks ในหน่วยความจำจะยังเป็นข้อมูลคลาวด์ของบัญชีที่เพิ่งออกจากระบบไปค้างอยู่
@@ -2288,6 +2420,17 @@ function init(){
   document.getElementById('daPrev').addEventListener('click', ()=>{ dailyActivityDate = addDays(dailyActivityDate, -1); renderDailyActivity(); });
   document.getElementById('daNext').addEventListener('click', ()=>{ dailyActivityDate = addDays(dailyActivityDate, 1); renderDailyActivity(); });
   document.getElementById('daToday').addEventListener('click', ()=>{ dailyActivityDate = new Date(); renderDailyActivity(); });
+  // กาง/พับกลุ่มลูกค้าที่รวมหลายแถวเป็นบรรทัดเดียว (renderDailyActivityEntryHtml_) — ล้วน DOM ล้วนๆ ไม่ re-query
+  // ฐานข้อมูล .da-children เป็น nextElementSibling ของหัวกลุ่มเสมอ (โครง .da-group ที่สร้างไว้แล้วตอน render)
+  document.getElementById('dailyActivityBody').addEventListener('click', e=>{
+    const header = e.target.closest('[data-action="toggle-da-group"]');
+    if(!header) return;
+    const kids = header.nextElementSibling;
+    if(!kids || !kids.classList.contains('da-children')) return;
+    const collapsed = kids.classList.toggle('hidden');   // true = กลับไปพับแล้ว, false = กางอยู่ตอนนี้
+    const caret = header.querySelector('.da-caret');
+    if(caret) caret.textContent = collapsed ? '▸' : '▾';
+  });
 
   document.getElementById('calBody').addEventListener('click', e=>{
     const pill = e.target.closest('[data-action="edit-event"]');
