@@ -1658,7 +1658,12 @@ const canSeeAssignees = () => true;
 // รหัสผ่าน/จัดการทีม/มอบหมายงาน) ยังใช้ canEdit()/canEditBasic()/canManageTeams() เดิม ไม่เกี่ยวกับเกตนี้เลย
 function canDoClientTask(clientId) {
   if (canEdit()) return true;
-  return (clientStaffMap[clientId] || []).includes(profile?.id);
+  // LV4-5: ทำงานของลูกค้า "ทุกรายในทีมที่ตัวเองสังกัด" ได้ ไม่ใช่เฉพาะรายที่ถูกมอบหมายให้ตัวเอง
+  // (ผู้ใช้เลือกเกณฑ์นี้เอง เพื่อให้คนในทีมทำงานแทนกันได้เวลาลาหยุด) — ตรงกับ RLS ของ
+  // crm_tax_tasks/crm_year_end_tasks เป๊ะ (ดู org_my_team_ids() ฝั่งฐานข้อมูล)
+  // ลูกค้าที่ยังไม่ได้จัดทีม (team_id ว่าง) จะไม่มีใครใน LV4-5 แตะได้ ต้องให้ LV1-3 จัดทีมก่อน
+  const c = clients.find(x => x.id === clientId);
+  return !!c?.team_id && myTeamIds().includes(c.team_id);
 }
 function myTeamIds() {
   return teams.filter(t => t.lead_id === profile.id || (teamMembersMap[t.id] || []).includes(profile.id)).map(t => t.id);
