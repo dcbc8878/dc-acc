@@ -31,6 +31,14 @@
       --border: #DFDACF;
       --accent: var(--brand);
       --accent-soft: color-mix(in oklab, var(--brand) 55%, white);
+      /* --accent-text = สีเน้นในรูปแบบที่ใช้เป็น "สีตัวอักษร/ไอคอนขนาดเล็ก" บนพื้น --surface/--surface-2
+         ได้จริง แยกจาก --accent เปล่าๆ ที่สงวนไว้ใช้เป็น "พื้นหลัง" (ปุ่ม/แถบ ซึ่งจับคู่กับตัวอักษรขาว
+         --accent-contrast อยู่แล้ว ไม่ได้แตะ) — โหมดสว่างค่าเท่ากับ --accent เป๊ะ หน้าตาไม่เปลี่ยนเลย
+         แต่โหมดมืด --accent (= สีที่ผู้ใช้เลือกเอง) บนพื้นเกือบดำ วัดจริงได้แค่ 1.61-2.70:1 ทั้ง 8 สี
+         ที่เลือกได้ในหน้าตั้งค่า (แม้แต่สีเขียวค่าเริ่มต้นก็ได้ 1.90) อ่านแทบไม่ออก จึงชี้ไป --accent-soft
+         ในบล็อกมืดทั้งสองแทน (วัดได้ 6.11-7.78:1 ผ่านเกณฑ์ 4.5:1 ทุกสี) */
+      --accent-text: var(--accent);
+      --accent-text-hover: color-mix(in oklab, var(--accent) 85%, black);
       --accent-contrast: #FFFFFF;
       --ring: color-mix(in oklab, var(--brand) 35%, transparent);
       --shadow: 0 1px 2px rgba(29,27,23,0.05), 0 8px 24px -12px rgba(29,27,23,0.14);
@@ -46,6 +54,8 @@
         --border: #35322C;
         --accent: var(--brand);
         --accent-soft: color-mix(in oklab, var(--brand) 45%, white);
+        --accent-text: var(--accent-soft);
+        --accent-text-hover: color-mix(in oklab, var(--accent-soft) 75%, white);
         --accent-contrast: #FFFFFF;
         --ring: color-mix(in oklab, var(--brand) 45%, transparent);
         --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.55);
@@ -57,7 +67,9 @@
       --surface: color-mix(in oklab, var(--brand) 8%, #1F1E1B);
       --surface-2: color-mix(in oklab, var(--brand) 14%, #262420);
       --ink: #EFECE5; --ink-muted: #9C958C; --border: #35322C;
-      --accent: var(--brand); --accent-soft: color-mix(in oklab, var(--brand) 45%, white); --accent-contrast: #FFFFFF;
+      --accent: var(--brand); --accent-soft: color-mix(in oklab, var(--brand) 45%, white);
+      --accent-text: var(--accent-soft); --accent-text-hover: color-mix(in oklab, var(--accent-soft) 75%, white);
+      --accent-contrast: #FFFFFF;
       --ring: color-mix(in oklab, var(--brand) 45%, transparent);
       --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.55);
       --shadow-lg: 0 4px 8px rgba(0,0,0,0.35), 0 20px 40px -16px rgba(0,0,0,0.65);
@@ -143,7 +155,7 @@
       transition: background .15s, color .15s; white-space: nowrap;
     }
     .nav-item:hover  { background: var(--surface-2); color: var(--ink); }
-    .nav-item.active { background: var(--surface-2); color: var(--accent); font-weight: 600; }
+    .nav-item.active { background: var(--surface-2); color: var(--accent-text); font-weight: 600; }
     .nav-item svg    { flex-shrink: 0; }
 
     .dot {
@@ -195,7 +207,7 @@
       white-space: nowrap; flex-shrink: 0;
     }
     .tab-btn:hover { color: var(--ink); }
-    .tab-btn.active { color: var(--accent); border-color: var(--accent); }
+    .tab-btn.active { color: var(--accent-text); border-color: var(--accent); }
     .tab-btn.hidden { display: none; }
 
     .settings-menu-item {
@@ -288,8 +300,8 @@
        ไม่งั้นจะกดได้ทั้งช่องแต่ดูเหมือนกดได้แค่ตรงกลาง (.note-td-editable ใส่เฉพาะคนที่แก้ได้
        LV1-3 — LV4-5 ไม่มีทั้ง onclick และ hover ตามกฎเดิมของ noteCell) */
     .note-td-editable:hover { background: var(--surface-2); }
-    .note-td-editable:hover .note-add-chip { color: var(--accent); border-color: var(--accent-soft); }
-    .note-td-editable:hover > div { color: var(--accent); }
+    .note-td-editable:hover .note-add-chip { color: var(--accent-text); border-color: var(--accent-soft); }
+    .note-td-editable:hover > div { color: var(--accent-text); }
 
     /* Shared empty footer bar — a single fixed strip pinned to the viewport bottom on every
        page/sub-tab (markup: one <div id="app-footer"> as the last child of #app, right
@@ -419,7 +431,7 @@
         class="w-full bg-[var(--accent)] hover:bg-[color-mix(in_oklab,var(--accent)_85%,black)] text-white font-semibold py-2.5 rounded-lg text-sm transition-colors">
         เข้าสู่ระบบ
       </button>
-      <button onclick="openEmployeeRequestForm()" class="w-full text-center text-xs text-[var(--ink-muted)] hover:text-[var(--accent)] transition-colors">
+      <button onclick="openEmployeeRequestForm()" class="w-full text-center text-xs text-[var(--ink-muted)] hover:text-[var(--accent-text)] transition-colors">
         ยังไม่มีบัญชี? สมัครเป็นพนักงานใหม่
       </button>
     </div>
@@ -550,7 +562,7 @@
           <h2 class="text-base font-bold text-[var(--ink)]">สถานะงานภาษีรายเดือน</h2>
         </div>
         <div class="flex items-center gap-2">
-          <button id="trkCreateNextBtn" onclick="createNextTrkMonth()" class="hidden text-xs font-semibold text-[var(--accent)] border border-[var(--border)] hover:bg-[var(--surface-2)] px-3 py-1.5 rounded-lg transition-colors flex-shrink-0">+ สร้างเดือนต่อไป</button>
+          <button id="trkCreateNextBtn" onclick="createNextTrkMonth()" class="hidden text-xs font-semibold text-[var(--accent-text)] border border-[var(--border)] hover:bg-[var(--surface-2)] px-3 py-1.5 rounded-lg transition-colors flex-shrink-0">+ สร้างเดือนต่อไป</button>
           <select id="tracking-type-filter" onchange="trackingTypeFilter=this.value; renderTracking();"
             class="px-3 py-1.5 rounded-lg border border-[var(--border)] text-xs font-semibold text-[var(--ink-muted)] bg-[var(--surface)] hover:bg-[var(--surface-2)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] transition-colors">
             <option value="all">ทั้งหมด</option>
@@ -563,7 +575,7 @@
           <button id="trkPrevBtn" onclick="changeMonth(-1)" class="w-8 h-8 rounded-lg border border-[var(--border)] flex items-center justify-center hover:bg-[var(--surface-2)] transition-colors text-[var(--ink-muted)] disabled:opacity-30 disabled:hover:bg-[var(--surface)] disabled:cursor-not-allowed">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
-          <div id="month-display" class="px-4 py-1.5 bg-[var(--surface-2)] text-[var(--accent)] font-bold text-sm rounded-full border border-[var(--border)] min-w-[130px] text-center"></div>
+          <div id="month-display" class="px-4 py-1.5 bg-[var(--surface-2)] text-[var(--accent-text)] font-bold text-sm rounded-full border border-[var(--border)] min-w-[130px] text-center"></div>
           <button id="trkNextBtn" onclick="changeMonth(1)" class="w-8 h-8 rounded-lg border border-[var(--border)] flex items-center justify-center hover:bg-[var(--surface-2)] transition-colors text-[var(--ink-muted)] disabled:opacity-30 disabled:hover:bg-[var(--surface)] disabled:cursor-not-allowed">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
           </button>
@@ -709,7 +721,7 @@
           </div>
           <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] px-4 py-2.5">
             <div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide">กำลังดำเนินการ</div>
-            <div id="ye-inprog" class="text-3xl font-black text-[var(--accent)] mt-1">—</div>
+            <div id="ye-inprog" class="text-3xl font-black text-[var(--accent-text)] mt-1">—</div>
             <div class="text-xs text-[var(--ink-muted)] mt-1">บริษัท</div>
           </div>
           <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] px-4 py-2.5">
@@ -762,7 +774,7 @@
           </div>
           <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] px-4 py-2.5">
             <div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide">กำลังดำเนินการ</div>
-            <div id="yefin-inprog" class="text-3xl font-black text-[var(--accent)] mt-1">—</div>
+            <div id="yefin-inprog" class="text-3xl font-black text-[var(--accent-text)] mt-1">—</div>
             <div class="text-xs text-[var(--ink-muted)] mt-1">บริษัท</div>
           </div>
           <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] px-4 py-2.5">
@@ -813,7 +825,7 @@
           </div>
           <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] px-4 py-2.5">
             <div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide">กำลังดำเนินการ</div>
-            <div id="dsl-inprog" class="text-3xl font-black text-[var(--accent)] mt-1">—</div>
+            <div id="dsl-inprog" class="text-3xl font-black text-[var(--accent-text)] mt-1">—</div>
             <div class="text-xs text-[var(--ink-muted)] mt-1">บริษัท</div>
           </div>
           <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] px-4 py-2.5">
@@ -1002,7 +1014,7 @@
             <button id="finPrevBtn" onclick="changeFinMonth(-1)" class="w-8 h-8 rounded-lg border border-[var(--border)] flex items-center justify-center hover:bg-[var(--surface-2)] transition-colors text-[var(--ink-muted)] disabled:opacity-30 disabled:hover:bg-[var(--surface)] disabled:cursor-not-allowed">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
             </button>
-            <div id="fin-collection-month" class="px-4 py-1.5 bg-[var(--surface-2)] text-[var(--accent)] font-bold text-sm rounded-full border border-[var(--border)] min-w-[130px] text-center">—</div>
+            <div id="fin-collection-month" class="px-4 py-1.5 bg-[var(--surface-2)] text-[var(--accent-text)] font-bold text-sm rounded-full border border-[var(--border)] min-w-[130px] text-center">—</div>
             <button id="finNextBtn" onclick="changeFinMonth(1)" class="w-8 h-8 rounded-lg border border-[var(--border)] flex items-center justify-center hover:bg-[var(--surface-2)] transition-colors text-[var(--ink-muted)] disabled:opacity-30 disabled:hover:bg-[var(--surface)] disabled:cursor-not-allowed">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
             </button>
@@ -1035,7 +1047,7 @@
           </div>
           <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] px-4 py-2.5">
             <div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide">ยอดรวมที่เก็บได้</div>
-            <div id="fin-paid-total" class="text-2xl font-black text-[var(--accent)] mt-1">—</div>
+            <div id="fin-paid-total" class="text-2xl font-black text-[var(--accent-text)] mt-1">—</div>
             <div class="text-xs text-[var(--ink-muted)] mt-1">บาท</div>
           </div>
         </div>
@@ -1126,7 +1138,7 @@
                     oninput="onDateTextInput('prof-birthdate-disp','prof-birthdate')" onblur="onDateTextBlur('prof-birthdate-disp','prof-birthdate')"
                     class="w-full px-3.5 py-2.5 rounded-lg border border-[var(--border)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)] pr-8">
                   <button type="button" tabindex="-1" onclick="openDatePicker('prof-birthdate-disp','prof-birthdate')"
-                    class="dp-open-btn absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-[var(--ink-muted)] hover:text-[var(--accent)] cursor-pointer">
+                    class="dp-open-btn absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-[var(--ink-muted)] hover:text-[var(--accent-text)] cursor-pointer">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                   </button>
                   <input type="hidden" id="prof-birthdate" value="">
@@ -1308,7 +1320,7 @@
 
   <div class="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] flex-shrink-0">
     <div>
-      <div id="panel-code" class="inline-block bg-[var(--surface-2)] text-[var(--accent)] text-xs font-bold px-2 py-0.5 rounded mb-1"></div>
+      <div id="panel-code" class="inline-block bg-[var(--surface-2)] text-[var(--accent-text)] text-xs font-bold px-2 py-0.5 rounded mb-1"></div>
       <div id="panel-name" class="font-bold text-[var(--ink)] text-base"></div>
     </div>
     <div class="flex items-center gap-2">
@@ -2584,7 +2596,7 @@ function renderTracking() {
          </span>`
       : (docEditable
           ? `<button onclick="openDocModal(${c.id})"
-               class="text-xs text-[var(--ink-muted)] hover:text-[var(--accent)] border border-dashed border-[var(--border)] hover:border-[var(--accent-soft)] px-2 py-0.5 rounded transition-colors">
+               class="text-xs text-[var(--ink-muted)] hover:text-[var(--accent-text)] border border-dashed border-[var(--border)] hover:border-[var(--accent-soft)] px-2 py-0.5 rounded transition-colors">
                + รับเอกสาร</button>`
           : '<span class="text-[var(--ink-muted)] text-xs">—</span>');
     const docCell = docBadge;
@@ -2640,7 +2652,7 @@ function renderTracking() {
         ${clientNo}
       </td>
       <td class="px-1 py-0.5 text-center col-code cursor-pointer" onclick="openPanel(${c.id})">
-        <span class="inline-block max-w-full bg-[var(--surface-2)] text-[var(--accent)] text-xs font-bold px-1 py-0.5 rounded whitespace-nowrap overflow-hidden text-ellipsis">${e(c.code)}</span>
+        <span class="inline-block max-w-full bg-[var(--surface-2)] text-[var(--accent-text)] text-xs font-bold px-1 py-0.5 rounded whitespace-nowrap overflow-hidden text-ellipsis">${e(c.code)}</span>
       </td>
       <td class="px-2 py-0.5 text-left col-name cursor-pointer" onclick="openPanel(${c.id})">
         <div class="text-sm text-[var(--ink)] leading-tight overflow-hidden text-ellipsis whitespace-nowrap">${e(c.thai_name)}</div>
@@ -2972,7 +2984,7 @@ function renderDocBankSection() {
     <label class="flex items-center gap-2 py-1 cursor-pointer">
       <input type="checkbox" ${docModalBankChecked.has(String(b.id)) ? 'checked' : ''}
         onchange="docToggleBankChecked('${b.id}')"
-        class="w-4 h-4 rounded border-[var(--border)] text-[var(--accent)] cursor-pointer">
+        class="w-4 h-4 rounded border-[var(--border)] text-[var(--accent-text)] cursor-pointer">
       <span class="text-sm text-[var(--ink)]">${e(bankLabel(b))}</span>
     </label>`).join('');
   el.innerHTML = `
@@ -3274,7 +3286,7 @@ function mkYeGroupTd(group, c, t, groupsKind, first, subtitle) {
   const fillColor = isDone ? (dcDark_() ? '#4ade80' : '#15803d')
                    : done > 0 ? (dcDark_() ? '#60a5fa' : '#1d4ed8')
                    : (dcDark_() ? '#4b463d' : '#cbd5e1');
-  const numCls = isDone ? 'text-green-700' : done > 0 ? 'text-[var(--accent)]' : 'text-[var(--ink-muted)]';
+  const numCls = isDone ? 'text-green-700' : done > 0 ? 'text-[var(--accent-text)]' : 'text-[var(--ink-muted)]';
   return `<td class="${cellCls}">
             <button onclick="openYeGroupDetail(${c.id},'${groupsKind}','${group.key}')" class="ye-bar-chip">
               <span class="ye-bar-track"><span class="ye-bar-fill" style="width:${pct}%;background:${fillColor}"></span></span>
@@ -3417,7 +3429,7 @@ function renderDissolved() {
           <div class="text-sm text-[var(--ink)] max-w-[190px] leading-tight">${e(c.thai_name)}</div>
         </td>
         ${yeTeamTd(c)}
-        <td class="px-2 py-2.5 border-l border-[var(--border)] text-xs text-[var(--ink-muted)] ${canEdit() ? 'cursor-pointer hover:text-[var(--accent)]' : ''}"
+        <td class="px-2 py-2.5 border-l border-[var(--border)] text-xs text-[var(--ink-muted)] ${canEdit() ? 'cursor-pointer hover:text-[var(--accent-text)]' : ''}"
             ${canEdit() ? `onclick="openEditDissolutionDate(${c.id})"` : ''}>
           ${c.dissolution_date ? fmtDate(c.dissolution_date) : (canEdit() ? '<span class="text-[var(--ink-muted)]">+ ระบุวันที่</span>' : '—')}
         </td>
@@ -3576,13 +3588,13 @@ function clientRowHtml(c, editable) {
         <svg width="16" height="16" viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
       </button>
       <span class="w-10 flex-shrink-0 text-xs text-[var(--ink-muted)]">${e(computeClientNo(c.billing_type, c.seq_num))}</span>
-      <span class="flex-shrink-0 inline-block bg-[var(--surface-2)] text-[var(--accent)] text-xs font-bold px-1.5 py-0.5 rounded text-center overflow-hidden text-ellipsis whitespace-nowrap" style="width:80px">${e(c.code)}</span>
+      <span class="flex-shrink-0 inline-block bg-[var(--surface-2)] text-[var(--accent-text)] text-xs font-bold px-1.5 py-0.5 rounded text-center overflow-hidden text-ellipsis whitespace-nowrap" style="width:80px">${e(c.code)}</span>
       <span class="flex-1 min-w-0 flex items-baseline gap-1 overflow-hidden">
         <span class="min-w-0 text-sm font-semibold text-[var(--ink)] overflow-hidden text-ellipsis whitespace-nowrap">${e(c.thai_name)}</span>${missingCredsNote(c)}
       </span>
       <span class="w-20 flex-shrink-0 text-center text-[11px] text-[var(--ink-muted)]">${BILLING_TYPE_LABEL[c.billing_type] || '—'}</span>
       ${editable
-        ? `<button onclick="event.stopPropagation();openClientChanges(${c.id})" title="บันทึกการเปลี่ยนแปลง" class="w-10 flex-shrink-0 flex items-center justify-center py-1 rounded text-[var(--ink-muted)] hover:text-[var(--accent)] hover:bg-[var(--surface-2)] transition-colors">
+        ? `<button onclick="event.stopPropagation();openClientChanges(${c.id})" title="บันทึกการเปลี่ยนแปลง" class="w-10 flex-shrink-0 flex items-center justify-center py-1 rounded text-[var(--ink-muted)] hover:text-[var(--accent-text)] hover:bg-[var(--surface-2)] transition-colors">
              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
            </button>`
         : `<span class="w-10 flex-shrink-0"></span>`}
@@ -3968,7 +3980,7 @@ function renderPanelInfo() {
       <label class="inline-flex items-center ${ro ? '' : 'cursor-pointer'}">
         <input type="checkbox" id="pill-${key}" ${val ? 'checked' : ''} ${ro ? 'disabled' : ''} data-key="${key}"
           class="sr-only" ${ro ? '' : `onchange="toggleTaxPill(this,'${e(onLabel)}','${e(offLabel)}')"`}>
-        <span id="pill-${key}-label" class="px-3 py-1 rounded-full text-xs font-semibold transition-colors ${val ? 'bg-[var(--surface-2)] text-[var(--accent)]' : 'bg-[var(--surface-2)] text-[var(--ink-muted)]'}">${e(val ? onLabel : offLabel)}</span>
+        <span id="pill-${key}-label" class="px-3 py-1 rounded-full text-xs font-semibold transition-colors ${val ? 'bg-[var(--surface-2)] text-[var(--accent-text)]' : 'bg-[var(--surface-2)] text-[var(--ink-muted)]'}">${e(val ? onLabel : offLabel)}</span>
       </label>
     </div>
     ${dtField('วันที่', dateKey, dateVal || '')}`;
@@ -3983,7 +3995,7 @@ function renderPanelInfo() {
       <div class="grid grid-cols-2 gap-4">
         <div>
           <div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide mb-1">ลำดับที่</div>
-          <div class="px-3 py-2 rounded-lg bg-[var(--surface-2)] border border-[var(--border)] text-sm font-bold text-[var(--accent)]">${computeClientNo(c.billing_type, c.seq_num)}</div>
+          <div class="px-3 py-2 rounded-lg bg-[var(--surface-2)] border border-[var(--border)] text-sm font-bold text-[var(--accent-text)]">${computeClientNo(c.billing_type, c.seq_num)}</div>
         </div>
         <div>
           <div class="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wide mb-1">CODE</div>
@@ -4055,7 +4067,7 @@ function renderPanelInfo() {
 function toggleTaxPill(checkbox, onLabel, offLabel) {
   const label = document.getElementById(checkbox.id + '-label');
   label.textContent = checkbox.checked ? onLabel : offLabel;
-  label.className = `px-3 py-1 rounded-full text-xs font-semibold transition-colors ${checkbox.checked ? 'bg-[var(--surface-2)] text-[var(--accent)]' : 'bg-[var(--surface-2)] text-[var(--ink-muted)]'}`;
+  label.className = `px-3 py-1 rounded-full text-xs font-semibold transition-colors ${checkbox.checked ? 'bg-[var(--surface-2)] text-[var(--accent-text)]' : 'bg-[var(--surface-2)] text-[var(--ink-muted)]'}`;
   markDirty();
 }
 
@@ -4128,7 +4140,7 @@ function openClientChanges(clientId) {
   panelClientId = clientId;
   openModal(`
     <div class="mb-4">
-      <div class="inline-block bg-[var(--surface-2)] text-[var(--accent)] text-xs font-bold px-2 py-0.5 rounded mb-1">${e(c.code)}</div>
+      <div class="inline-block bg-[var(--surface-2)] text-[var(--accent-text)] text-xs font-bold px-2 py-0.5 rounded mb-1">${e(c.code)}</div>
       <h3 class="text-base font-bold text-[var(--ink)]">การเปลี่ยนแปลง — ${e(c.thai_name)}</h3>
     </div>
     <div class="tab-pane" data-pane="changes"></div>
@@ -4204,13 +4216,13 @@ async function renderPanelChanges() {
       <td class="py-2 pr-2 text-xs text-[var(--ink-muted)] tabular-nums">${panelChangesCache.length - i}</td>
       <td class="py-2 pr-2 text-xs text-[var(--ink)]">
         <span class="font-semibold">${e(CHANGE_TYPE_LABEL[ch.change_type] || ch.change_type)}</span>
-        ${ch.new_value ? `<span class="text-[var(--accent)]"> → ${e(ch.new_value)}</span>` : ''}
+        ${ch.new_value ? `<span class="text-[var(--accent-text)]"> → ${e(ch.new_value)}</span>` : ''}
         ${ch.note ? `<div class="text-[var(--ink-muted)] mt-0.5">${e(ch.note)}</div>` : ''}
       </td>
       <td class="py-2 pr-2 text-xs text-[var(--ink-muted)] whitespace-nowrap">${ch.change_date ? thaiDate(ch.change_date) : '—'}</td>
       <td class="py-2 text-right whitespace-nowrap">
         ${canEdit() ? `
-          <button onclick="editChangeLog(${ch.id})" class="text-xs text-[var(--accent)] hover:text-[color-mix(in_oklab,var(--accent)_85%,black)] font-semibold px-1.5 py-0.5 rounded hover:bg-[var(--surface-2)] transition-colors">แก้ไข</button>
+          <button onclick="editChangeLog(${ch.id})" class="text-xs text-[var(--accent-text)] hover:text-[var(--accent-text-hover)] font-semibold px-1.5 py-0.5 rounded hover:bg-[var(--surface-2)] transition-colors">แก้ไข</button>
           <button onclick="deleteChangeLog(${ch.id})" class="text-xs text-red-500 hover:text-red-700 font-semibold px-1.5 py-0.5 rounded hover:bg-red-50 transition-colors">ลบ</button>
         ` : '<span class="text-[var(--ink-muted)] text-xs">—</span>'}
       </td>
@@ -4528,7 +4540,7 @@ function openEditType(clientId) {
           <option value="dissolved" ${c.billing_type==='dissolved'?'selected':''}>เลิกกิจการ (Z)</option>
         </select>
       </div>
-      <div class="text-xs text-[var(--ink-muted)]">รหัสใหม่: <span id="et-preview" class="font-bold text-[var(--accent)]"></span> <span class="text-[var(--ink-muted)]">(เลขลำดับเดิม เปลี่ยนแค่ตัวอักษรนำหน้า)</span></div>
+      <div class="text-xs text-[var(--ink-muted)]">รหัสใหม่: <span id="et-preview" class="font-bold text-[var(--accent-text)]"></span> <span class="text-[var(--ink-muted)]">(เลขลำดับเดิม เปลี่ยนแค่ตัวอักษรนำหน้า)</span></div>
       ${dateFieldHtml({
         label: 'มีผลตั้งแต่วันที่ (เลือกเดือนที่ต้องการให้เริ่มมีผล)', textId: 'et-date-disp', hiddenId: 'et-date', isoVal: todayIso,
         cls: 'w-full px-3 py-2 rounded-lg border border-[var(--border)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]',
@@ -4679,7 +4691,7 @@ async function renderPanelBilling() {
   }
 
   const feePreview = fee > 0 ? `
-    <div class="bg-[var(--surface-2)] border border-[var(--border)] rounded-xl p-3 text-xs text-[color-mix(in_oklab,var(--accent)_85%,black)]">
+    <div class="bg-[var(--surface-2)] border border-[var(--border)] rounded-xl p-3 text-xs text-[var(--accent-text-hover)]">
       <div class="font-semibold mb-1">ค่าบริการปัจจุบัน</div>
       <div class="flex justify-between"><span>ค่าบริการ:</span><span class="font-bold">${fmtMoney(fee)}</span></div>
       ${wht > 0 ? `<div class="flex justify-between"><span>หัก ณ ที่จ่าย 3%:</span><span class="font-bold text-amber-600">-${fmtMoney(wht)}</span></div>` : ''}
@@ -4811,7 +4823,7 @@ function openMarkPaid(clientId) {
       })}
       <div id="paid-date-err" class="hidden text-sm text-red-600"></div>
       <div class="flex items-center gap-2">
-        <input id="paid-update-task" type="checkbox" checked class="w-4 h-4 rounded text-[var(--accent)]">
+        <input id="paid-update-task" type="checkbox" checked class="w-4 h-4 rounded text-[var(--accent-text)]">
         <label class="text-sm text-[var(--ink)]">อัปเดต Acct Fee เป็น "เสร็จแล้ว" ด้วย</label>
       </div>
     </div>
@@ -4979,7 +4991,7 @@ async function loadCredItems(clientId) {
       <div class="flex items-center justify-between mb-1.5">
         <span class="text-xs font-semibold text-[var(--ink)]">${e(item.label || '(ไม่มีชื่อ)')}</span>
         ${editable ? `<span class="flex items-center gap-2">
-          <button onclick="editCredItem(${item.id})" class="text-xs text-[var(--accent)] hover:text-[color-mix(in_oklab,var(--accent)_85%,black)] font-semibold">แก้ไข</button>
+          <button onclick="editCredItem(${item.id})" class="text-xs text-[var(--accent-text)] hover:text-[var(--accent-text-hover)] font-semibold">แก้ไข</button>
           <button onclick="deleteCredItem(${item.id})" class="text-xs text-red-500 hover:text-red-700 font-semibold">ลบ</button>
         </span>` : ''}
       </div>
@@ -5168,13 +5180,13 @@ function renderPanelDocsContent() {
           </tr></thead>
           <tbody id="panel-bank-rows">${bankRows}</tbody>
         </table>` : '<p class="text-xs text-[var(--ink-muted)] italic">ยังไม่มีบัญชีธนาคาร</p>'}
-        ${editable ? `<button type="button" onclick="panelAddBankRow()" class="text-xs text-[var(--accent)] hover:text-[color-mix(in_oklab,var(--accent)_85%,black)] font-semibold mt-2">+ เพิ่มบัญชีธนาคาร</button>` : ''}
+        ${editable ? `<button type="button" onclick="panelAddBankRow()" class="text-xs text-[var(--accent-text)] hover:text-[var(--accent-text-hover)] font-semibold mt-2">+ เพิ่มบัญชีธนาคาร</button>` : ''}
       </div>
       <div>
         <div class="text-xs font-bold text-[var(--ink-muted)] uppercase tracking-wide pb-1 border-b border-[var(--border)] mb-1">เอกสารอื่น</div>
         <p class="text-xs text-[var(--ink-muted)] mb-2.5">รายการเอกสารที่ลูกค้ารายนี้ต้องส่งทุกเดือน (ใช้เป็นรายการติ๊กในหน้ารับเอกสาร)</p>
         <div id="panel-doc-rows">${docRows || '<p class="text-xs text-[var(--ink-muted)] italic">ยังไม่มีรายการ</p>'}</div>
-        ${editable ? `<button type="button" onclick="panelAddDocRow()" class="text-xs text-[var(--accent)] hover:text-[color-mix(in_oklab,var(--accent)_85%,black)] font-semibold mt-2">+ เพิ่มรายการ</button>` : ''}
+        ${editable ? `<button type="button" onclick="panelAddDocRow()" class="text-xs text-[var(--accent-text)] hover:text-[var(--accent-text-hover)] font-semibold mt-2">+ เพิ่มรายการ</button>` : ''}
       </div>
       ${editable
         ? `<div><button onclick="savePanelDocs()" class="px-4 py-2 bg-[var(--accent)] hover:bg-[color-mix(in_oklab,var(--accent)_85%,black)] text-white text-sm font-semibold rounded-lg transition-colors">บันทึก</button></div>`
@@ -5424,7 +5436,7 @@ function dateFieldHtml(opts) {
           ${ro ? 'disabled' : `onclick="openDatePicker('${textId}','${hiddenId}'${extraArg})" oninput="onDateTextInput('${textId}','${hiddenId}'${extraArg})" onblur="onDateTextBlur('${textId}','${hiddenId}')"`}
           class="${inputCls} pr-8">
         <button type="button" tabindex="-1" ${ro ? 'disabled' : `onclick="openDatePicker('${textId}','${hiddenId}'${extraArg})"`}
-          class="dp-open-btn absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-[var(--ink-muted)] hover:text-[var(--accent)] ${ro ? '' : 'cursor-pointer'}">
+          class="dp-open-btn absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-[var(--ink-muted)] hover:text-[var(--accent-text)] ${ro ? '' : 'cursor-pointer'}">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         </button>
         <input type="hidden" id="${hiddenId}" ${dataKey ? `data-key="${dataKey}"` : ''} value="${e(isoVal || '')}">
@@ -5489,9 +5501,9 @@ function renderDatePickerCalendar() {
   document.getElementById('dp-popup').innerHTML = `
     <div class="bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.15)] p-3" style="width:240px" onclick="event.stopPropagation()">
       <div class="flex items-center justify-between mb-2">
-        <button type="button" onclick="dpChangeMonth(-1)" class="p-1 text-[var(--ink-muted)] hover:text-[var(--accent)]">‹</button>
+        <button type="button" onclick="dpChangeMonth(-1)" class="p-1 text-[var(--ink-muted)] hover:text-[var(--accent-text)]">‹</button>
         <span class="text-xs font-semibold text-[var(--ink)]">${THAI_MONTHS[dpViewMonth]} ${thYear}</span>
-        <button type="button" onclick="dpChangeMonth(1)" class="p-1 text-[var(--ink-muted)] hover:text-[var(--accent)]">›</button>
+        <button type="button" onclick="dpChangeMonth(1)" class="p-1 text-[var(--ink-muted)] hover:text-[var(--accent-text)]">›</button>
       </div>
       <div class="grid grid-cols-7 gap-0.5 text-center text-[10px] text-[var(--ink-muted)] mb-1">
         <div>อา</div><div>จ</div><div>อ</div><div>พ</div><div>พฤ</div><div>ศ</div><div>ส</div>
@@ -5563,7 +5575,7 @@ function openBatchInvoice(year, month) {
         ${!alreadyExists ? `<input type="checkbox" class="batch-chk w-4 h-4" data-cid="${c.id}" checked>` : '<span class="text-xs text-[var(--ink-muted)]">มีแล้ว</span>'}
       </td>
       <td class="py-2 pr-3 text-left">
-        <span class="text-xs font-bold text-[var(--accent)]">${e(c.code)}</span>
+        <span class="text-xs font-bold text-[var(--accent-text)]">${e(c.code)}</span>
         <div class="text-xs text-[var(--ink-muted)] truncate max-w-[140px]">${e(c.thai_name)}</div>
       </td>
       <td class="py-2 pr-3 text-right text-xs font-mono">${fmtMoney(fee)}</td>
@@ -5802,7 +5814,7 @@ function finPaymentDateCellHtml(c, inv) {
   const dateStr = fmtDDMMYYYY(paymentYmdFromIso_(inv.payment_received_at));
   const editable = canEdit();
   const handler = editable ? ` onclick="event.stopPropagation();openEditPaymentDate(${c.id})" title="แก้ไขวันที่รับเงิน"` : '';
-  return `<span class="w-24 flex-shrink-0 text-center text-xs text-[var(--ink-muted)] ${editable ? 'cursor-pointer hover:text-[var(--accent)]' : ''}"${handler}>${e(dateStr)}${editable ? ' <span class="text-[var(--ink-muted)]">✎</span>' : ''}</span>`;
+  return `<span class="w-24 flex-shrink-0 text-center text-xs text-[var(--ink-muted)] ${editable ? 'cursor-pointer hover:text-[var(--accent-text)]' : ''}"${handler}>${e(dateStr)}${editable ? ' <span class="text-[var(--ink-muted)]">✎</span>' : ''}</span>`;
 }
 function financeCollectionRowHtml(c) {
   const inv = finInvoiceMap[c.id];
@@ -5817,7 +5829,7 @@ function financeCollectionRowHtml(c) {
         <svg width="16" height="16" viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
       </button>
       <span class="w-10 flex-shrink-0 text-xs text-[var(--ink-muted)]">${e(computeClientNo(c.billing_type, c.seq_num))}</span>
-      <span class="flex-shrink-0 inline-block bg-[var(--surface-2)] text-[var(--accent)] text-xs font-bold px-1.5 py-0.5 rounded text-center overflow-hidden text-ellipsis whitespace-nowrap" style="width:80px">${e(c.code)}</span>
+      <span class="flex-shrink-0 inline-block bg-[var(--surface-2)] text-[var(--accent-text)] text-xs font-bold px-1.5 py-0.5 rounded text-center overflow-hidden text-ellipsis whitespace-nowrap" style="width:80px">${e(c.code)}</span>
       <span class="flex-1 min-w-0 text-sm font-semibold text-[var(--ink)] overflow-hidden text-ellipsis whitespace-nowrap">${e(c.thai_name)}</span>
       <span class="w-24 flex-shrink-0 text-right text-xs font-mono text-[var(--ink)]">${fmtMoney(amount)}</span>
       <span class="w-36 flex-shrink-0 text-center">${finStatusCellHtml(c, inv)}</span>
@@ -6013,10 +6025,10 @@ function financeFeeRowHtml(c) {
         <svg width="16" height="16" viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
       </button>
       <span class="w-10 flex-shrink-0 text-xs text-[var(--ink-muted)]">${e(computeClientNo(c.billing_type, c.seq_num))}</span>
-      <span class="flex-shrink-0 inline-block bg-[var(--surface-2)] text-[var(--accent)] text-xs font-bold px-1.5 py-0.5 rounded text-center overflow-hidden text-ellipsis whitespace-nowrap" style="width:80px">${e(c.code)}</span>
+      <span class="flex-shrink-0 inline-block bg-[var(--surface-2)] text-[var(--accent-text)] text-xs font-bold px-1.5 py-0.5 rounded text-center overflow-hidden text-ellipsis whitespace-nowrap" style="width:80px">${e(c.code)}</span>
       <span class="flex-1 min-w-0 text-sm font-semibold text-[var(--ink)] overflow-hidden text-ellipsis whitespace-nowrap">${e(c.thai_name)}</span>
-      <span class="w-20 flex-shrink-0 text-center text-[11px] text-[var(--ink-muted)] ${canEdit() ? 'cursor-pointer hover:text-[var(--accent)]' : ''}"${canEdit() ? ` onclick="event.stopPropagation();openEditType(${c.id})" title="เปลี่ยนประเภท"` : ''}>${BILLING_TYPE_LABEL[c.billing_type] || '—'}${canEdit() ? ' <span class="text-[var(--ink-muted)]">✎</span>' : ''}</span>
-      <span class="w-24 flex-shrink-0 text-right text-xs font-mono ${canEdit() ? 'cursor-pointer hover:text-[var(--accent)]' : ''}"${canEdit() ? ` onclick="event.stopPropagation();openEditFee(${c.id})" title="แก้ไขค่าบริการ"` : ''}>${fmtMoney(fee)}${canEdit() ? ' <span class="text-[var(--ink-muted)]">✎</span>' : ''}</span>
+      <span class="w-20 flex-shrink-0 text-center text-[11px] text-[var(--ink-muted)] ${canEdit() ? 'cursor-pointer hover:text-[var(--accent-text)]' : ''}"${canEdit() ? ` onclick="event.stopPropagation();openEditType(${c.id})" title="เปลี่ยนประเภท"` : ''}>${BILLING_TYPE_LABEL[c.billing_type] || '—'}${canEdit() ? ' <span class="text-[var(--ink-muted)]">✎</span>' : ''}</span>
+      <span class="w-24 flex-shrink-0 text-right text-xs font-mono ${canEdit() ? 'cursor-pointer hover:text-[var(--accent-text)]' : ''}"${canEdit() ? ` onclick="event.stopPropagation();openEditFee(${c.id})" title="แก้ไขค่าบริการ"` : ''}>${fmtMoney(fee)}${canEdit() ? ' <span class="text-[var(--ink-muted)]">✎</span>' : ''}</span>
       <span class="w-24 flex-shrink-0 text-right text-xs font-mono text-amber-600">${wht > 0 ? '-' + fmtMoney(wht) : '—'}</span>
       <span class="w-24 flex-shrink-0 text-right text-xs font-bold font-mono text-green-700">${fmtMoney(expected)}</span>
     </div>`;
@@ -6115,10 +6127,10 @@ function openAddClient() {
         <label class="block text-xs font-semibold text-[var(--ink-muted)] mb-1">สาขา</label>
         <div class="flex items-center gap-4 mb-1.5">
           <label class="flex items-center gap-1.5 text-sm text-[var(--ink)] cursor-pointer whitespace-nowrap flex-shrink-0">
-            <input type="radio" name="nc-branch-type" value="hq" checked onchange="ncToggleBranch()" class="w-4 h-4 text-[var(--accent)]"> สำนักงานใหญ่
+            <input type="radio" name="nc-branch-type" value="hq" checked onchange="ncToggleBranch()" class="w-4 h-4 text-[var(--accent-text)]"> สำนักงานใหญ่
           </label>
           <label class="flex items-center gap-1.5 text-sm text-[var(--ink)] cursor-pointer whitespace-nowrap flex-shrink-0">
-            <input type="radio" name="nc-branch-type" value="branch" onchange="ncToggleBranch()" class="w-4 h-4 text-[var(--accent)]"> สาขา
+            <input type="radio" name="nc-branch-type" value="branch" onchange="ncToggleBranch()" class="w-4 h-4 text-[var(--accent-text)]"> สาขา
           </label>
         </div>
         <input id="nc-branch-no" type="text" placeholder="เลขที่สาขา เช่น 00001" maxlength="10" class="${inp} hidden">
@@ -6245,11 +6257,11 @@ function renderOwnCompanies() {
   el.innerHTML = own.map(c => `
     <div class="flex items-center justify-between px-3 py-2.5 border border-[var(--border)] rounded-lg hover:border-[var(--accent-soft)] hover:bg-[var(--surface-2)]/30 transition-colors">
       <div onclick="openPanel(${c.id})" class="min-w-0 flex-1 cursor-pointer">
-        <span class="inline-block bg-[var(--surface-2)] text-[var(--accent)] text-xs font-bold px-1.5 py-0.5 rounded mr-1.5">${e(c.code)}</span>
+        <span class="inline-block bg-[var(--surface-2)] text-[var(--accent-text)] text-xs font-bold px-1.5 py-0.5 rounded mr-1.5">${e(c.code)}</span>
         <span class="text-sm text-[var(--ink)]">${e(c.thai_name)}</span>
         ${!c.is_active ? '<span class="text-xs text-red-500 ml-2">ปิดใช้งาน</span>' : ''}
       </div>
-      ${canManageOwnCompany() ? `<button onclick="event.stopPropagation();openOwnCompanyVisibility(${c.id})" class="text-xs text-[var(--ink-muted)] hover:text-[var(--accent)] flex-shrink-0 ml-3 whitespace-nowrap">${e(ownCompanyVisLabel(c))}</button>` : ''}
+      ${canManageOwnCompany() ? `<button onclick="event.stopPropagation();openOwnCompanyVisibility(${c.id})" class="text-xs text-[var(--ink-muted)] hover:text-[var(--accent-text)] flex-shrink-0 ml-3 whitespace-nowrap">${e(ownCompanyVisLabel(c))}</button>` : ''}
     </div>`).join('');
 }
 async function openOwnCompanyVisibility(clientId) {
@@ -6260,7 +6272,7 @@ async function openOwnCompanyVisibility(clientId) {
   const checked = new Set(c.own_company_visible_to || []);
   const rows = staffList.filter(s => s.is_active).map(s => `
     <label class="flex items-center gap-2.5 py-1.5 px-1 text-sm text-[var(--ink)] cursor-pointer">
-      <input type="checkbox" class="oc-vis-chk w-4 h-4 rounded text-[var(--accent)]" value="${s.id}" ${checked.has(s.id) ? 'checked' : ''}>
+      <input type="checkbox" class="oc-vis-chk w-4 h-4 rounded text-[var(--accent-text)]" value="${s.id}" ${checked.has(s.id) ? 'checked' : ''}>
       ${e(s.display_name)} <span class="text-[var(--ink-muted)] text-xs">(${e(ROLE_LABEL[s.role]||s.role)})</span>
     </label>`).join('');
   openModal(`
@@ -6311,11 +6323,11 @@ async function showEmployeeSubTab(tab) {
 // -- ทะเบียนพนักงาน --
 function staffRowHtml(s) {
   return `<div class="flex items-center gap-3 px-4 py-2.5 border-b border-[var(--border)] last:border-0 text-sm">
-    <span class="w-16 flex-shrink-0 text-xs font-bold text-[var(--accent)]">${e(s.staff_code || '—')}</span>
+    <span class="w-16 flex-shrink-0 text-xs font-bold text-[var(--accent-text)]">${e(s.staff_code || '—')}</span>
     <span class="flex-1 min-w-0 truncate text-[var(--ink)]">${e(s.display_name)}${s.nickname ? ` <span class="text-[var(--ink-muted)] text-xs">(${e(s.nickname)})</span>` : ''}</span>
     <span class="w-32 flex-shrink-0 text-xs text-[var(--ink-muted)]">${e(ROLE_LABEL[s.role] || s.role)}</span>
     <span class="w-16 flex-shrink-0 text-center">${s.is_active ? '<span class="text-xs text-green-600 font-semibold">ทำงาน</span>' : '<span class="text-xs text-[var(--ink-muted)]">ปิดใช้งาน</span>'}</span>
-    <span class="w-24 flex-shrink-0 text-right">${canManageStaffAuth() && s.is_active && s.id !== profile.id ? `<button onclick="resetStaffPassword('${s.id}')" class="text-xs text-[var(--accent)] hover:underline">รีเซ็ทรหัสผ่าน</button>` : ''}</span>
+    <span class="w-24 flex-shrink-0 text-right">${canManageStaffAuth() && s.is_active && s.id !== profile.id ? `<button onclick="resetStaffPassword('${s.id}')" class="text-xs text-[var(--accent-text)] hover:underline">รีเซ็ทรหัสผ่าน</button>` : ''}</span>
   </div>`;
 }
 function renderStaffList() {
@@ -6357,7 +6369,7 @@ async function openTeamModal(teamId) {
   const memberIds = new Set(teamId ? (teamMembersMap[teamId] || []) : []);
   const memberChecks = activeStaff.map(s => `
     <label class="flex items-center gap-2.5 py-1.5 px-1 text-sm text-[var(--ink)] cursor-pointer">
-      <input type="checkbox" class="team-member-chk w-4 h-4 rounded text-[var(--accent)]" value="${s.id}" ${memberIds.has(s.id) ? 'checked' : ''}>
+      <input type="checkbox" class="team-member-chk w-4 h-4 rounded text-[var(--accent-text)]" value="${s.id}" ${memberIds.has(s.id) ? 'checked' : ''}>
       ${e(s.display_name)} <span class="text-[var(--ink-muted)] text-xs">(${e(ROLE_LABEL[s.role]||s.role)})</span>
     </label>`).join('');
   openModal(`
@@ -6505,7 +6517,7 @@ function openEmployeeRequestForm() {
             oninput="onDateTextInput('req-birthdate-disp','req-birthdate')" onblur="onDateTextBlur('req-birthdate-disp','req-birthdate')"
             class="w-full px-3.5 py-2 rounded-lg border border-[var(--border)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)] pr-8">
           <button type="button" tabindex="-1" onclick="openDatePicker('req-birthdate-disp','req-birthdate')"
-            class="dp-open-btn absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-[var(--ink-muted)] hover:text-[var(--accent)] cursor-pointer">
+            class="dp-open-btn absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-[var(--ink-muted)] hover:text-[var(--accent-text)] cursor-pointer">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           </button>
           <input type="hidden" id="req-birthdate" value="">
@@ -6797,7 +6809,7 @@ async function openAssigneeModal(clientId) {
   const legacyStaff = activeStaff.filter(s => !candidateIds.has(s.id) && assignedIds.has(s.id));
   const assigneeRowHtml_ = (s, legacy) => `
     <label class="flex items-center gap-2.5 py-1.5 px-1 text-sm text-[var(--ink)] cursor-pointer">
-      <input type="checkbox" class="assignee-chk w-4 h-4 rounded text-[var(--accent)]" value="${s.id}" ${assignedIds.has(s.id) ? 'checked' : ''}>
+      <input type="checkbox" class="assignee-chk w-4 h-4 rounded text-[var(--accent-text)]" value="${s.id}" ${assignedIds.has(s.id) ? 'checked' : ''}>
       ${e(s.display_name)} <span class="text-[var(--ink-muted)] text-xs">(${e(ROLE_LABEL[s.role]||s.role)})</span>${legacy ? ' <span class="text-amber-600 text-xs font-medium">(ไม่อยู่ในทีมแล้ว)</span>' : ''}
     </label>`;
   const checks = teamStaff.map(s => assigneeRowHtml_(s, false)).join('') + legacyStaff.map(s => assigneeRowHtml_(s, true)).join('');
@@ -6853,7 +6865,7 @@ function assignAssigneeSpanHtml_(c) {
   const editable = canManageTeams() && hasTeam;
   const { html, title } = assigneeCellInnerHtml_(c.id, hasTeam);
   const placeholder = editable ? '<span class="text-[var(--ink-muted)]">คลิกเพื่อเลือก</span>' : '';
-  return `<span class="w-48 flex-shrink-0 text-xs overflow-hidden text-ellipsis whitespace-nowrap ${editable ? 'cursor-pointer hover:text-[var(--accent)]' : ''}" title="${e(title)}"${editable ? ` onclick="openAssigneeModal(${c.id})"` : ''}>${html || placeholder}</span>`;
+  return `<span class="w-48 flex-shrink-0 text-xs overflow-hidden text-ellipsis whitespace-nowrap ${editable ? 'cursor-pointer hover:text-[var(--accent-text)]' : ''}" title="${e(title)}"${editable ? ` onclick="openAssigneeModal(${c.id})"` : ''}>${html || placeholder}</span>`;
 }
 function assignRowHtml(c) {
   const team = c.team_id != null ? teams.find(t => t.id === c.team_id) : null;
@@ -6861,7 +6873,7 @@ function assignRowHtml(c) {
   const teamLabel = team ? e(team.name) : '<span class="text-[var(--ink-muted)]">— ไม่มีทีม —</span>';
   return `<div class="flex items-center gap-3 px-4 py-2.5 border-b border-[var(--border)] last:border-b-0">
       <span class="flex-1 min-w-0 text-sm text-[var(--ink)] overflow-hidden text-ellipsis whitespace-nowrap"><span class="text-xs font-bold text-[var(--ink-muted)] mr-1.5">${e(c.code)}</span>${e(c.thai_name)}</span>
-      <span class="w-40 flex-shrink-0 text-xs ${teamEditable ? 'cursor-pointer hover:text-[var(--accent)]' : ''}"${teamEditable ? ` onclick="openEditTeam(${c.id})" title="เปลี่ยนทีม"` : ''}>${teamLabel}${teamEditable ? ' <span class="text-[var(--ink-muted)]">✎</span>' : ''}</span>
+      <span class="w-40 flex-shrink-0 text-xs ${teamEditable ? 'cursor-pointer hover:text-[var(--accent-text)]' : ''}"${teamEditable ? ` onclick="openEditTeam(${c.id})" title="เปลี่ยนทีม"` : ''}>${teamLabel}${teamEditable ? ' <span class="text-[var(--ink-muted)]">✎</span>' : ''}</span>
       ${assignAssigneeSpanHtml_(c)}
     </div>`;
 }
@@ -6947,7 +6959,7 @@ async function openAddOwnCompany() {
   const inp = 'w-full px-3 py-2 rounded-lg border border-[var(--border)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]';
   const visRows = staffList.filter(s => s.is_active).map(s => `
     <label class="flex items-center gap-2.5 py-1.5 px-1 text-sm text-[var(--ink)] cursor-pointer">
-      <input type="checkbox" class="oc-vis-chk w-4 h-4 rounded text-[var(--accent)]" value="${s.id}" ${s.id === profile.id ? 'checked' : ''}>
+      <input type="checkbox" class="oc-vis-chk w-4 h-4 rounded text-[var(--accent-text)]" value="${s.id}" ${s.id === profile.id ? 'checked' : ''}>
       ${e(s.display_name)} <span class="text-[var(--ink-muted)] text-xs">(${e(ROLE_LABEL[s.role]||s.role)})</span>
     </label>`).join('');
   openModal(`
@@ -6978,10 +6990,10 @@ async function openAddOwnCompany() {
       </div>
       <div class="flex flex-wrap gap-x-5 gap-y-1.5">
         <label class="flex items-center gap-2 text-sm text-[var(--ink)] cursor-pointer">
-          <input id="oc-vat" type="checkbox" checked class="w-4 h-4 rounded text-[var(--accent)]"> มี VAT (PP.30)
+          <input id="oc-vat" type="checkbox" checked class="w-4 h-4 rounded text-[var(--accent-text)]"> มี VAT (PP.30)
         </label>
         <label class="flex items-center gap-2 text-sm text-[var(--ink)] cursor-pointer">
-          <input id="oc-sso" type="checkbox" checked class="w-4 h-4 rounded text-[var(--accent)]"> มี SSO
+          <input id="oc-sso" type="checkbox" checked class="w-4 h-4 rounded text-[var(--accent-text)]"> มี SSO
         </label>
       </div>
       <div>

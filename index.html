@@ -31,6 +31,20 @@
     --border: #DFDACF;
     --accent: var(--brand);
     --accent-soft: color-mix(in oklab, var(--brand) 55%, white);
+    /* --accent-text = the accent color IN THE FORM THAT'S SAFE TO USE AS SMALL FOREGROUND TEXT/ICON
+       COLOR on --surface/--surface-2 (nav active state, settings-flyout active row, text links, theme
+       modal, AI panel status pill) -- separate from plain --accent, which stays reserved for BACKGROUNDS
+       (mark/FAB/avatar gradients, paired with white --accent-contrast on top -- that usage is unaffected
+       and untouched here). Measured (scratchpad/audit3-shell-contrast.mjs): in light mode --accent itself
+       already clears 4.5:1 against --surface/--surface-2 for all 8 presets (4.64-8.10), so --accent-text
+       is just an alias here. In DARK mode --accent is var(--brand) UNCHANGED while --surface/--surface-2
+       are near-black -- for several presets (e.g. #7A2E4A burgundy, #1E4D6B navy) that pairing measured
+       as low as 1.61:1 (nav-item active icon, flyout-item active label, text-link-btn, theme-mode-btn
+       active label, ai-panel status pill all render near-invisible). --accent-soft (already defined above
+       as a lighter derivative for dark-mode gradients) measured 6.11-7.78:1 against the same dark
+       surfaces across all 8 presets -- comfortably clears 4.5:1 -- so --accent-text repoints to it only
+       in the two dark blocks below (kept in sync with each other like every other token here). */
+    --accent-text: var(--accent);
     --accent-contrast: #FFFFFF;
     --ring: color-mix(in oklab, var(--brand) 35%, transparent);
     --shadow: 0 1px 2px rgba(29,27,23,0.05), 0 8px 24px -12px rgba(29,27,23,0.14);
@@ -46,6 +60,7 @@
       --border: #35322C;
       --accent: var(--brand);
       --accent-soft: color-mix(in oklab, var(--brand) 45%, white);
+      --accent-text: var(--accent-soft);
       --accent-contrast: #FFFFFF;
       --ring: color-mix(in oklab, var(--brand) 45%, transparent);
       --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.55);
@@ -57,7 +72,7 @@
     --surface: color-mix(in oklab, var(--brand) 8%, #1F1E1B);
     --surface-2: color-mix(in oklab, var(--brand) 14%, #262420);
     --ink: #EFECE5; --ink-muted: #9C958C; --border: #35322C;
-    --accent: var(--brand); --accent-soft: color-mix(in oklab, var(--brand) 45%, white); --accent-contrast: #FFFFFF;
+    --accent: var(--brand); --accent-soft: color-mix(in oklab, var(--brand) 45%, white); --accent-text: var(--accent-soft); --accent-contrast: #FFFFFF;
     --ring: color-mix(in oklab, var(--brand) 45%, transparent);
     --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.55);
     --shadow-lg: 0 4px 8px rgba(0,0,0,0.35), 0 20px 40px -16px rgba(0,0,0,0.65);
@@ -130,8 +145,8 @@
     position: relative;
   }
   .nav-item svg { width: 21px; height: 21px; }
-  .nav-item:hover { background: var(--surface-2); color: var(--accent); }
-  .nav-item.active { background: var(--surface-2); color: var(--accent); }
+  .nav-item:hover { background: var(--surface-2); color: var(--accent-text); }
+  .nav-item.active { background: var(--surface-2); color: var(--accent-text); }
   .nav-item.active::before {
     content: "";
     position: absolute; left: -14px; top: 50%; transform: translateY(-50%);
@@ -187,8 +202,8 @@
   }
   .flyout-item svg { width: 17px; height: 17px; color: var(--ink-muted); flex-shrink: 0; }
   .flyout-item:hover { background: var(--surface-2); }
-  .flyout-item.active { background: var(--surface-2); color: var(--accent); }
-  .flyout-item.active svg { color: var(--accent); }
+  .flyout-item.active { background: var(--surface-2); color: var(--accent-text); }
+  .flyout-item.active svg { color: var(--accent-text); }
 
   /* ── main content ── */
   .main {
@@ -294,13 +309,13 @@
   }
   .ai-panel-body .icon {
     width: 48px; height: 48px; border-radius: 14px;
-    background: var(--surface-2); color: var(--accent);
+    background: var(--surface-2); color: var(--accent-text);
     display: flex; align-items: center; justify-content: center;
   }
   .ai-panel-body .icon svg { width: 24px; height: 24px; }
   .ai-panel-body p { font-size: 0.86rem; color: var(--ink-muted); line-height: 1.7; margin: 0; max-width: 26ch; }
   .ai-panel-body .status {
-    font-size: 0.72rem; font-weight: 500; color: var(--accent);
+    font-size: 0.72rem; font-weight: 500; color: var(--accent-text);
     background: var(--surface-2); padding: 4px 12px; border-radius: 999px;
   }
 
@@ -364,7 +379,7 @@
     transition: background 0.14s ease, color 0.14s ease;
   }
   .theme-mode-btn:hover { background: var(--border); }
-  .theme-mode-btn.active { background: var(--surface); color: var(--accent); box-shadow: var(--shadow); }
+  .theme-mode-btn.active { background: var(--surface); color: var(--accent-text); box-shadow: var(--shadow); }
   .theme-mode-btn.active:hover { background: var(--surface); }
   .theme-swatch-row { display: flex; flex-wrap: wrap; gap: 11px; }
   .theme-swatch {
@@ -495,13 +510,13 @@
      buttons instead of low-key text links. */
   .login-card .text-link-btn {
     width: auto; display: block; margin: 12px auto 0; padding: 4px 6px;
-    background: transparent; color: var(--accent); font-weight: 600; font-size: 0.82rem;
+    background: transparent; color: var(--accent-text); font-weight: 600; font-size: 0.82rem;
     text-align: center; text-decoration: underline; text-underline-offset: 2px;
   }
   .login-card .text-link-btn:hover { color: var(--ink); background: transparent; }
   .signup-success-icon {
     width: 44px; height: 44px; border-radius: 50%; margin: 0 auto 14px;
-    background: var(--surface-2); color: var(--accent);
+    background: var(--surface-2); color: var(--accent-text);
     display: flex; align-items: center; justify-content: center;
   }
   .signup-success-icon svg { width: 22px; height: 22px; }
@@ -651,10 +666,10 @@
       <iframe id="crmIframe" data-src="./staging/crm/index.html" title="CRM"></iframe>
     </div>
     <div class="page" id="page-calendar">
-      <iframe data-src="./staging/calendar/index.html" title="ปฏิทินงาน"></iframe>
+      <iframe id="calendarIframe" data-src="./staging/calendar/index.html" title="ปฏิทินงาน"></iframe>
     </div>
     <div class="page" id="page-staff">
-      <iframe data-src="./staging/staff/index.html" title="พนักงาน/ทีม"></iframe>
+      <iframe id="staffIframe" data-src="./staging/staff/index.html" title="พนักงาน/ทีม"></iframe>
     </div>
   </main>
 
@@ -975,6 +990,11 @@
     personal: 'ตั้งค่า · ส่วนตัว', program: 'ตั้งค่า · โปรแกรม', staff: 'พนักงาน/ทีม'
   };
   const SETTINGS_CHILDREN = ['personal', 'program', 'staff'];
+  // ใช้โดย dcacc-overlay listener ด้านล่างเท่านั้น เพื่อรู้ว่า iframe ไหนคือหน้าที่กำลังแสดงอยู่จริง
+  // ตอนนี้ -- CRM/ลูกค้า/ค่าบริการ/ตั้งค่า>ส่วนตัว/ตั้งค่า>โปรแกรม (target=crm) ปฏิทิน
+  // (target=calendar) พนักงาน/ทีม (target=staff) ตรงกับ 3 iframe จริงที่มีอยู่
+  const OVERLAY_IFRAME_BY_TARGET = { crm: crmIframe, calendar: document.getElementById('calendarIframe'), staff: document.getElementById('staffIframe') };
+  let currentActiveTarget = 'crm'; // ตรงกับ .page.active="page-crm" ที่ตั้งไว้ใน HTML ตั้งแต่แรก
 
   function closeSettingsFlyout() {
     settingsFlyout.classList.remove('open');
@@ -1001,6 +1021,7 @@
   // with the CRM app: { type: 'dcacc-nav', section }.
   function goToSection(key, target, section) {
     document.body.classList.remove('overlay-open'); // ดู dcacc-overlay
+    currentActiveTarget = target; // ดู dcacc-overlay -- ต้องตั้งก่อนเสมอ แม้ target จะเหมือนเดิม
 
     pages.forEach(p => p.classList.toggle('active', p.id === 'page-' + target));
     pageTitle.textContent = TITLES[key] || '';
@@ -1029,6 +1050,17 @@
     if (ev.origin !== location.origin) return;
     const d = ev.data;
     if (!d || d.type !== 'dcacc-overlay') return;
+    // ทั้ง CRM และปฏิทิน (คนละ document/iframe) ต่างส่ง dcacc-overlay เป็นอิสระจากกัน แต่มีแค่ "หน้าที่
+    // active อยู่ตอนนี้" เท่านั้นที่ผู้ใช้มองเห็นได้จริง -- ไม่กรองแหล่งที่มา จะพังกรณี: เปิดแผงลูกค้าใน
+    // CRM ค้างไว้ (ส่ง open:true) แล้วสลับไปปฏิทิน (goToSection เคลียร์คลาสให้แล้ว) เปิด modal ในปฏิทิน
+    // (ส่ง open:true อีกที ถูกต้อง) จากนั้น CRM ที่ซ่อนอยู่เบื้องหลัง save เสร็จแบบ async แล้วปิดแผงของ
+    // ตัวเอง (ส่ง open:false) -- ข้อความหลังสุดนี้มาจาก iframe ที่ไม่ได้แสดงอยู่แล้ว ถ้าเชื่อตรงๆ จะไป
+    // เผลอเคลียร์คลาสทั้งที่ modal ของปฏิทินที่กำลังแสดงอยู่จริงยังเปิดอยู่ ปุ่มลอยจะโผล่มาทับปุ่มนั้นได้
+    // (พิสูจน์ก่อนแก้ด้วย negative control: scratchpad/audit3-overlay-test.mjs, test O4 — FAIL ก่อนแก้,
+    // PASS หลังแก้) จึงต้องเทียบ ev.source (WindowProxy จริงของผู้ส่ง) กับ iframe ของ target ที่กำลัง
+    // active อยู่เท่านั้น ข้อความจาก iframe อื่นถูกละทิ้งเงียบๆ (ไม่ throw ไม่ทำอะไร)
+    const activeFrame = OVERLAY_IFRAME_BY_TARGET[currentActiveTarget];
+    if (!activeFrame || ev.source !== activeFrame.contentWindow) return;
     document.body.classList.toggle('overlay-open', !!d.open);
   });
 
