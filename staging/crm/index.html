@@ -3529,13 +3529,17 @@ function renderYeGroupModalBody(clientId, groupsKind, groupKey) {
     const clickable = applicable && canDoClientTask(clientId);
     return `<div class="flex items-center justify-between py-2.5 px-2 -mx-2 border-b border-[var(--border)] last:border-0 rounded ${clickable ? 'cursor-pointer hover:bg-[var(--surface-2)]' : ''}"
                  ${clickable ? `onclick="toggleYeStep(${clientId},'${groupsKind}','${groupKey}','${field}')"` : ''}>
-              <span class="text-sm text-[var(--ink)]">${e(s.label)}</span>
-              <span data-ye-step="${field}">${statusDot(v)}</span>
+              <!-- line-height คงที่ + wrapper เป็น flex: ความสูงแถวขึ้นกับ "ป้ายชื่อขั้นตอน" อย่างเดียว
+                   ไม่ขึ้นกับว่าติ๊กแล้วหรือยัง — ของเดิม wrapper เป็น inline ครอบ .dot ที่เป็น inline-flex
+                   กล่องเปล่า (ยังไม่ติ๊ก) กับกล่องที่มี ✓ วางบนเส้นฐานคนละที่ ทำให้กล่องบรรทัดสูงไม่เท่ากัน
+                   แถวจึงหด/ขยายตอนติ๊ก แล้วโมดัล (จัดกึ่งกลางแนวตั้ง) ขยับตาม -->
+              <span class="text-sm text-[var(--ink)]" style="line-height:22px">${e(s.label)}</span>
+              <span data-ye-step="${field}" style="display:flex">${statusDot(v)}</span>
             </div>`;
   }).join('');
   const { done, total } = yeGroupProgress(group, c, t);
   openModal(`
-    <h3 class="text-base font-bold text-[var(--ink)] mb-1">${e(group.label)} <span class="text-[var(--ink-muted)] font-normal text-sm">(${done}/${total})</span></h3>
+    <h3 class="text-base font-bold text-[var(--ink)] mb-1">${e(group.label)} <span id="ye-grp-count" class="text-[var(--ink-muted)] font-normal text-sm">(${done}/${total})</span></h3>
     <p class="text-xs text-[var(--ink-muted)] mb-4">${e(c.thai_name)}</p>
     <div>${rows}</div>
     <div class="flex justify-end mt-6">
@@ -3569,9 +3573,14 @@ async function toggleYeStep(clientId, groupsKind, groupKey, field) {
   await logActivity('year_end_task_toggle', 'client', clientId,
     `${c?.thai_name || ''}: ${group?.label || groupKey} - ${step?.label || field} → ${TASK_STATUS_LABEL_TH[next] || next} (ปี ${yearEndYear})`);
 
-  // รีเฟรชหัวข้อในหน้า modal (ตัวเลข done/total ในหัวข้อ) + ตารางข้างหลัง (ปุ่มสรุป + progress bar
-  // ท้ายแถว) — ข้อมูลไม่เยอะ re-render ทั้งสองส่วนง่ายกว่าไล่แก้ DOM ทีละจุดเหมือนจุดอื่นในแอพนี้
-  renderYeGroupModalBody(clientId, groupsKind, groupKey);
+  // อัปเดตเฉพาะตัวเลข done/total ในหัวข้อ — ห้ามเรียก renderYeGroupModalBody()/openModal() ซ้ำตรงนี้
+  // เพราะมันล้าง #modal-area แล้วสร้างกล่องใหม่ทั้งใบทุกคลิก ทำให้จอกระพริบ/ขยับ และตำแหน่งเลื่อนใน
+  // กล่องรีเซ็ต ทั้งที่จุดติ๊ก (data-ye-step) ถูกอัปเดตไปแล้วด้านบน
+  const cntEl = document.getElementById('ye-grp-count');
+  if (cntEl && group) {
+    const prog = yeGroupProgress(group, c, yearEndMap[clientId] || {});
+    cntEl.textContent = `(${prog.done}/${prog.total})`;
+  }
   if (groupsKind === 'task') renderYeTaskTable(); else renderYeFinTable();
 }
 
