@@ -2622,7 +2622,10 @@ function renderTracking() {
     const t2Paid = t.tax2_paid || false;
 
     const mkGroupCell = (sent, paid, cid, sentField, paidField, off, group) => {
-      if (off) return `<td class="px-1 py-0.5 text-center border-l border-[var(--border)]"><span class="dot na">—</span></td>`;
+      // ลูกค้าที่ไม่มีประกันสังคม (SSO) / ไม่มี VAT (TAX 2) — เว้นช่องว่างไว้เฉยๆ ไม่ต้องขึ้น "—"
+      // (ผู้ใช้สั่ง 2026-09-03: "ถ้าไม่มีไม่ต้องขึ้น") ต่างจาก "—" ในช่องที่กดได้ซึ่งแปลว่า "ยังไม่ได้ทำ"
+      // และต่างจากจุดที่คนตั้งสถานะ "ไม่มี" ให้รายการย่อยเอง (statusDot('na')) ซึ่งยังคง "—" ไว้เหมือนเดิม
+      if (off) return `<td class="px-1 py-0.5 text-center border-l border-[var(--border)]"></td>`;
       const gItems = (GROUP_ITEMS[group]||{}).items || [];
       const gApp = gItems.filter(it => (t[it.field]||'todo') !== 'na').length;
       const gDone = gItems.filter(it => (t[it.field]||'todo') === 'done').length;
@@ -3272,7 +3275,8 @@ function yeTeamTd(c) {
 function mkYeGroupTd(group, c, t, groupsKind, first, subtitle) {
   const cellCls = `px-2 py-2.5 text-center ${first ? 'border-l border-[var(--border)]' : ''}`;
   if (!yeGroupApplicable(group, c)) {
-    return `<td class="${cellCls}"><span class="text-xs text-[var(--ink-muted)]">—</span></td>`;
+    // เว้นว่างเหมือนกลุ่ม SSO/TAX 2 ของหน้ารายเดือน (ดู mkGroupCell) — "ไม่เกี่ยวข้อง" ไม่ต้องขึ้น "—"
+    return `<td class="${cellCls}"></td>`;
   }
   const { done, total } = yeGroupProgress(group, c, t);
   const pct = total > 0 ? Math.round(done / total * 100) : 0;
