@@ -1029,6 +1029,15 @@
             </button>
             <input id="fin-fee-search" type="text" placeholder="ค้นหา…" oninput="renderFinanceFees()"
               class="px-3.5 py-2 rounded-lg border border-[var(--border)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)] w-48">
+            <!-- ค่าบริการของ "ลูกค้าเก่า" (is_active=false) เดิมแก้ไม่ได้เลยทั้งระบบ: หน้านี้เป็นทางเดียวที่
+                 เปิด openEditFee ได้ แต่กรอง is_active ออกไป ส่วนแผงข้อมูลลูกค้าก็ไม่มีช่องค่าบริการ
+                 (ย้ายไป crm_client_billing แล้ว) และเมนู "บันทึกการเปลี่ยนแปลง" ก็ไม่มีตัวเลือกค่าบริการ
+                 โดยเจตนา — ติ๊กช่องนี้เพื่อดึงลูกค้าเก่าเข้ามาในรายการให้แก้ย้อนหลังได้ -->
+            <label class="flex items-center gap-1.5 text-xs text-[var(--ink-muted)] cursor-pointer select-none">
+              <input id="fin-fee-include-old" type="checkbox" onchange="onToggleFeeIncludeOld()"
+                class="w-3.5 h-3.5 accent-[var(--accent)] cursor-pointer">
+              รวมลูกค้าเก่า
+            </label>
           </div>
         </div>
       </div>
@@ -3697,12 +3706,20 @@ async function exportClientCredsCSV() {
   showToast(`ส่งออกรหัสผ่าน ${filtered.length} ราย สำเร็จ`);
 }
 
+// โหลดลูกค้าที่ปิดใช้งานแล้ว (ลูกค้าเก่า) เข้ามาใน clients[] ครั้งเดียว — ใช้ร่วมกันระหว่างแท็บ "ลูกค้าเก่า"
+// กับช่องติ๊ก "รวมลูกค้าเก่า" ในหน้าค่าบริการ (ถ้าไม่โหลด ลูกค้าเก่าจะไม่อยู่ใน clients[] เลยตั้งแต่ต้น)
+async function ensureOldClientsLoaded_() {
+  if (oldClientsLoaded) return;
+  const { data } = await sb.from('crm_clients').select('*').eq('is_active', false).order('code');
+  (data || []).forEach(c => { if (!clients.some(x => x.id === c.id)) clients.push(c); });
+  oldClientsLoaded = true;
+}
+async function onToggleFeeIncludeOld() {
+  if (document.getElementById('fin-fee-include-old')?.checked) await ensureOldClientsLoaded_();
+  renderFinanceFees();
+}
 async function renderOldClients() {
-  if (!oldClientsLoaded) {
-    const { data } = await sb.from('crm_clients').select('*').eq('is_active', false).order('code');
-    (data || []).forEach(c => { if (!clients.some(x => x.id === c.id)) clients.push(c); });
-    oldClientsLoaded = true;
-  }
+  await ensureOldClientsLoaded_();
 
   const q = (document.getElementById('old-client-search')?.value || '').toLowerCase();
   // base = full inactive-client set — same non-flicker rationale as renderClientList() above.
@@ -6041,7 +6058,7 @@ function financeFeeRowHtml(c) {
       </button>
       <span class="w-10 flex-shrink-0 text-xs text-[var(--ink-muted)]">${e(computeClientNo(c.billing_type, c.seq_num))}</span>
       <span class="flex-shrink-0 inline-block bg-[var(--surface-2)] text-[var(--accent-text)] text-xs font-bold px-1.5 py-0.5 rounded text-center overflow-hidden text-ellipsis whitespace-nowrap" style="width:80px">${e(c.code)}</span>
-      <span class="flex-1 min-w-0 text-sm font-semibold text-[var(--ink)] overflow-hidden text-ellipsis whitespace-nowrap">${e(c.thai_name)}</span>
+      <span class="flex-1 min-w-0 text-sm font-semibold text-[var(--ink)] overflow-hidden text-ellipsis whitespace-nowrap">${e(c.thai_name)}${c.is_active ? '' : ' <span class="text-[11px] font-normal text-[var(--ink-muted)]">(ลูกค้าเก่า)</span>'}</span>
       <span class="w-20 flex-shrink-0 text-center text-[11px] text-[var(--ink-muted)] ${canEdit() ? 'cursor-pointer hover:text-[var(--accent-text)]' : ''}"${canEdit() ? ` onclick="event.stopPropagation();openEditType(${c.id})" title="เปลี่ยนประเภท"` : ''}>${BILLING_TYPE_LABEL[c.billing_type] || '—'}${canEdit() ? ' <span class="text-[var(--ink-muted)]">✎</span>' : ''}</span>
       <span class="w-24 flex-shrink-0 text-right text-xs font-mono ${canEdit() ? 'cursor-pointer hover:text-[var(--accent-text)]' : ''}"${canEdit() ? ` onclick="event.stopPropagation();openEditFee(${c.id})" title="แก้ไขค่าบริการ"` : ''}>${fmtMoney(fee)}${canEdit() ? ' <span class="text-[var(--ink-muted)]">✎</span>' : ''}</span>
       <span class="w-24 flex-shrink-0 text-right text-xs font-mono text-amber-600">${wht > 0 ? '-' + fmtMoney(wht) : '—'}</span>
@@ -6064,7 +6081,13 @@ function renderFinanceFees() {
   const q = (document.getElementById('fin-fee-search')?.value || '').toLowerCase();
   // base = full active-client set — same non-flicker rationale as renderClientList() above.
   const base = clients.filter(c => c.is_active && !c.is_own_company);
-  let filtered = base;
+  // การ์ดสรุป (ยอดรวม/เฉลี่ย/จำนวน) ยังนับจาก base = "ลูกค้าปัจจุบัน" เสมอ ไม่ว่าจะติ๊กรวมลูกค้าเก่าหรือไม่
+  // — ไม่งั้นยอดรวมค่าบริการต่อเดือนจะบวกลูกค้าที่เลิกไปแล้วเข้าไปด้วย ซึ่งผิดความหมาย
+  const includeOld = !!document.getElementById('fin-fee-include-old')?.checked;
+  const listBase = includeOld
+    ? clients.filter(c => !c.is_own_company)
+    : base;
+  let filtered = listBase;
   if (q) filtered = filtered.filter(c =>
     (c.code||'').toLowerCase().includes(q) ||
     (c.thai_name||'').toLowerCase().includes(q) ||
