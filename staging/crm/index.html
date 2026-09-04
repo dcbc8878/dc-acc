@@ -571,7 +571,8 @@
             <option value="monthly">รายเดือน</option>
             <option value="filing">แบบเปล่า</option>
             <option value="annual">รายปี</option>
-            <option value="dissolved">เลิกกิจการ</option>
+            <!-- ไม่มี "เลิกกิจการ" ในตัวกรองนี้แล้ว — ลูกค้ากลุ่มนั้นถูกกันออกจากหน้ารายเดือนทั้งหมด
+                 (ดู renderTracking) เลือกแล้วจะได้ตารางว่างเสมอ ไปดูที่ "รายปี > เลิกกิจการ" แทน -->
           </select>
           <button onclick="goToCurrentTrkMonth()" class="text-xs font-semibold text-[var(--ink-muted)] border border-[var(--border)] hover:bg-[var(--surface-2)] px-3 py-1.5 rounded-lg transition-colors flex-shrink-0">เดือนปัจจุบัน</button>
           <button id="trkPrevBtn" onclick="changeMonth(-1)" class="w-8 h-8 rounded-lg border border-[var(--border)] flex items-center justify-center hover:bg-[var(--surface-2)] transition-colors text-[var(--ink-muted)] disabled:opacity-30 disabled:hover:bg-[var(--surface)] disabled:cursor-not-allowed">
@@ -2555,6 +2556,10 @@ function renderTracking() {
   const monthLastStr = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(new Date(curYear, curMonth, 0).getDate()).padStart(2,'0')}`;
   const myIds = myTeamIds();
   const visibleClients = clients.filter(c => (c.is_active || c.end_date))
+    // ลูกค้าที่เลิกกิจการแล้วไม่ต้องขึ้นหน้ารายเดือน — งานที่เหลือเป็นงานปิดบริษัท ติดตามที่แท็บ
+    // "รายปี > เลิกกิจการ" แทน (ใช้ billing_type ปัจจุบันตรงๆ ไม่ใช่ point-in-time เหมือนตัวกรอง
+    // ประเภทด้านล่าง เพราะเลิกกิจการเป็นสถานะย้อนกลับไม่ได้ — เกณฑ์เดียวกับ yearEndDissolvedClients)
+    .filter(c => c.billing_type !== 'dissolved')
     .filter(c => trackingTypeFilter === 'all' ||
       resolveEffectiveFee(c, curYear, curMonth, billingContractsByClient[c.id]).billing_type === trackingTypeFilter)
     .filter(c => (!c.start_date || c.start_date <= monthLastStr) && (!c.end_date || c.end_date >= monthFirstStr))
@@ -2884,6 +2889,10 @@ function renderTrackingSummary() {
   const monthLastStr = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(new Date(curYear, curMonth, 0).getDate()).padStart(2,'0')}`;
   const trkSummaryMyIds = myTeamIds();
   const visibleClients = clients.filter(c => (c.is_active || c.end_date))
+    // ลูกค้าที่เลิกกิจการแล้วไม่ต้องขึ้นหน้ารายเดือน — งานที่เหลือเป็นงานปิดบริษัท ติดตามที่แท็บ
+    // "รายปี > เลิกกิจการ" แทน (ใช้ billing_type ปัจจุบันตรงๆ ไม่ใช่ point-in-time เหมือนตัวกรอง
+    // ประเภทด้านล่าง เพราะเลิกกิจการเป็นสถานะย้อนกลับไม่ได้ — เกณฑ์เดียวกับ yearEndDissolvedClients)
+    .filter(c => c.billing_type !== 'dissolved')
     .filter(c => (!c.start_date || c.start_date <= monthLastStr) && (!c.end_date || c.end_date >= monthFirstStr))
     .filter(c => isClientVisibleOnTeamScopedPages(c, trkSummaryMyIds));
   visibleClients.forEach(c => {
