@@ -3821,7 +3821,12 @@ async function openPanel(clientId) {
   panelClientId = clientId;
   panelTab = 'info';
 
-  panelOrigin = (curPage === 'tracking' || curPage === 'yearend') ? 'limited' : 'full';
+  // เดิม: เปิดแผงจากหน้า "รายเดือน"/"รายปี" จะได้โหมด 'limited' = ดูอย่างเดียว พิมพ์แก้ไม่ได้ ไม่มีปุ่ม
+  // บันทึก และซ่อนแท็บประวัติ/เอกสาร + ปุ่มปิดใช้งาน — ผู้ใช้เจอว่าเปิดแผงจากหน้ารายเดือนแล้วทำอะไร
+  // ไม่ได้เลย (2026-09-03) จึงเลิกจำกัดตามหน้าที่เปิดมา ให้สิทธิ์แก้ไขตัดสินจาก "ระดับผู้ใช้" อย่างเดียว
+  // เหมือนทุกจุดอื่นในแอป — ด่านเดิมที่กันไว้ยังอยู่ครบทุกอัน (canEditBasic / isOwner / canCred /
+  // canSeeServiceDates) ไม่ได้เปิดสิทธิ์ให้ใครเพิ่มจากเดิม แค่ไม่ขึ้นกับว่ากดมาจากหน้าไหน
+  panelOrigin = 'full';
 
   document.getElementById('panel-code').textContent = c.code;
   document.getElementById('panel-name').textContent = c.thai_name;
