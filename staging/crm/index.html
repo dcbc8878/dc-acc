@@ -2557,9 +2557,10 @@ function renderTracking() {
   const myIds = myTeamIds();
   const visibleClients = clients.filter(c => (c.is_active || c.end_date))
     // ลูกค้าที่เลิกกิจการแล้วไม่ต้องขึ้นหน้ารายเดือน — งานที่เหลือเป็นงานปิดบริษัท ติดตามที่แท็บ
-    // "รายปี > เลิกกิจการ" แทน (ใช้ billing_type ปัจจุบันตรงๆ ไม่ใช่ point-in-time เหมือนตัวกรอง
-    // ประเภทด้านล่าง เพราะเลิกกิจการเป็นสถานะย้อนกลับไม่ได้ — เกณฑ์เดียวกับ yearEndDissolvedClients)
-    .filter(c => c.billing_type !== 'dissolved')
+    // "รายปี > เลิกกิจการ" แทน — ใช้ประเภท "ณ เดือนที่กำลังดู" (ประวัติสัญญา) ไม่ใช่ประเภทปัจจุบัน
+    // เพราะเดือนก่อนหน้าที่เขายังเป็นลูกค้ารายเดือนอยู่ ต้องเห็นงานเดือนนั้นย้อนหลังได้ตามปกติ
+    // (เช่น เลิกกิจการมีผล ก.ย. — เดือน ส.ค. ลงไปยังต้องอยู่ในหน้ารายเดือนเหมือนเดิม)
+    .filter(c => resolveEffectiveFee(c, curYear, curMonth, billingContractsByClient[c.id]).billing_type !== 'dissolved')
     .filter(c => trackingTypeFilter === 'all' ||
       resolveEffectiveFee(c, curYear, curMonth, billingContractsByClient[c.id]).billing_type === trackingTypeFilter)
     .filter(c => (!c.start_date || c.start_date <= monthLastStr) && (!c.end_date || c.end_date >= monthFirstStr))
@@ -2890,9 +2891,10 @@ function renderTrackingSummary() {
   const trkSummaryMyIds = myTeamIds();
   const visibleClients = clients.filter(c => (c.is_active || c.end_date))
     // ลูกค้าที่เลิกกิจการแล้วไม่ต้องขึ้นหน้ารายเดือน — งานที่เหลือเป็นงานปิดบริษัท ติดตามที่แท็บ
-    // "รายปี > เลิกกิจการ" แทน (ใช้ billing_type ปัจจุบันตรงๆ ไม่ใช่ point-in-time เหมือนตัวกรอง
-    // ประเภทด้านล่าง เพราะเลิกกิจการเป็นสถานะย้อนกลับไม่ได้ — เกณฑ์เดียวกับ yearEndDissolvedClients)
-    .filter(c => c.billing_type !== 'dissolved')
+    // "รายปี > เลิกกิจการ" แทน — ใช้ประเภท "ณ เดือนที่กำลังดู" (ประวัติสัญญา) ไม่ใช่ประเภทปัจจุบัน
+    // เพราะเดือนก่อนหน้าที่เขายังเป็นลูกค้ารายเดือนอยู่ ต้องเห็นงานเดือนนั้นย้อนหลังได้ตามปกติ
+    // (เช่น เลิกกิจการมีผล ก.ย. — เดือน ส.ค. ลงไปยังต้องอยู่ในหน้ารายเดือนเหมือนเดิม)
+    .filter(c => resolveEffectiveFee(c, curYear, curMonth, billingContractsByClient[c.id]).billing_type !== 'dissolved')
     .filter(c => (!c.start_date || c.start_date <= monthLastStr) && (!c.end_date || c.end_date >= monthFirstStr))
     .filter(c => isClientVisibleOnTeamScopedPages(c, trkSummaryMyIds));
   visibleClients.forEach(c => {
