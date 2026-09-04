@@ -4442,9 +4442,45 @@ async function applyClientChange() {
 // curWht_ ใกล้ resolveEffectiveFee), ปิดแถว crm_billing_contracts เดิม + เปิดแถวใหม่ (ให้
 // resolveEffectiveFee() ย้อนดูราคาตามช่วงเวลาได้ถูกต้อง) คืนค่า true/false ว่าสำเร็จหรือไม่ ผู้เรียกตัดสินใจเอง
 // ว่าจะรีเฟรช/ปิด modal ไหนต่อ (เหมือน markInvoicePaidCore_)
+// เติม "ประวัติสัญญาช่วงก่อนหน้า" ให้ลูกค้าที่ยังไม่เคยมีแถวประวัติเลย ก่อนจะเปลี่ยนค่าบริการ/ประเภท
+//
+// ปัญหาที่แก้: applyFeeChangeCore_/applyTypeChangeCore_ ปิดแถวเดิมด้วย UPDATE ... WHERE effective_to IS NULL
+// ซึ่ง "ไม่โดนสักแถว" ถ้าลูกค้ารายนั้นยังไม่เคยเปลี่ยนค่าบริการ/ประเภทมาก่อนเลย (ลูกค้าที่เพิ่งเพิ่มเข้าระบบ
+// ไม่มีแถวใน crm_billing_contracts เลย) ผลคือมีแต่แถวใหม่ที่เริ่มต้น ณ วันที่มีผล — เดือนก่อนหน้านั้น
+// resolveEffectiveFee() จะหาแถวไม่เจอ แล้ว fallback ไปใช้ค่า "ปัจจุบัน" ของลูกค้า ซึ่งถูกอัปเดตเป็นค่าใหม่
+// ไปแล้ว → เดือนย้อนหลังกลายเป็นค่าใหม่/ประเภทใหม่ตามไปด้วย (เช่น เปลี่ยนเป็นเลิกกิจการมีผล ก.ย. แล้ว
+// เดือน ส.ค. ลงไปหายจากหน้ารายเดือนทั้งหมด ทั้งที่ยังเป็นลูกค้ารายเดือนอยู่จริง)
+//
+// ต้องเรียก "ก่อน" เขียนค่าใหม่ลง crm_clients / crm_client_billing เสมอ เพราะต้องเก็บค่าเก่าไว้ในแถวนี้
+// คืน true = ผ่าน (ไม่ว่าจะเติมหรือไม่ต้องเติม), false = เขียนไม่สำเร็จ (ผู้เรียกต้องหยุดและแจ้ง error)
+async function ensureContractHistoryBefore_(clientId, effectiveDate) {
+  const existing = billingContractsByClient[clientId] || [];
+  if (existing.length) return true;              // มีประวัติอยู่แล้ว — ตัวปิดแถวเดิมจัดการต่อได้เอง
+  const c = clients.find(x => x.id === clientId);
+  if (!c) return true;
+  // วันก่อนหน้าวันที่มีผล (คำนวณแบบเวลาเครื่อง ไม่ผ่าน toISOString ที่แปลงเป็น UTC ก่อน)
+  const [ey, em, ed] = effectiveDate.split('-').map(Number);
+  const prev = new Date(ey, em - 1, ed - 1);
+  const toStr = yeYmdStr(prev.getFullYear(), prev.getMonth() + 1, prev.getDate());
+  // เริ่มจากวันที่รับเป็นลูกค้า ถ้าไม่มี/หลังวันที่มีผล ให้ครอบไว้ให้หมดตั้งแต่ต้น
+  const fromStr = (c.start_date && c.start_date <= toStr) ? c.start_date : '2000-01-01';
+  const { data, error } = await sb.from('crm_billing_contracts').insert({
+    client_id: clientId,
+    billing_type: c.billing_type || 'monthly',
+    fee_amount: curFee_(clientId),
+    has_wht: curWht_(clientId),
+    effective_from: fromStr,
+    effective_to: toStr,
+    notes: 'ช่วงก่อนการเปลี่ยนแปลงครั้งแรก (ระบบเติมให้อัตโนมัติ)',
+  }).select().single();
+  if (error) { showToast('บันทึกประวัติสัญญาไม่สำเร็จ: ' + error.message, 'error'); return false; }
+  if (data) (billingContractsByClient[clientId] ||= []).push(data);
+  return true;
+}
 async function applyFeeChangeCore_(clientId, newFee, effectiveDate, note) {
   const c = clients.find(x => x.id === clientId);
   if (!c) return false;
+  if (!await ensureContractHistoryBefore_(clientId, effectiveDate)) return false;
 
   const { error: logErr } = await sb.from('crm_client_change_log').insert({
     client_id: clientId, change_type: 'fee', change_date: effectiveDate,
@@ -4617,6 +4653,7 @@ function etSyncPreview(clientId) {
 async function applyTypeChangeCore_(clientId, newType, effectiveDate) {
   const c = clients.find(x => x.id === clientId);
   if (!c) return false;
+  if (!await ensureContractHistoryBefore_(clientId, effectiveDate)) return false;
   const oldNo = computeClientNo(c.billing_type, c.seq_num);
   const newNo = computeClientNo(newType, c.seq_num);
 
