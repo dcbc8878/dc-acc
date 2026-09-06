@@ -1616,6 +1616,10 @@ let panelClientId = null;
 let panelTab     = 'info';
 let panelDirty   = false;
 let panelOrigin  = 'full'; // 'full' (opened from ลูกค้า page) or 'limited' (tracking/yearend)
+// แท็บรหัสผ่านเปิดมาเป็นโหมด "คลิกเพื่อคัดลอก" เสมอ (พนักงานต้องก็อปไปล็อกอิน RD/DBD/SSO ทุกวัน)
+// ต้องกดปุ่ม "แก้ไข" ก่อนช่องถึงจะกลายเป็นช่องพิมพ์ — ตั้งแต่เปิดให้แก้ไขได้ทุกหน้า (2026-09-03) ช่อง
+// รหัสผ่านกลายเป็นช่องพิมพ์ทันที ทำให้คลิกแล้วไม่คัดลอกเหมือนเดิม
+let credEditMode = false;
 let teams        = [];
 let teamMembersMap = {}; // team_id -> [staff_id,...]
 let staffRequests = [];
@@ -3974,6 +3978,7 @@ async function deleteBillingContract(contractId) {
 function switchTab(tab) {
   if (tab !== panelTab && !confirmDiscardIfDirty()) return;
   panelTab = tab;
+  credEditMode = false; // เข้าแท็บรหัสผ่านครั้งใหม่ เริ่มที่โหมดคัดลอกเสมอ
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('hidden', p.dataset.pane !== tab));
   document.getElementById('panel-save-bar').classList.add('hidden');
@@ -4991,6 +4996,18 @@ function credCopyIconHtml_(val) {
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="flex-shrink-0 opacity-60"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
 }
 
+// สลับระหว่างโหมดคัดลอก (ค่าเริ่มต้น) กับโหมดพิมพ์แก้ไข — ด่านสิทธิ์เดิมทุกอันไม่เปลี่ยน
+function toggleCredEditMode() {
+  if (!canEditBasic() || panelOrigin !== 'full') return;
+  if (credEditMode && panelDirty && !confirm('ยังไม่ได้บันทึกการแก้ไขรหัสผ่าน ต้องการทิ้งการแก้ไขหรือไม่?')) return;
+  if (credEditMode) {
+    panelDirty = false;
+    document.getElementById('panel-save-bar').classList.add('hidden');
+  }
+  credEditMode = !credEditMode;
+  renderPanelCreds();
+}
+
 function renderPanelCreds() {
   if (!canCred()) {
     paneEl('creds').innerHTML = `<div class="text-center py-12 text-[var(--ink-muted)]">
@@ -4999,7 +5016,8 @@ function renderPanelCreds() {
     return;
   }
   const cred = credMap[panelClientId] || {};
-  const editable = canEditBasic() && panelOrigin === 'full';
+  const canEditCreds = canEditBasic() && panelOrigin === 'full';
+  const editable = canEditCreds && credEditMode;
   const client = clients.find(cl => cl.id === panelClientId);
   const ssoActive = !client || client.has_sso !== false;
   const dbdActive = !client || client.type !== 'บุคคลธรรมดา';
@@ -5031,6 +5049,11 @@ function renderPanelCreds() {
 
   paneEl('creds').innerHTML = `
     <div id="panel-cred-fields" class="space-y-5">
+      ${canEditCreds ? `<div class="flex justify-end">
+        <button onclick="toggleCredEditMode()" class="text-xs font-semibold px-2.5 py-1 rounded-lg transition-colors ${editable
+          ? 'bg-[var(--surface-2)] border border-[var(--border)] text-[var(--ink)] hover:border-[var(--accent-soft)]'
+          : 'bg-[var(--accent)] hover:bg-[color-mix(in_oklab,var(--accent)_85%,black)] text-white'}">${editable ? 'ยกเลิกแก้ไข' : '✎ แก้ไข'}</button>
+      </div>` : ''}
       <div class="text-xs font-bold text-[var(--ink-muted)] uppercase tracking-wide pb-1 border-b border-[var(--border)]">RD e-Filing</div>
       <div class="grid grid-cols-2 gap-4">
         ${credField('Username','rd_username', cred.rd_username)}
@@ -5051,7 +5074,7 @@ function renderPanelCreds() {
         ${editable ? `<button onclick="openAddCredItem()" class="text-xs bg-[var(--accent)] hover:bg-[color-mix(in_oklab,var(--accent)_85%,black)] text-white font-semibold px-2.5 py-1 rounded-lg transition-colors">+ เพิ่มรายการ</button>` : ''}
       </div>
       <div id="cred-items-section" class="text-xs text-[var(--ink-muted)]">กำลังโหลด…</div>
-      ${!editable ? `<p class="text-xs text-[var(--ink-muted)] text-center mt-2">คลิกที่ช่องเพื่อคัดลอก${canEditBasic() ? ' · แก้ไขได้ที่หน้าลูกค้า' : ' · แก้ไขได้เฉพาะ เจ้าของ / ผู้จัดการ / พนักงานอาวุโส'}</p>` : ''}
+      ${!editable ? `<p class="text-xs text-[var(--ink-muted)] text-center mt-2">คลิกที่ช่องเพื่อคัดลอก${canEditCreds ? ' · กดปุ่ม "แก้ไข" ด้านบนเพื่อเปลี่ยนรหัสผ่าน' : ' · แก้ไขได้เฉพาะ เจ้าของ / ผู้จัดการ / พนักงานอาวุโส'}</p>` : ''}
     </div>`;
 
   loadCredItems(panelClientId);
@@ -5066,7 +5089,7 @@ async function loadCredItems(clientId) {
   if (clientId !== panelClientId) return; // panel switched while loading
   panelCredItemsCache = data || [];
 
-  const editable = canEditBasic() && panelOrigin === 'full';
+  const editable = canEditBasic() && panelOrigin === 'full' && credEditMode;
   if (!panelCredItemsCache.length) {
     el.innerHTML = '<div class="text-[var(--ink-muted)]">ยังไม่มีรายการเพิ่มเติม</div>';
     return;
@@ -5199,10 +5222,10 @@ async function deleteCredItem(itemId) {
 
 async function savePanelCreds() {
   if (!canEditBasic() || panelOrigin !== 'full') return;
+  const inputs = document.querySelectorAll('#panel-cred-fields input[data-key]');
+  if (!inputs.length) return; // ไม่ได้อยู่ในโหมดแก้ไข ไม่มีอะไรให้บันทึก
   const fields = { client_id: panelClientId };
-  document.querySelectorAll('#panel-cred-fields input[data-key]').forEach(inp => {
-    fields[inp.dataset.key] = inp.value;
-  });
+  inputs.forEach(inp => { fields[inp.dataset.key] = inp.value; });
   const { error } = await sb.from('crm_client_credentials').upsert(fields, { onConflict: 'client_id' });
   if (error) { showToast('บันทึกไม่สำเร็จ: ' + error.message, 'error'); return; }
   credMap[panelClientId] = fields;
@@ -5210,6 +5233,8 @@ async function savePanelCreds() {
   panelDirty = false;
   document.getElementById('panel-save-bar').classList.add('hidden');
   showToast('บันทึกสำเร็จ');
+  credEditMode = false;
+  renderPanelCreds(); // กลับสู่โหมดคัดลอกหลังบันทึกเสร็จ
 }
 
 // ── Docs Tab ──
