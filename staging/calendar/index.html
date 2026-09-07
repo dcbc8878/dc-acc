@@ -886,8 +886,19 @@ function switchMenu(name){
 }
 
 /* ========================= CALENDAR ========================= */
+// "ปฏิทินส่วนตัว" = ทุกอย่างที่มีตัวเราเกี่ยวข้อง คือนัดของตัวเอง + นัดของทีมที่เราอยู่ (ตามที่เจ้าของโปรเจกต์
+// กำหนด 2026-09-07) — เดิมกรองแค่ !e.is_team ทำให้นัดของทีมตัวเองหายไปจากมุมมองนี้ทั้งที่เป็นงานของเราด้วย
+// เจ้าของ/ผู้จัดการนับว่าอยู่ทุกทีม เพราะ loadMyTeams() ใส่ทุกทีมให้อยู่แล้ว (ตรงกับ RLS ของ cal_events)
+function isMyEvent_(e){
+  if(dataMode!=='cloud') return true;   // โหมด Local ไม่มีบัญชี/ทีม — ทุกอย่างเป็นของตัวเองอยู่แล้ว
+  if(authUser && e.user_id===authUser.id) return true;
+  if(e.is_team && e.team_id!=null && myTeams.some(t=>String(t.id)===String(e.team_id))) return true;
+  return false;
+}
 function getFilteredEvents(){
-  return events.filter(e => calFilter==='all' ? true : (calFilter==='team' ? !!e.is_team : !e.is_team));
+  if(calFilter==='all') return events;              // ทั้งหมด (เฉพาะ LV1) — ทุกแถวที่ RLS ส่งมาให้
+  if(calFilter==='team') return events.filter(e=>!!e.is_team);
+  return events.filter(isMyEvent_);
 }
 function eventsOn(iso){ return getFilteredEvents().filter(e=>e.date===iso).sort((a,b)=> (a.time||'').localeCompare(b.time||'')); }
 
