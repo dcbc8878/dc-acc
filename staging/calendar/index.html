@@ -400,7 +400,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
           <h3>📤 ส่งออก / iCal</h3>
           <div class="desc">ดาวน์โหลดปฏิทินเป็นไฟล์ .ics เปิดได้กับ Google/Outlook/Apple Calendar</div>
           <button class="btn sm" id="exportIcsBtn">ดาวน์โหลด .ics</button>
-          <div class="desc" style="margin-top:10px;">ลิงก์ iCal แบบสด (auto-sync) จะใช้งานได้เมื่อเปิดระบบ login ส่วนกลาง (Supabase) — ยังไม่เปิดใช้งานในโหมด Local ตอนนี้</div>
+          <div id="icsLinkBox" style="margin-top:12px;"></div>
         </div>
 
         <div class="card settings-card">
@@ -1837,6 +1837,8 @@ function renderSettings(){
   document.getElementById('roleTable').innerHTML =
     '<tr><th>ระดับ</th><th>คำอธิบาย</th></tr>' +
     ROLES.map(r=>`<tr><td>${r.label}</td><td class="muted">${r.desc}</td></tr>`).join('');
+  renderIcsLinkBox();
+  if(authUser && !icsTokenLoaded) loadIcsToken();   // โหลดครั้งเดียวต่อการล็อกอิน แล้วเรนเดอร์ซ้ำเอง
 }
 function saveProfile(){
   profile.name = document.getElementById('profileName').value.trim() || 'ผู้ใช้งาน';
@@ -1965,6 +1967,91 @@ function disconnectMicrosoft(){
   renderSettings();
 }
 
+/* ========================= ลิงก์ iCal แบบสด (subscribe URL) ========================= */
+// ต่างจากปุ่ม "ดาวน์โหลด .ics" ตรงที่อันนี้เป็น URL ให้ Google/Apple/Outlook มาดึงเองเรื่อยๆ ไม่ใช่ไฟล์
+// ก้อนเดียวจบ — ฝั่งเซิร์ฟเวอร์คือ Edge Function `calendar-ics` + ตาราง cal_ics_tokens (1 คน 1 token)
+let icsToken = null;        // token ปัจจุบัน (null = ยังไม่มี หรือยังไม่ได้โหลด)
+let icsTokenLoaded = false; // โหลดจากฐานข้อมูลแล้วหรือยัง (แยกจากกรณี "โหลดแล้วแต่ยังไม่มี")
+
+function icsUrlOf(tok){ return SUPABASE_URL + '/functions/v1/calendar-ics?token=' + tok; }
+
+async function loadIcsToken(){
+  if(!authUser) return;
+  try{
+    const client = await getSupabaseClient();
+    const { data, error } = await client.from('cal_ics_tokens')
+      .select('token').eq('user_id', authUser.id).maybeSingle();
+    if(error) return;   // อ่านไม่ได้ (ออฟไลน์/สิทธิ์) — ไม่ต้องแจ้ง ปล่อยให้กดสร้างเองทีหลังได้
+    icsToken = data ? data.token : null;
+    icsTokenLoaded = true;
+    renderIcsLinkBox();
+  }catch(e){ /* ออฟไลน์ */ }
+}
+
+async function createIcsLink(){
+  if(!authUser) return;
+  try{
+    const client = await getSupabaseClient();
+    // token สุ่มฝั่งฐานข้อมูล (DEFAULT ของคอลัมน์) ไม่ได้สุ่มจากเบราว์เซอร์ — ส่งไปแค่ user_id
+    const { data, error } = await client.from('cal_ics_tokens')
+      .insert({ user_id: authUser.id }).select('token').single();
+    if(error){ toast('สร้างลิงก์ไม่สำเร็จ: ' + (error.message || '')); return; }
+    icsToken = data.token; icsTokenLoaded = true;
+    renderIcsLinkBox();
+    toast('สร้างลิงก์ iCal แล้ว');
+  }catch(e){ toast('สร้างลิงก์ไม่สำเร็จ'); }
+}
+
+async function rotateIcsLink(){
+  if(!authUser || !icsToken) return;
+  if(!confirm('สร้างลิงก์ใหม่จะทำให้ลิงก์เดิมใช้ไม่ได้ทันที\nปฏิทินที่เคยเพิ่มลิงก์เดิมไว้จะหยุดอัปเดต ต้องเอาลิงก์ใหม่ไปใส่แทน\n\nยืนยันหรือไม่?')) return;
+  try{
+    const client = await getSupabaseClient();
+    const { error } = await client.from('cal_ics_tokens').delete().eq('user_id', authUser.id);
+    if(error){ toast('ยกเลิกลิงก์เดิมไม่สำเร็จ: ' + (error.message || '')); return; }
+    icsToken = null;
+    await createIcsLink();
+  }catch(e){ toast('สร้างลิงก์ใหม่ไม่สำเร็จ'); }
+}
+
+function copyIcsLink(){
+  if(!icsToken) return;
+  navigator.clipboard.writeText(icsUrlOf(icsToken))
+    .then(()=>toast('คัดลอกลิงก์แล้ว'))
+    .catch(()=>toast('คัดลอกไม่สำเร็จ — เลือกข้อความในช่องแล้วคัดลอกเอง'));
+}
+
+function renderIcsLinkBox(){
+  const box = document.getElementById('icsLinkBox');
+  if(!box) return;
+  if(!authUser){
+    box.innerHTML = '<div class="desc">ลิงก์ iCal แบบสด (ให้ Google/Apple/Outlook ดึงอัปเดตเองอัตโนมัติ) ใช้ได้เมื่อล็อกอินบัญชี CRM แล้วเท่านั้น</div>';
+    return;
+  }
+  if(!icsToken){
+    box.innerHTML = '<div class="desc">ลิงก์ iCal แบบสด — เพิ่มในปฏิทิน Google/Apple/Outlook ครั้งเดียว แล้วนัดหมายจะอัปเดตตามเองเรื่อยๆ ไม่ต้องดาวน์โหลดไฟล์ใหม่ทุกครั้ง</div>'
+      + '<button class="btn primary sm" id="icsCreateBtn" style="margin-top:8px;">สร้างลิงก์ iCal ของฉัน</button>';
+    document.getElementById('icsCreateBtn').addEventListener('click', createIcsLink);
+    return;
+  }
+  box.innerHTML =
+    '<div class="field"><label>ลิงก์ iCal ส่วนตัว (เก็บเป็นความลับ)</label>'
+    + '<input id="icsUrlInput" readonly value="' + icsUrlOf(icsToken) + '" onclick="this.select()"></div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">'
+    +   '<button class="btn primary sm" id="icsCopyBtn">คัดลอกลิงก์</button>'
+    +   '<button class="btn sm" id="icsRotateBtn">สร้างลิงก์ใหม่</button>'
+    + '</div>'
+    + '<div class="desc" style="margin-top:10px;">'
+    +   'Google ปฏิทิน: ปฏิทินอื่นๆ → <b>สมัครรับข้อมูลปฏิทิน</b> → วางลิงก์นี้<br>'
+    +   'iPhone / Mac: ปฏิทิน → ไฟล์ → <b>สมัครรับข้อมูลปฏิทิน</b> → วางลิงก์นี้<br>'
+    +   'Outlook: เพิ่มปฏิทิน → <b>สมัครใช้งานจากเว็บ</b> → วางลิงก์นี้'
+    + '</div>'
+    + '<div class="desc" style="margin-top:8px;">⚠️ ใครที่ได้ลิงก์นี้ไปจะเห็นนัดหมายของคุณได้ทั้งหมดโดยไม่ต้องล็อกอิน — ถ้าลิงก์หลุดให้กด "สร้างลิงก์ใหม่" ลิงก์เดิมจะใช้ไม่ได้ทันที<br>'
+    +   'หมายเหตุ: Google/Outlook ดึงข้อมูลใหม่เองทุกไม่กี่ชั่วโมง (บางครั้งนานถึง 24 ชม.) ไม่ได้อัปเดตทันทีที่แก้ในเว็บ</div>';
+  document.getElementById('icsCopyBtn').addEventListener('click', copyIcsLink);
+  document.getElementById('icsRotateBtn').addEventListener('click', rotateIcsLink);
+}
+
 /* ========================= CRM ACCOUNT (Supabase Auth, shared with CRM) ========================= */
 async function getSupabaseClient(){
   if(sb) return sb;
@@ -2031,6 +2118,7 @@ async function logoutCrmAccount(){
   // ยังเห็น tag ของคนก่อนหน้าค้างบนตาราง — RLS ฝั่งเซิร์ฟเวอร์ช่วยไม่ได้เพราะข้อมูลอยู่ในหน่วยความจำแล้ว
   staffCodeMap = {}; clientCodeMap = {}; clientNameMap = {};
   calActivityByDate = {}; calActivityRangeKey = ''; calActivityRequestKey = '';
+  icsToken = null; icsTokenLoaded = false;   // ลิงก์ iCal เป็นความลับส่วนตัว ห้ามค้างให้คนถัดไปเห็น
   // คืน events/tasks กลับไปเป็นชุดที่เก็บใน localStorage เดิม (ไม่เคยถูกแตะเลยระหว่างอยู่ในโหมดคลาวด์) —
   // ไม่งั้นตัวแปร events/tasks ในหน่วยความจำจะยังเป็นข้อมูลคลาวด์ของบัญชีที่เพิ่งออกจากระบบไปค้างอยู่
   dataMode = 'local';
