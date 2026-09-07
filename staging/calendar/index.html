@@ -163,7 +163,14 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
    (ไม่ลาก) บนโซนนี้ยังเปิดฟอร์มแก้ไขได้ปกติเพราะเป็นลูกของ .week-event ที่มี data-action="edit-event" อยู่แล้ว
    .closest() จากลูกจะไต่ขึ้นไปเจอกฎเดิมเอง ไม่กระทบ layout ของ .week-event เพราะ position:absolute ไม่กิน
    พื้นที่จริงในการจัดวาง (.week-event มี position:absolute อยู่แล้วจึงเป็น containing block ให้ลูกนี้ได้ทันที) */
-.week-event-resize{position:absolute;left:0;right:0;bottom:0;height:8px;cursor:ns-resize;}
+.week-event-resize{position:absolute;left:0;right:0;bottom:0;height:min(11px,40%);cursor:ns-resize;}
+/* แถบจับสีขาวเล็กๆ ตรงกลางขอบล่าง โผล่ตอนชี้เมาส์ที่กิจกรรม — เดิมโซนลากขยายมองไม่เห็นเลยว่าอยู่ตรงไหน
+   ผู้ใช้จึงจับพลาดไปโดนโซนย้ายแทนแล้วรายงานว่า "ขยายเวลาไม่ได้" (กลไกทำงานถูกอยู่แล้ว แค่หาไม่เจอ)
+   40% กันไว้สำหรับกิจกรรมสั้นๆ ไม่ให้โซนขยายกินพื้นที่จนแทบลากย้ายไม่ได้ */
+.week-event-resize::after{content:'';position:absolute;left:50%;transform:translateX(-50%);bottom:2px;
+  width:22px;height:3px;border-radius:2px;background:rgba(255,255,255,.8);opacity:0;transition:opacity .12s;}
+.week-event:hover .week-event-resize::after{opacity:1;}
+.week-event.resizing .week-event-resize::after{opacity:1;}
 .week-event.dragging{cursor:grabbing;opacity:.85;box-shadow:0 2px 8px rgba(0,0,0,.3);z-index:5;}
 .week-event.resizing{cursor:ns-resize;opacity:.85;}
 .event-pill[data-id]{cursor:grab;}
