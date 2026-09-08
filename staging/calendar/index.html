@@ -8,6 +8,8 @@
 <link rel="icon" type="image/png" sizes="192x192" href="../../icon-192.png?v=__BUILD__" />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap">
 <script src="../../theme.js?v=__BUILD__"></script>
+<!-- ช่องกรอกวันที่ dd/mm/yyyy ร่วมกันทั้งเว็บ (ดู ../../datefield.js) -->
+<script src="../../datefield.js?v=__BUILD__"></script>
 <style>
 :root{
   /* palette: warm cream + forest green — same token-generation formula reverse-engineered
@@ -784,7 +786,11 @@ function isSameDay(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth(
 // เดิมแปลง ค.ศ.→พ.ศ. (+543) — ผู้ใช้ยืนยันให้เลิกใช้ พ.ศ. ทั้งแอป (CRM เปลี่ยนไปแล้วก่อนหน้านี้)
 // คงชื่อฟังก์ชันเดิมไว้ (เรียกอยู่ 7 จุดทั่วไฟล์) แต่คืนปีที่ได้รับมาตรงๆ ไม่แปลงอีกต่อไป
 function beYear(y){ return y; }
-function thaiDateLong(d){ return d.getDate()+' '+TH_MONTHS[d.getMonth()]+' '+beYear(d.getFullYear()); }
+// ทุกจุดที่แสดง "วันที่หนึ่งวัน" ในแอปใช้ตัวนี้ตัวเดียว — รูปแบบ dd/mm/yyyy ตามที่เจ้าของระบบกำหนด
+// ให้ตรงกันทั้งเว็บ (CRM/หน้ารวม/พนักงาน ก็ dd/mm/yyyy เหมือนกัน) ส่วนหัวเรื่องที่เป็น "เดือน" ไม่ใช่
+// วันที่ (เช่น ชื่อเดือนบนปฏิทินรายเดือน) ยังใช้ชื่อเดือนภาษาไทยเหมือนเดิม เพราะไม่ใช่ค่าวันที่
+function fmtIsoDMY(iso){ const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso||'')); return m ? m[3]+'/'+m[2]+'/'+m[1] : ''; }
+function fmtDMY(d){ return pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+beYear(d.getFullYear()); }
 function holidayOn(iso){ return HOLIDAYS.find(h=>h.date===iso); }
 function timeLabel(ev){ return ev.all_day ? 'ทั้งวัน' : (ev.time||'--:--'); }
 
@@ -1042,7 +1048,7 @@ function renderCalendar(){
     body.innerHTML = renderMonthGrid();
   } else if(view==='week'){
     const s = startOfWeek(curDate), e = addDays(s,6);
-    label.textContent = s.getDate()+' '+TH_MONTHS[s.getMonth()]+' - '+e.getDate()+' '+TH_MONTHS[e.getMonth()]+' '+beYear(e.getFullYear());
+    label.textContent = fmtDMY(s)+' - '+fmtDMY(e);
     const weekKey = toISODate(s);
     // จำตำแหน่งเลื่อนเดิมไว้ก่อนแทนที่ innerHTML (การตั้ง body.innerHTML ใหม่ทำให้ .week-body กลายเป็น element
     // ใหม่ทั้งอัน scrollTop จะรีเซ็ตเป็น 0 เองโดยอัตโนมัติไม่ว่าจะตั้งใจหรือไม่) ถ้ายังอยู่สัปดาห์เดิมกับที่ render
@@ -1173,7 +1179,7 @@ function renderAgendaList(){
     if(!hol && !taxDl && dayEvents.length===0 && dayActivity.length===0) continue;
     any = true;
     const isToday = isSameDay(d, today);
-    html += `<div class="agenda-day"><h4>${TH_DAYS[d.getDay()]} ${dnum} ${TH_MONTHS[m]} ${beYear(y)} ${isToday?'<span class="badge">วันนี้</span>':''}</h4>`;
+    html += `<div class="agenda-day"><h4>${TH_DAYS[d.getDay()]} ${fmtDMY(d)} ${isToday?'<span class="badge">วันนี้</span>':''}</h4>`;
     if(hol) html += `<div class="agenda-item" style="border-color:${CATEGORIES.holiday.color}"><span class="dot" style="background:${CATEGORIES.holiday.color}"></span><span class="time">ทั้งวัน</span><span class="title">${CATEGORIES.holiday.emoji} ${hol.name}</span></div>`;
     if(taxDl) html += `<div class="agenda-item" style="border-color:#dc2626"><span class="dot" style="background:#dc2626"></span><span class="time">ทั้งวัน</span><span class="title">📋 ${taxDl.name}</span></div>`;
     dayActivity.forEach(a=>{
@@ -1700,7 +1706,7 @@ function renderInviteRowHtml_(ev, row, responded){
   const inviter = (attendeeStaffList||[]).find(s=>String(s.id)===String(row.invited_by));
   const inviterLabel = inviter ? inviter.display_name : 'ไม่ทราบชื่อผู้เชิญ';
   const d = parseISODate(ev.date);
-  const dateLabel = TH_DAYS[d.getDay()] + ' ' + d.getDate() + ' ' + TH_MONTHS[d.getMonth()] + ' ' + beYear(d.getFullYear());
+  const dateLabel = TH_DAYS[d.getDay()] + ' ' + fmtDMY(d);
   const cat = catOf(ev.category);
   const metaBits = [dateLabel, timeLabel(ev)];
   if(ev.client) metaBits.push(ev.client);
@@ -2084,7 +2090,7 @@ function renderTasks(){
           <div class="tmeta">
             <span class="pill" style="background:${prioOf(t.priority).color}22;color:${prioOf(t.priority).color}">${prioOf(t.priority).label}</span>
             <span>${TASK_CATEGORY[t.category]||''}</span>
-            ${t.due_date?`<span>📅 ${t.due_date.slice(5)}${overdue?' (เลยกำหนด)':''}</span>`:''}
+            ${t.due_date?`<span>📅 ${fmtIsoDMY(t.due_date)}${overdue?' (เลยกำหนด)':''}</span>`:''}
           </div>
           <div class="tmove">
             ${status!=='todo'?`<button type="button" class="btn sm" data-action="move-task" data-id="${t.id}" data-to="${status==='done'?'in_progress':'todo'}">◀</button>`:''}
@@ -2252,7 +2258,7 @@ function renderActivityLog(){
   body.innerHTML = days.map(d=>{
     const dt = parseISODate(d);
     const isToday = d===todayIso;
-    return `<div class="agenda-day"><h4>${TH_DAYS[dt.getDay()]} ${dt.getDate()} ${TH_MONTHS[dt.getMonth()]} ${beYear(dt.getFullYear())} ${isToday?'<span class="badge">วันนี้</span>':''}</h4>
+    return `<div class="agenda-day"><h4>${TH_DAYS[dt.getDay()]} ${fmtDMY(dt)} ${isToday?'<span class="badge">วันนี้</span>':''}</h4>
       ${groups[d].map(e=>{
         const cat = CATEGORIES[e.category] || CATEGORIES.other;
         const t = new Date(e.completed_at);
@@ -2552,7 +2558,7 @@ async function renderDailyActivity(){
   const body = document.getElementById('dailyActivityBody');
   const todayIso = toISODate(new Date());
   const selIso = toISODate(dailyActivityDate);
-  document.getElementById('daPeriodLabel').textContent = thaiDateLong(dailyActivityDate) + (selIso===todayIso ? ' · วันนี้' : '');
+  document.getElementById('daPeriodLabel').textContent = fmtDMY(dailyActivityDate) + (selIso===todayIso ? ' · วันนี้' : '');
   if(!authUser){
     body.innerHTML = '<div class="agenda-empty">ต้องเข้าสู่ระบบด้วยบัญชี CRM จึงจะดูหน้านี้ได้</div>';
     return;

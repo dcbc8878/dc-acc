@@ -3,6 +3,8 @@
 <link rel="icon" type="image/png" sizes="32x32" href="../../favicon-32.png?v=__BUILD__" />
 <link rel="icon" type="image/png" sizes="192x192" href="../../icon-192.png?v=__BUILD__" />
 <script src="../../theme.js?v=__BUILD__"></script>
+<!-- ช่องกรอกวันที่ dd/mm/yyyy ร่วมกันทั้งเว็บ (ดู ../../datefield.js) -->
+<script src="../../datefield.js?v=__BUILD__"></script>
 <style>
   @font-face {
     font-family: 'Sarabun Now';
@@ -270,7 +272,6 @@ const ROLE_LABEL = { owner:'เจ้าของ (LV1)', manager:'ผู้จ�
 const ROLE_ORDER = ['owner','manager','senior','junior','parttime'];
 const ROLE_LEVEL = { owner:1, manager:2, senior:3, junior:4, parttime:5 };
 const PREFIX_OPTIONS = ['นาย','นาง','นางสาว'];
-const SVC_MONTHS_SHORT = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 
 let profile = null;          // แถว org_staff ของคนที่ล็อกอินอยู่จริง (มาแทน currentViewerEmployeeId เดิม)
 let staffList = [];          // org_staff ทั้งหมดที่ RLS ยอมให้เห็น (เห็นแค่ is_active=true ถ้าไม่ใช่ owner)
@@ -362,7 +363,9 @@ function fmtServiceDate(input) {
     if (isNaN(dt.getTime())) return '—';
     y = dt.getFullYear(); mIdx = dt.getMonth(); d = dt.getDate();
   }
-  return `${d} ${SVC_MONTHS_SHORT[mIdx]} ${y}`;
+  // dd/mm/yyyy ให้ตรงกับทุกหน้าในเว็บ (เจ้าของระบบกำหนด)
+  const p2 = n => String(n).padStart(2, '0');
+  return `${p2(d)}/${p2(mIdx + 1)}/${y}`;
 }
 // วันเริ่มงาน: ใช้ start_date จริงถ้ามี (เพิ่มเข้ามาใหม่ — org_staff.start_date) ถ้ายังไม่เคยกรอก (พนักงาน
 // เก่าก่อนมีฟีเจอร์นี้ทุกคน) fallback ไปโชว์วันที่สร้างบัญชีแทนแบบที่คอลัมน์นี้เคยทำมาก่อน แต่ทำให้จางลง
@@ -402,6 +405,9 @@ function isValidThaiTaxId_(v) {
 // ตรงๆ) เพราะ window.parent จะชี้กลับมาที่ตัวเอง กลายเป็นส่งข้อความหาตัวเองเฉยๆ ไม่มีใครฟังก็ไม่มีผลอะไร
 function openGenModal(html, opts) {
   document.getElementById('genModalBox').innerHTML = html;
+  // ช่อง <input type="date"> ในโมดัลถูกสร้างสดทุกครั้ง (innerHTML) จึงต้องเรียกต่อช่อง dd/mm/yyyy
+  // ให้เองที่นี่ ตัวไฟล์ datefield.js เองต่อให้อัตโนมัติเฉพาะช่องที่มีอยู่ตอนโหลดหน้าเท่านั้น
+  if (window.DCDate) DCDate.enhance(document.getElementById('genModalBox'));
   document.getElementById('genModalBox').style.maxWidth = (opts && opts.maxWidth) || '';
   document.getElementById('genModalOverlay').classList.add('show');
   window.parent.postMessage({ type: 'dcacc-overlay', open: true }, location.origin);
