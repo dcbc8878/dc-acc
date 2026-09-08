@@ -6357,6 +6357,15 @@ async function saveNewClient() {
     ncErr.classList.remove('hidden'); return;
   }
 
+  // เลข NO(#) เป็นลำดับเดียวรวมทุกประเภท (M/Y/T/Z) ห้ามซ้ำกันข้ามประเภท — เช็คกับรายชื่อที่โหลดอยู่ก่อน
+  // เพื่อให้ได้ข้อความที่บอกได้ว่าชนกับลูกค้ารายไหน (ตัวกันจริงคือ unique index ฝั่งฐานข้อมูล ซึ่งครอบคลุม
+  // ลูกค้าเก่าที่ยังไม่ได้โหลดเข้าหน่วยความจำด้วย — ดูการแปลง error ด้านล่าง)
+  const seqClash = clients.find(c => !c.is_own_company && Number(c.seq_num) === Math.max(1, Math.min(999, seqVal)));
+  if (seqClash) {
+    ncErr.textContent = `ลำดับที่ ${seqVal} ถูกใช้แล้วโดย ${seqClash.thai_name} (${computeClientNo(seqClash.billing_type, seqClash.seq_num)}) — กรุณาใช้เลขอื่น`;
+    ncErr.classList.remove('hidden'); return;
+  }
+
   const seqCode      = ctypeVal + String(Math.max(1, Math.min(999, seqVal))).padStart(3,'0');
   const codeRaw      = (document.getElementById('nc-code')?.value || '').trim().toUpperCase();
   const code         = codeRaw || seqCode;
@@ -6383,7 +6392,16 @@ async function saveNewClient() {
   };
 
   const { data, error } = await sb.from('crm_clients').insert(payload).select().single();
-  if (error) { ncErr.textContent = error.message; ncErr.classList.remove('hidden'); return; }
+  if (error) {
+    // แปลงข้อความ error ดิบของฐานข้อมูลเป็นภาษาที่ผู้ใช้เข้าใจ — ฐานข้อมูลมีตัวกันซ้ำ 2 ตัว:
+    // crm_clients_seq_num_key (เลข #) และ crm_clients_code_key (CODE)
+    const raw = String(error.message || '');
+    ncErr.textContent =
+      raw.includes('crm_clients_seq_num_key') ? `ลำดับที่ ${seqVal} ถูกใช้ไปแล้ว (อาจเป็นลูกค้าเก่าที่ยังไม่ได้แสดงในหน้านี้) — กรุณาใช้เลขอื่น`
+      : raw.includes('crm_clients_code_key')  ? `CODE "${code}" ถูกใช้ไปแล้ว — กรุณาใช้ CODE อื่น`
+      : raw;
+    ncErr.classList.remove('hidden'); return;
+  }
 
   clients.push(data);
   clients.sort((a,b) => a.code.localeCompare(b.code));
