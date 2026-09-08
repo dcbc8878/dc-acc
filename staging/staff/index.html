@@ -730,7 +730,7 @@ async function saveEmployee(employeeId) {
     // ── เพิ่มพนักงานใหม่ผ่าน Edge Function (LV1-3) ──
     if (!canCreateStaff()) { showToast('ไม่มีสิทธิ์เพิ่มพนักงาน', 'error'); return; }
     const display_name = document.getElementById('emp-name').value.trim();
-    const username = document.getElementById('emp-username').value.trim();
+    const username = normalizeUsername_(document.getElementById('emp-username').value);
     const roleVal = document.getElementById('emp-role').value;
     if (!display_name) { errEl.textContent = 'กรุณากรอกชื่อ-นามสกุล'; errEl.style.display = 'block'; return; }
     if (!username) { errEl.textContent = 'กรุณากรอกชื่อผู้ใช้'; errEl.style.display = 'block'; return; }
@@ -748,7 +748,7 @@ async function saveEmployee(employeeId) {
     closeGenModal();
     await loadStaff();
     renderEmployees();
-    showToast(`เพิ่มพนักงานใหม่แล้ว (รหัสผ่านเริ่มต้น: ${data.default_password}) — เปิด "แก้ไข" เพื่อกำหนดรหัสพนักงาน/ชื่อเล่นภายหลังได้`);
+    showToast(`เพิ่มพนักงานใหม่แล้ว (ชื่อผู้ใช้: ${data.username} · รหัสผ่านเริ่มต้น: ${data.default_password}) — เปิด "แก้ไข" เพื่อกำหนดรหัสพนักงาน/ชื่อเล่นภายหลังได้`);
   }
 }
 async function resetStaffPassword(staffId) {
@@ -1177,6 +1177,12 @@ function suggestStaffCode() {
   const next = (nums.length ? Math.max(...nums) : 0) + 1;
   return 'E' + String(next).padStart(3, '0');
 }
+function normalizeUsername_(raw) {
+  // ชื่อผู้ใช้ = ส่วนหน้าเครื่องหมาย @ เสมอ — ถ้าพิมพ์อีเมลเต็ม (เช่น somchai@dcbc.co.th)
+  // ให้เหลือ somchai ไม่ใช่ลบ @ ทิ้งจนกลายเป็น somchaidcbc.co.th (ตัวสุดท้ายคือสิ่งที่
+  // Edge Function ทำถ้าไม่ตัดมาก่อน ทำให้ได้ชื่อผู้ใช้ที่เจ้าตัวเดาไม่ถูกและเข้าสู่ระบบไม่ได้)
+  return String(raw || '').trim().toLowerCase().split('@')[0].replace(/[^a-z0-9._-]/g, '');
+}
 function suggestStaffUsername(firstName, personalEmail) {
   const fromName = String(firstName || '').trim().toLowerCase().replace(/[^a-z0-9._-]/g, '');
   if (fromName) return fromName;
@@ -1246,7 +1252,7 @@ async function approveRequest(reqId) {
   if (!r) return;
   const empCode = document.getElementById('req-empcode').value.trim().toUpperCase();
   const roleVal = document.getElementById('req-role').value;
-  const username = document.getElementById('req-username').value.trim();
+  const username = normalizeUsername_(document.getElementById('req-username').value);
   const errEl = document.getElementById('req-approve-err');
   errEl.style.display = 'none';
   if (!empCode) { errEl.textContent = 'กรุณากำหนดรหัสพนักงาน'; errEl.style.display = 'block'; return; }
@@ -1266,7 +1272,7 @@ async function approveRequest(reqId) {
   }
 
   await Promise.all([loadStaffRequests(), loadStaff()]);
-  showToast(`อนุมัติแล้ว สร้างพนักงานใหม่เรียบร้อย (รหัสผ่านเริ่มต้น: ${data.default_password})`);
+  showToast(`อนุมัติแล้ว สร้างพนักงานใหม่เรียบร้อย (ชื่อผู้ใช้: ${data.username} · รหัสผ่านเริ่มต้น: ${data.default_password})`);
   openReviewRequestModal(reqId);
   renderEmployeeRequests();
 }

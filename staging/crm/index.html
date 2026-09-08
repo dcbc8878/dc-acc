@@ -7270,11 +7270,16 @@ async function renderOwnProfile() {
     ? email.slice(0, -'@staff.dcbc.co.th'.length) : email;
 }
 
+function normalizeUsername_(raw) {
+  // ชื่อผู้ใช้ = ส่วนหน้าเครื่องหมาย @ เสมอ — พิมพ์อีเมลเต็ม (เช่น somchai@dcbc.co.th) ก็เหลือ somchai
+  // ไม่ใช่ลบ @ ทิ้งจนกลายเป็น somchaidcbc.co.th ซึ่งเจ้าตัวเดาไม่ถูกและเข้าสู่ระบบไม่ได้
+  return String(raw || '').trim().toLowerCase().split('@')[0].replace(/[^a-z0-9._-]/g, '');
+}
 async function saveOwnProfile() {
   const name = document.getElementById('prof-name').value.trim();
   const nickname = document.getElementById('prof-nickname').value.trim();
   const birthdate = document.getElementById('prof-birthdate').value;
-  const username = document.getElementById('prof-username').value.trim();
+  const username = normalizeUsername_(document.getElementById('prof-username').value);
   const errEl = document.getElementById('prof-err');
   errEl.classList.add('hidden');
   if (!name) { errEl.textContent = 'กรุณากรอกชื่อ-นามสกุล'; errEl.classList.remove('hidden'); return; }
@@ -7298,6 +7303,8 @@ async function saveOwnProfile() {
   profile.display_name = name;
   profile.nickname = nickname;
   profile.birthdate = birthdate || null;
+  const uEl = document.getElementById('prof-username');
+  if (uEl) uEl.value = username; // สะท้อนชื่อผู้ใช้ที่บันทึกจริง (เผื่อถูกตัดส่วนหลัง @ ออก)
   showToast('บันทึกข้อมูลส่วนตัวสำเร็จ');
 }
 
