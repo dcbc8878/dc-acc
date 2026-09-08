@@ -3517,6 +3517,10 @@ function openEditDissolutionDate(clientId) {
     </div>`);
 }
 async function saveDissolutionDate(clientId) {
+  // ด่านของตัวเอง ไม่พึ่งว่า openEditDissolutionDate เช็คมาแล้ว (เรียกตรงจาก console ได้ ข้ามฟอร์มที่
+  // ซ่อนไว้แล้ว) แพทเทิร์นเดียวกับจุดเขียน DB อื่นในไฟล์นี้ — เกณฑ์เดียวกับ openEditDissolutionDate/
+  // toggleDissolutionField เป๊ะ (canEdit) พบว่าเดิมฟังก์ชันนี้ไม่มีด่านของตัวเองเลย (บั๊กพบ 2026-09-08)
+  if (!canEdit()) return;
   const c = clients.find(x => x.id === clientId);
   if (!c) return;
   const val = (document.getElementById('dd-date')?.value || '').trim() || null;
@@ -3854,7 +3858,7 @@ async function openPanel(clientId) {
   document.getElementById('tab-btn-docs').classList.toggle('hidden', isLimited);
   document.getElementById('panel-deactivate-btn').classList.toggle('hidden', !isOwner() || isLimited);
 
-  switchTab('info');
+  switchTab('info', true); // force: panelTab was already set to 'info' above, so this must always render (see switchTab's force param)
 }
 
 function closePanel() {
@@ -3866,6 +3870,12 @@ function closePanel() {
 }
 
 function confirmDeactivateClient() {
+  // ด่านของตัวเอง — เกณฑ์เดียวกับปุ่ม "ลบ" ที่ซ่อนไว้แล้ว (panel-deactivate-btn, ดู openPanel:
+  // !isOwner() || isLimited) เดิมทั้ง 4 ฟังก์ชันของขั้นตอนปิดใช้งาน/ลบถาวรลูกค้า (จุดนี้,
+  // confirmHardDeleteClient, doDeactivateClient, doHardDeleteClient) ไม่มีด่านของตัวเองเลยสักจุด
+  // เรียกตรงจาก console ข้ามปุ่มที่ซ่อนไว้ได้ (บั๊กพบ 2026-09-08) — เป็นการดำเนินการทำลายข้อมูลมากที่สุด
+  // ในไฟล์นี้ จึงใส่ด่านให้ครบทั้ง 4 จุดตามแพทเทิร์นเดียวกับจุดอื่นทั้งไฟล์
+  if (!isOwner()) return;
   const c = clients.find(x => x.id === panelClientId);
   if (!c) return;
   openModal(`
@@ -3889,6 +3899,8 @@ function confirmDeactivateClient() {
 }
 
 function confirmHardDeleteClient() {
+  // ด่านของตัวเอง — ดูคอมเมนต์ที่ confirmDeactivateClient ด้านบน (เกณฑ์เดียวกัน isOwner())
+  if (!isOwner()) return;
   const c = clients.find(x => x.id === panelClientId);
   if (!c) return;
   openModal(`
@@ -3904,6 +3916,8 @@ function confirmHardDeleteClient() {
 }
 
 async function doDeactivateClient() {
+  // ด่านของตัวเอง — ดูคอมเมนต์ที่ confirmDeactivateClient ด้านบน (เกณฑ์เดียวกัน isOwner())
+  if (!isOwner()) return;
   closeModal();
   const id = panelClientId;
   const c = clients.find(x => x.id === id);
@@ -3917,6 +3931,9 @@ async function doDeactivateClient() {
 }
 
 async function doHardDeleteClient(expectedCode) {
+  // ด่านของตัวเอง — ดูคอมเมนต์ที่ confirmDeactivateClient ด้านบน (เกณฑ์เดียวกัน isOwner()) เช็คก่อน
+  // เช็ครหัสยืนยันด้วย กันเปิด confirm-code prompt ให้คนที่จะถูกปฏิเสธอยู่แล้วเปล่าๆ
+  if (!isOwner()) return;
   const typed = document.getElementById('delete-confirm-code')?.value.trim();
   if (typed !== expectedCode) { showToast('รหัสลูกค้าไม่ถูกต้อง', 'error'); return; }
   closeModal();
@@ -3975,7 +3992,17 @@ async function deleteBillingContract(contractId) {
   loadBillingContracts(panelClientId);
 }
 
-function switchTab(tab) {
+// force=true = "really re-render this tab even if it's already the active one" — used by openPanel()
+// (which pre-sets panelTab before calling switchTab('info', true) so the info pane actually renders on
+// first open) and discardPanelEdits() (the "ยกเลิก" Cancel button, which must force a same-tab refresh to
+// wipe unsaved DOM edits, without asking for confirmation again since clicking Cancel already IS the
+// user's consent to discard). Without this flag, re-clicking the tab button you're already viewing (e.g.
+// the "รหัสผ่าน" tab while credEditMode + unsaved edits are active) fell all the way to the unconditional
+// reset below WITHOUT ever calling confirmDiscardIfDirty() first — because that check only fires when
+// `tab !== panelTab`, but the reset itself (credEditMode=false, panelDirty=false, re-render from source
+// data) always ran regardless — silently discarding whatever was mid-edit. Bug found + fixed 2026-09-08.
+function switchTab(tab, force) {
+  if (!force && tab === panelTab) return; // already on this tab and not a forced refresh — no-op, don't touch any state
   if (tab !== panelTab && !confirmDiscardIfDirty()) return;
   panelTab = tab;
   credEditMode = false; // เข้าแท็บรหัสผ่านครั้งใหม่ เริ่มที่โหมดคัดลอกเสมอ
@@ -4582,6 +4609,10 @@ function openEditFee(clientId) {
 }
 
 async function saveEditFee(clientId) {
+  // ด่านของตัวเอง — เกณฑ์เดียวกับ openEditFee ที่เปิดฟอร์มนี้ (canEdit) เดิมฟังก์ชันนี้ (ตัวเขียนจริงที่
+  // เรียก applyFeeChangeCore_) ไม่มีด่านของตัวเองเลย พึ่งแค่ปุ่ม "บันทึก" ที่ถูกซ่อนอยู่ในฟอร์มที่เปิดจาก
+  // openEditFee (ซึ่งมีด่าน) — เรียกตรงจาก console ข้ามฟอร์มได้ (บั๊กพบ 2026-09-08)
+  if (!canEdit()) return;
   const amount = parseFloat(document.getElementById('ef-amount')?.value);
   // ef-month มาจาก <input type="month"> ค่า "YYYY-MM" เสมอ — แปลงเป็นวันที่ 1 ของเดือนนั้นก่อนส่งเข้า
   // applyFeeChangeCore_() (resolveEffectiveFee() เทียบช่วงเวลาเป็นราย "เดือน" อยู่แล้ว ดู monthFirstStr/
@@ -4703,6 +4734,9 @@ async function applyTypeChangeCore_(clientId, newType, effectiveDate) {
 }
 
 async function saveEditType(clientId) {
+  // ด่านของตัวเอง — เกณฑ์เดียวกับ openEditType ที่เปิดฟอร์มนี้ (canEdit) แพทเทิร์นเดียวกับ saveEditFee
+  // ด้านบน (บั๊กพบ 2026-09-08)
+  if (!canEdit()) return;
   const c = clients.find(x => x.id === clientId);
   if (!c) return;
   const newType = document.getElementById('et-type')?.value;
@@ -5647,7 +5681,7 @@ function dpClear() {
 function discardPanelEdits() {
   panelDirty = false;
   document.getElementById('panel-save-bar').classList.add('hidden');
-  switchTab(panelTab);
+  switchTab(panelTab, true); // force: same tab on purpose (this IS the "discard edits" action, see switchTab's force param)
 }
 async function savePanelEdits() {
   if (panelTab === 'info')  await savePanelInfo();
@@ -5661,6 +5695,10 @@ async function savePanelEdits() {
 // สองหน้านี้มีเดือนที่กำลังดูอิสระจากกัน) เขียนกลับเข้า invoiceMap/finInvoiceMap เฉพาะตัวที่ปี/เดือนตรงกับ
 // ที่หน้านั้นกำลังแสดงอยู่จริง แบบเดียวกับ markInvoicePaidCore_ ไม่มี logic สร้างใบแจ้งหนี้แยกกันสองชุด
 function openBatchInvoice(year, month) {
+  // ด่านของตัวเอง — เกณฑ์เดียวกับปุ่ม "สร้างใบแจ้งหนี้" ที่ซ่อนไว้แล้ว (fin-create-invoices-btn แสดง
+  // เฉพาะ canEdit() ดู init()) เดิมทั้งฟังก์ชันนี้และ createBatchInvoices ไม่มีด่านของตัวเองเลย
+  // เรียกตรงจาก console ข้ามปุ่มที่ซ่อนไว้ได้ (บั๊กพบ 2026-09-08)
+  if (!canEdit()) return;
   const thMonthYear = `${THAI_MONTHS[month]} ${year}`;
   const biMonthFirstStr = `${year}-${String(month).padStart(2,'0')}-01`;
   const biMonthLastStr = `${year}-${String(month).padStart(2,'0')}-${String(new Date(year, month, 0).getDate()).padStart(2,'0')}`;
@@ -5719,6 +5757,8 @@ function openBatchInvoice(year, month) {
 }
 
 async function createBatchInvoices(year, month) {
+  // ด่านของตัวเอง — ดูคอมเมนต์ที่ openBatchInvoice ด้านบน (เกณฑ์เดียวกัน canEdit())
+  if (!canEdit()) return;
   const selected = [...document.querySelectorAll('.batch-chk:checked')].map(el => parseInt(el.dataset.cid));
   if (!selected.length) {
     document.getElementById('batch-err').textContent = 'กรุณาเลือกลูกค้าอย่างน้อย 1 ราย';
@@ -6453,6 +6493,11 @@ function renderStaffList() {
   el.innerHTML = rows.length ? rows.map(staffRowHtml).join('') : '<div class="text-xs text-[var(--ink-muted)] py-6 text-center">ยังไม่มีพนักงาน</div>';
 }
 async function resetStaffPassword(staffId) {
+  // ด่านของตัวเอง — เกณฑ์เดียวกับปุ่ม "รีเซ็ทรหัสผ่าน" ที่ซ่อนไว้แล้ว (staffRowHtml: canManageStaffAuth()
+  // && s.is_active && s.id !== profile.id) เดิมฟังก์ชันนี้ไม่มีด่านของตัวเองเลย เรียกตรงจาก console ข้าม
+  // ปุ่มที่ซ่อนไว้ได้ (Edge Function ฝั่งเซิร์ฟเวอร์กันไว้อีกชั้นอยู่แล้ว ไม่ใช่ช่องโหว่จริง แต่ผิดแพทเทิร์น
+  // เดียวกับจุดอื่นทั้งไฟล์ — บั๊กพบ 2026-09-08) เช็คก่อน confirm() กันเปิด dialog ให้คนที่จะถูกปฏิเสธอยู่แล้ว
+  if (!canManageStaffAuth()) return;
   if (!confirm('รีเซ็ทรหัสผ่านพนักงานคนนี้กลับเป็นค่าเริ่มต้นหรือไม่? (พนักงานต้องตั้งรหัสผ่านใหม่ตอนเข้าสู่ระบบครั้งถัดไป)')) return;
   const { data, error } = await sb.functions.invoke(ADMIN_STAFF_FN, { body: { action: 'reset', staff_id: staffId } });
   if (error || data?.error) { showToast(data?.error || await invokeErrorMessage(error) || 'รีเซ็ทไม่สำเร็จ', 'error'); return; }

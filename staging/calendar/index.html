@@ -978,7 +978,22 @@ function renderCalendar(){
   // ระหว่างที่ผู้ใช้กำลังลากกิจกรรมอยู่ ห้ามวาดใหม่ทับเด็ดขาด — การวาดใหม่จะลบ element ที่กำลังลากทิ้ง ทำให้การ
   // ลากตายกลางคันแบบเงียบๆ (เจอจริง: การโหลดแท็กกิจกรรมแบบ async สั่งวาดใหม่เองตอนโหลดเสร็จ ถ้าจังหวะตรงกับ
   // ที่ผู้ใช้เพิ่งเริ่มลาก กิจกรรมจะไม่ถูกย้ายเลยและไม่มีข้อความบอกอะไรทั้งสิ้น) — ค้างไว้แล้ววาดตอนลากจบแทน
-  if(dragCtl && dragCtl.moved){ calRenderPending = true; return; }
+  //
+  // เช็คแค่ dragCtl เฉยๆ (ไม่เช็ค .moved ด้วย) โดยตั้งใจ — เดิมเช็ค "dragCtl && dragCtl.moved" ซึ่งพลาดช่วงสั้นๆ
+  // ระหว่างเพิ่งกดปุ่มเมาส์ค้างไว้ (pointerdown) แต่ยังลากไม่เกิน 4px (DRAG_THRESHOLD_PX ยังไม่ยืนยันว่าเป็นการ
+  // ลากจริง — dragCtl มีอยู่แล้วแต่ .moved ยังเป็น false): ถ้ามีอะไรมาเรียก renderCalendar() ตรงจังหวะนี้พอดี
+  // (เช่น loadCalendarActivityRange โหลดเสร็จ) โค้ดเดิมปล่อยให้วาดใหม่ทับไปเลย ซึ่งทำให้ dragCtl.el (อ้างอิงอยู่)
+  // กลายเป็น element เก่าที่หลุดจาก DOM (browser ปล่อย pointer capture ทิ้งเงียบๆ เหมือนตอน appendChild ข้าม
+  // คอลัมน์) แล้วถ้าผู้ใช้ลากต่อจนเกิน threshold โค้ดใน dragWeekMove_/dragCellHover_ จะ appendChild เอา element
+  // เก่าที่หลุดไปแล้วนี้กลับเข้า DOM ให้เอง (กลไกเดิมที่มีอยู่แล้วสำหรับข้ามคอลัมน์) แต่ผลคือมี "กิจกรรมซ้อนกัน 2
+  // ชิ้น" ระหว่างลาก (ชิ้นนิ่งที่ตำแหน่งเดิมจากการ render ใหม่ + ชิ้นเก่าที่ลากตามเมาส์อยู่) จนกว่าจะปล่อยเมาส์
+  // (พิสูจน์แล้วด้วยเทสจำลอง pointerdown แล้วเรียก renderCalendar() ก่อนขยับเกิน threshold: querySelectorAll
+  // เจอ 2 node สำหรับ data-id เดียวกันจริง) — ผู้ใช้ทั่วไปแทบไม่มีทางกดค้างไว้นิ่งๆ นานพอให้เจอเองได้ (โดยปกติ
+  // ขยับเกิน 4px ภายในเสี้ยววินาทีเดียวกับ pointerdown) แต่แก้ให้ครอบคลุมไปด้วยเลยเพราะ dragPointerUp_/
+  // dragPointerCancel_ (ดูด้านล่าง) ก็เขียนรองรับ "flush calRenderPending ตอนจบแม้ .moved เป็น false" ไว้อยู่
+  // แล้วอย่างสมบูรณ์ (ค่าเริ่มต้น false ก่อนกดยังไม่เกิน threshold ก็ยังถูกจับที่นั่น) จุดเดียวที่ขาดคือ guard
+  // ตรงนี้เช็คแคบไปเฉยๆ ไม่ใช่ต้องเขียน logic ใหม่เพิ่ม
+  if(dragCtl){ calRenderPending = true; return; }
   calRenderPending = false;
   ensureCalendarActivityLoaded();
   enforceFilterAccess();
