@@ -5340,27 +5340,33 @@ function renderPanelDocsContent() {
 
 function panelBankFieldInput(el) {
   panelBankAccounts[+el.dataset.bankIdx][el.dataset.field] = el.value;
+  markDirtyQuiet_();
 }
 function panelAddBankRow() {
+  markDirtyQuiet_();
   panelBankAccounts.push({ id: null, bank_name: '', account_no: '' });
   renderPanelDocsContent();
   const inputs = document.querySelectorAll('#panel-bank-rows input[data-field="bank_name"]');
   inputs[inputs.length - 1]?.focus();
 }
 function panelRemoveBankRow(idx) {
+  markDirtyQuiet_();
   panelBankAccounts.splice(idx, 1);
   renderPanelDocsContent();
 }
 function panelDocItemInput(el) {
   panelDocItems[+el.dataset.docIdx] = el.value;
+  markDirtyQuiet_();
 }
 function panelAddDocRow() {
+  markDirtyQuiet_();
   panelDocItems.push('');
   renderPanelDocsContent();
   const inputs = document.querySelectorAll('#panel-doc-rows input');
   inputs[inputs.length - 1]?.focus();
 }
 function panelRemoveDocRow(idx) {
+  markDirtyQuiet_();
   panelDocItems.splice(idx, 1);
   renderPanelDocsContent();
 }
@@ -5392,6 +5398,7 @@ async function savePanelDocs() {
   const c = clients.find(x => x.id === clientId);
   if (c) c.doc_item_templates = docItemsClean.join(',');
   await logActivity('client_docs_update', 'client', clientId, `แก้ไขบัญชีธนาคาร/รายการเอกสาร: ${c?.thai_name || ''}`);
+  panelDirty = false;   // บันทึกแล้ว ไม่ต้องเตือนว่ามีข้อมูลค้างอีก
   showToast('บันทึกสำเร็จ');
   if (clientId === panelClientId) renderPanelDocs();
 }
@@ -5486,6 +5493,11 @@ function markDirty() {
     document.getElementById('panel-save-bar').classList.remove('hidden');
   }
 }
+// เหมือน markDirty() แต่ไม่โชว์แถบบันทึกร่วมด้านล่าง — ใช้กับแท็บ "เอกสาร" ซึ่งมีปุ่ม "บันทึก" ของตัวเอง
+// แสดงอยู่ตลอดอยู่แล้ว (ถ้าโชว์แถบร่วมด้วยจะมีปุ่มบันทึก 2 อันในหน้าเดียวกัน สับสน) — ตั้งธงไว้เฉยๆ เพื่อให้
+// confirmDiscardIfDirty() เตือนตอนสลับแท็บ/ปิดแผง/เปลี่ยนลูกค้า เหมือนแท็บอื่น (เดิมแท็บนี้ไม่เตือนเลย
+// พิมพ์แก้บัญชีธนาคารค้างไว้แล้วสลับแท็บ ข้อมูลหายเงียบๆ)
+function markDirtyQuiet_() { panelDirty = true; }
 function syncFiscalYearEnd() {
   const d = document.getElementById('fye-day').value.padStart(2,'0');
   const m = document.getElementById('fye-month').value.padStart(2,'0');
