@@ -205,7 +205,9 @@
     disp.type = 'text';
     disp.setAttribute('inputmode', 'numeric');
     disp.setAttribute('autocomplete', 'off');
-    disp.placeholder = native.getAttribute('placeholder') || 'dd/mm/yyyy';
+    // ข้อความจางในช่องว่างใช้ภาษาไทย "วว/ดด/ปปปป" ให้ตรงกับช่องวันที่เดิมของ CRM ทุกช่อง
+    // (รูปแบบที่กรอกจริงคือ dd/mm/yyyy เหมือนกัน ต่างแค่คำที่แสดงให้ผู้ใช้อ่าน)
+    disp.placeholder = native.getAttribute('placeholder') || 'วว/ดด/ปปปป';
     disp.maxLength = 10;
     if (native.className) disp.className = native.className;
     var st = native.getAttribute('style');
