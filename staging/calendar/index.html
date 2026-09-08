@@ -74,6 +74,12 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
 /* .active ใช้ --accent-2 (เขียวเข้ม) เป็นพื้น ไม่ได้ผูกกับ --sidebar-* เลย ยังเข้มเหมือนเดิมทั้ง 2 ธีม
    ตัวหนังสือขาว #fff จึงยังอ่านออกปกติ ไม่ต้องแก้ */
 .menu button.active{background:var(--accent-2);color:#fff;}
+/* ป้ายตัวเลขจำนวนคำเชิญค้าง (menu-invites, ดู refreshInviteBadge_) — เป็น flex item ตัวที่ 3 ของปุ่มเมนู
+   (ico/label/badge) ต่อจาก gap:8px เดิมของ .menu button เองอยู่แล้ว ไม่ต้อง position:absolute — สีแดงคงที่ล้วน
+   (ไม่ผูกกับ --danger ของธีม) เพราะ --danger โหมดมืดของไฟล์นี้ (#f87171) วัดคอนทราสต์กับตัวหนังสือขาวได้แค่
+   2.77:1 (ไม่ผ่าน 4.5:1) ส่วน #dc2626+ขาวนี้วัดได้ 4.83:1 ผ่านเกณฑ์ และไม่ขึ้นกับธีมของแอพเลยเพราะแบดจ์แจ้งเตือน
+   สีแดงเป็นสีที่มีความหมายสากล ไม่ใช่สีแบรนด์ */
+.menu-badge{background:#dc2626;color:#fff;border-radius:99px;font-size:11px;font-weight:700;line-height:1;padding:3px 7px;}
 .sidebar-footer{display:flex;flex-direction:row;gap:8px;flex:none;}
 .sidebar-footer button{background:var(--sidebar-active);border:none;color:var(--sidebar-text);padding:9px 10px;border-radius:8px;font-size:13px;}
 /* เหตุผลเดียวกับ .menu button:hover ด้านบน — พื้นกลายเป็นสว่างแล้ว ต้องใช้ตัวหนังสือเข้ม */
@@ -260,6 +266,17 @@ body.cal-resize-active{cursor:ns-resize !important;}
 .rsvp-buttons{display:flex;gap:8px;margin-bottom:6px;}
 .rsvp-buttons .btn.active-rsvp{outline:2px solid var(--accent);outline-offset:-1px;}
 
+/* หน้า "คำเชิญ" (view-invites, ดูส่วน ATTENDEES ในสคริปต์ท้ายไฟล์) — รายการนัดที่ authUser ถูกเชิญ ไม่ใช้
+   .agenda-item เดิมเพราะเนื้อหาต่อแถวมีหลายบรรทัด (ชื่อกิจกรรม/วันที่/ผู้เชิญ) ต่าง .agenda-item ที่ตั้งใจให้
+   เป็นแถวเดียวเสมอ — ปุ่มตอบรับใน .invite-row ใช้ .rsvp-buttons/.active-rsvp เดิมด้านบนซ้ำ (ไม่สร้างคลาสใหม่) */
+.invite-row{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1px solid var(--border);border-radius:8px;background:var(--panel);margin-bottom:8px;cursor:pointer;flex-wrap:wrap;}
+.invite-row:hover{border-color:var(--accent);}
+.invite-row .dot{width:9px;height:9px;border-radius:50%;flex:none;margin-top:6px;}
+.invite-row .invite-main{flex:1;min-width:200px;}
+.invite-row .invite-title{font-weight:600;}
+.invite-row .invite-meta{font-size:12px;color:var(--muted);margin-top:2px;}
+.invite-row .rsvp-buttons{margin:0;flex:none;}
+
 /* Toast */
 #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#1D1B17;color:#fff;padding:11px 20px;border-radius:8px;font-size:13px;opacity:0;transition:.25s;pointer-events:none;z-index:200;box-shadow:0 6px 20px rgba(29,27,23,.3);}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
@@ -288,6 +305,10 @@ body.cal-resize-active{cursor:ns-resize !important;}
       <button data-menu="tasks"><span class="ico">✅</span><span class="label">งานที่ต้องทำ</span></button>
       <button data-menu="activity"><span class="ico">📝</span><span class="label">ประวัติการทำงาน</span></button>
       <button data-menu="daily-activity" id="menu-daily-activity" class="hidden"><span class="ico">👥</span><span class="label">กิจกรรมประจำวัน</span></button>
+      <!-- ซ่อนไว้ก่อนเสมอเหมือน menu-daily-activity ด้านบน — เห็นเฉพาะล็อกอินบัญชี CRM แล้วเท่านั้น (โหมด Local
+           ไม่มีแนวคิดผู้เข้าร่วม/คำเชิญเลย) เปิด/ปิดจริงที่ refreshInvitesMenuAccess_() ป้ายแดง #inviteBadge
+           แสดงจำนวนคำเชิญที่ยังไม่ตอบ (ซ่อนเองถ้าเป็น 0 — ดู refreshInviteBadge_) -->
+      <button data-menu="invites" id="menu-invites" class="hidden"><span class="ico">✉️</span><span class="label">คำเชิญ</span><span class="menu-badge hidden" id="inviteBadge">0</span></button>
       <button data-menu="settings"><span class="ico">⚙️</span><span class="label">การตั้งค่า</span></button>
     </nav>
   </aside>
@@ -370,6 +391,19 @@ body.cal-resize-active{cursor:ns-resize !important;}
       </div>
       <div class="desc" style="margin:-10px 0 16px;">ใครทำอะไรเสร็จในวันนี้ (ข้อมูลจริงจากระบบ CRM) — พนักงานทุกระดับที่ล็อกอินด้วยบัญชี CRM เห็นได้ (การเปลี่ยนค่าบริการ/ประเภทลูกค้าเห็นเฉพาะ LV1-3 เพราะฐานข้อมูลจำกัดไว้)</div>
       <div id="dailyActivityBody"><div class="agenda-empty">กำลังโหลด…</div></div>
+    </section>
+
+    <!-- INVITES VIEW (คำเชิญที่ยังไม่ตอบ + ตอบไปแล้ว — cal_event_attendees เฉพาะแถวของ authUser เอง ดูส่วน
+         ATTENDEES ในสคริปต์ท้ายไฟล์: renderInvitesPage_/myPendingInvites_/myRespondedInvites_) เห็นเฉพาะโหมด
+         คลาวด์ที่ล็อกอินแล้ว (เมนูเองก็ถูกซ่อนไว้อยู่แล้วถ้าไม่เข้าเงื่อนไข — ดู refreshInvitesMenuAccess_) -->
+    <section id="view-invites" class="view">
+      <div class="view-header"><h1>คำเชิญ</h1></div>
+      <div class="desc" style="margin:-10px 0 16px;">นัดหมายที่มีคนเชิญคุณเข้าร่วม (เฉพาะกิจกรรมที่ยังไม่ผ่านไป) — คลิกที่รายการเพื่อดูรายละเอียด หรือกดปุ่มเพื่อตอบรับได้เลย</div>
+      <div id="invitesPendingBody"></div>
+      <div id="invitesRespondedWrap" class="hidden" style="margin-top:22px;">
+        <h3 style="font-size:14px;margin:0 0 10px;color:var(--muted);">ตอบไปแล้ว</h3>
+        <div id="invitesRespondedBody"></div>
+      </div>
     </section>
 
     <!-- SETTINGS VIEW -->
@@ -921,6 +955,7 @@ function switchMenu(name){
   if(name==='tasks') renderTasks();
   if(name==='activity') renderActivityLog();
   if(name==='daily-activity') renderDailyActivity();
+  if(name==='invites') renderInvitesPage_();
   if(name==='settings') renderSettings();
 }
 
@@ -1568,26 +1603,159 @@ async function renderAttendeeSection_(ev, isInvitee){
   await ensureAttendeeStaffLoaded_();
   renderAttendeeChecklist_(ev);
 }
-// ปุ่มตอบรับ — แก้ได้เฉพาะ status/responded_at ของแถวตัวเองเท่านั้น (บังคับด้วย GRANT ระดับคอลัมน์ฝั่ง RLS อยู่แล้ว
-// .eq('staff_id', authUser.id) ตรงนี้คือการยิงแถวที่ถูกต้องตั้งแต่ต้น ไม่ใช่พึ่ง RLS อย่างเดียว)
-async function respondToInvite_(status){
-  const id = document.getElementById('ev_id').value;
-  if(!id || !authUser) return;
+// แกนกลางเขียน RSVP — แก้ได้เฉพาะ status/responded_at ของแถวตัวเองเท่านั้น (บังคับด้วย GRANT ระดับคอลัมน์ฝั่ง RLS
+// อยู่แล้ว .eq('staff_id', authUser.id) ตรงนี้คือการยิงแถวที่ถูกต้องตั้งแต่ต้น ไม่ใช่พึ่ง RLS อย่างเดียว) รับ
+// eventId ตรงๆ แทนการอ่านจากฟอร์ม เพื่อให้เรียกได้ทั้งจากฟอร์มกิจกรรม (respondToInvite_ ด้านล่าง — อ่าน id จาก
+// ev_id) และจากรายการในหน้า "คำเชิญ" (respondToInviteFromList_ — ไม่มีฟอร์มเปิดอยู่) เป็นจุดเดียวทั้งไฟล์ที่ยิง
+// .update() บน cal_event_attendees — ห้ามมีจุดอื่นเขียนตารางนี้อีก คืน true ถ้าบันทึกสำเร็จ (และอัปเดต
+// attendeesByEvent ในหน่วยความจำให้แล้ว), false ถ้าไม่สำเร็จ (แจ้ง toast เองแล้วในทุกกรณี ผู้เรียกไม่ต้อง toast ซ้ำ)
+async function respondToInviteCore_(eventId, status){
+  if(!eventId || !authUser) return false;
   try{
     const client = await getSupabaseClient();
     const { data, error } = await client.from('cal_event_attendees')
       .update({ status, responded_at: new Date().toISOString() })
-      .eq('event_id', id).eq('staff_id', authUser.id)
+      .eq('event_id', eventId).eq('staff_id', authUser.id)
       .select();
-    if(error){ toast('ตอบรับไม่สำเร็จ: ' + (error.message || 'เกิดข้อผิดพลาด')); return; }
-    if(!data || !data.length){ toast('ตอบรับไม่สำเร็จ: ไม่พบคำเชิญของคุณสำหรับกิจกรรมนี้ (อาจถูกถอนคำเชิญไปแล้ว)'); return; }
-    const list = attendeesFor_(id).filter(a=>String(a.staff_id)!==String(authUser.id));
+    if(error){ toast('ตอบรับไม่สำเร็จ: ' + (error.message || 'เกิดข้อผิดพลาด')); return false; }
+    if(!data || !data.length){ toast('ตอบรับไม่สำเร็จ: ไม่พบคำเชิญของคุณสำหรับกิจกรรมนี้ (อาจถูกถอนคำเชิญไปแล้ว)'); return false; }
+    const list = attendeesFor_(eventId).filter(a=>String(a.staff_id)!==String(authUser.id));
     list.push(data[0]);
-    attendeesByEvent[String(id)] = list;
-    renderRsvpButtons_(events.find(e=>sameId(e.id,id)));
-    renderCalendar();
+    attendeesByEvent[String(eventId)] = list;
     toast('บันทึกการตอบรับแล้ว');
-  }catch(e){ toast('ตอบรับไม่สำเร็จ (เชื่อมต่อคลาวด์ไม่ได้)'); }
+    return true;
+  }catch(e){ toast('ตอบรับไม่สำเร็จ (เชื่อมต่อคลาวด์ไม่ได้)'); return false; }
+}
+// ปุ่มตอบรับในฟอร์มกิจกรรม (ev_rsvp_accept/tentative/decline) — อ่าน id จากฟอร์มที่เปิดอยู่แล้วส่งต่อให้แกนกลาง
+// ด้านบน พฤติกรรม/ข้อความ toast เหมือนเดิมทุกกรณี (ไม่เปลี่ยนอะไรจากก่อนแยกฟังก์ชัน)
+async function respondToInvite_(status){
+  const id = document.getElementById('ev_id').value;
+  if(!id || !authUser) return;
+  const ok = await respondToInviteCore_(id, status);
+  if(!ok) return;
+  renderRsvpButtons_(events.find(e=>sameId(e.id,id)));
+  renderCalendar();
+}
+
+/* ---- หน้า "คำเชิญ" (view-invites) — สรุปคำเชิญของ authUser เองในที่เดียว ไม่ต้องไล่หาในปฏิทิน ---- */
+// คำเชิญที่ยัง pending ของฉันเอง เฉพาะกิจกรรมที่ยังไม่ผ่านไป (date >= วันนี้ เทียบแบบเวลาเครื่องล้วน ห้ามใช้
+// .toISOString() — บั๊กคลาสนี้ (เทียบวันแบบ UTC แล้วก่อน 07:00 น. ไทยได้ "เมื่อวาน") เคยเกิดหลายรอบในโปรเจกต์นี้
+// ดู toISODate(new Date()) ที่ renderTasks()/renderDailyActivity() ใช้แบบเดียวกันนี้อยู่แล้ว) events ที่โหลดมา
+// ครอบคลุมกิจกรรมที่ authUser เป็นแค่ผู้ถูกเชิญด้วยอยู่แล้ว (RLS ของ cal_events มี policy SELECT ให้ผู้ถูกเชิญ
+// อ่านได้ — ดู CLAUDE.md "add_cal_event_attendees_with_rsvp") ไม่ต้อง query เพิ่ม
+function myPendingInvites_(){
+  if(dataMode!=='cloud' || !authUser) return [];
+  const todayIso = toISODate(new Date());
+  const out = [];
+  events.forEach(ev=>{
+    if(!ev.date || ev.date < todayIso) return;
+    const row = attendeesFor_(ev.id).find(a=>String(a.staff_id)===String(authUser.id));
+    if(row && row.status==='pending') out.push({ev, row});
+  });
+  out.sort((a,b)=> (a.ev.date+(a.ev.time||'')).localeCompare(b.ev.date+(b.ev.time||'')));
+  return out;
+}
+// เหมือน myPendingInvites_ ทุกอย่างแต่กลับเงื่อนไข status (ตอบไปแล้ว ไม่ว่าจะ accepted/tentative/declined) —
+// ใช้กับส่วน "ตอบไปแล้ว" ท้ายหน้า ให้เปลี่ยนคำตอบภายหลังได้โดยไม่ต้องไปหาในปฏิทิน
+function myRespondedInvites_(){
+  if(dataMode!=='cloud' || !authUser) return [];
+  const todayIso = toISODate(new Date());
+  const out = [];
+  events.forEach(ev=>{
+    if(!ev.date || ev.date < todayIso) return;
+    const row = attendeesFor_(ev.id).find(a=>String(a.staff_id)===String(authUser.id));
+    if(row && row.status!=='pending') out.push({ev, row});
+  });
+  out.sort((a,b)=> (a.ev.date+(a.ev.time||'')).localeCompare(b.ev.date+(b.ev.time||'')));
+  return out;
+}
+function pendingInvitesCount(){ return myPendingInvites_().length; }
+// ป้ายแดงบนปุ่มเมนู — ซ่อนเองถ้าเป็น 0 (ไม่โชว์เลข 0 ค้างไว้)
+function refreshInviteBadge_(){
+  const badge = document.getElementById('inviteBadge');
+  if(!badge) return;
+  const n = pendingInvitesCount();
+  badge.textContent = String(n);
+  badge.classList.toggle('hidden', n===0);
+}
+// เกณฑ์เห็นเมนู "คำเชิญ" — ต้องล็อกอินบัญชี CRM และอยู่โหมดคลาวด์เท่านั้น (โหมด Local ไม่มีแนวคิดผู้เข้าร่วม/
+// คำเชิญเลย) แพทเทิร์นเดียวกับ refreshDailyActivityAccess() ด้านบน — เรียกจาก 3 จุด: loadCloudProfile()
+// (authUser เพิ่งรู้ค่า แต่ dataMode อาจยังเป็น 'local' อยู่ตอนนั้น เมนูจะซ่อนไปก่อนชั่วครู่), enterCloudModeImpl()
+// หลัง loadCloudEventsAndTasks() (จุดที่ dataMode สลับเป็น 'cloud' จริงและ attendeesByEvent พร้อมแล้ว — ตัวเลข
+// ป้ายจะถูกต้องจากจุดนี้), และ logoutCrmAccount() (ซ่อนกลับ + เด้งออกจากหน้านี้ถ้ากำลังดูอยู่)
+function refreshInvitesMenuAccess_(){
+  const btn = document.getElementById('menu-invites');
+  if(!btn) return;
+  const allowed = dataMode==='cloud' && !!authUser;
+  btn.classList.toggle('hidden', !allowed);
+  if(!allowed && activeMenu==='invites') switchMenu('calendar');
+  refreshInviteBadge_();
+}
+// เนื้อหา 1 แถวคำเชิญ — ใช้ทั้งส่วน "รอตอบ" (responded=false) และ "ตอบไปแล้ว" (responded=true, เพิ่มบรรทัดบอก
+// คำตอบปัจจุบัน + ไฮไลต์ปุ่มที่ตรงกับคำตอบด้วย .active-rsvp เดิม) ปุ่มตอบรับใช้ data-action="invite-respond" —
+// คลิกที่ตัวแถว (data-action="open-invite-event") เปิดฟอร์มกิจกรรมเดิม (openEventModal) ให้ดูรายละเอียดเต็ม —
+// ตัวจัดการคลิกทั้งคู่อยู่ที่ init() (ดู view-invites listener) เช็ค data-action="invite-respond" ก่อนเสมอ ปุ่ม
+// จึงไม่โดนคลิกทะลุไปเปิดฟอร์มซ้อน (ไม่ต้อง stopPropagation)
+function renderInviteRowHtml_(ev, row, responded){
+  const inviter = (attendeeStaffList||[]).find(s=>String(s.id)===String(row.invited_by));
+  const inviterLabel = inviter ? inviter.display_name : 'ไม่ทราบชื่อผู้เชิญ';
+  const d = parseISODate(ev.date);
+  const dateLabel = TH_DAYS[d.getDay()] + ' ' + d.getDate() + ' ' + TH_MONTHS[d.getMonth()] + ' ' + beYear(d.getFullYear());
+  const cat = catOf(ev.category);
+  const metaBits = [dateLabel, timeLabel(ev)];
+  if(ev.client) metaBits.push(ev.client);
+  const statusLine = responded ? `<div class="invite-meta">คุณตอบว่า: ${escapeHtml(attendeeStatusOf_(row.status).label)}</div>` : '';
+  const rsvpBtn = (status, label) => `<button type="button" class="btn sm ${row.status===status?'active-rsvp':''}" data-action="invite-respond" data-id="${ev.id}" data-status="${status}">${label}</button>`;
+  return `<div class="invite-row" data-action="open-invite-event" data-id="${ev.id}">
+    <span class="dot" style="background:${cat.color}"></span>
+    <div class="invite-main">
+      <div class="invite-title">${cat.emoji} ${escapeHtml(ev.title)}</div>
+      <div class="invite-meta">${escapeHtml(metaBits.join(' · '))}</div>
+      <div class="invite-meta">เชิญโดย ${escapeHtml(inviterLabel)}</div>
+      ${statusLine}
+    </div>
+    <div class="rsvp-buttons">
+      ${rsvpBtn('accepted','✓ มา')}
+      ${rsvpBtn('tentative','? ไม่แน่ใจ')}
+      ${rsvpBtn('declined','✗ ไม่มา')}
+    </div>
+  </div>`;
+}
+async function renderInvitesPage_(){
+  const pendingBody = document.getElementById('invitesPendingBody');
+  const respondedWrap = document.getElementById('invitesRespondedWrap');
+  const respondedBody = document.getElementById('invitesRespondedBody');
+  if(dataMode!=='cloud' || !authUser){
+    pendingBody.innerHTML = '<div class="agenda-empty">ต้องเข้าสู่ระบบด้วยบัญชี CRM จึงจะดูหน้านี้ได้</div>';
+    respondedWrap.classList.add('hidden');
+    return;
+  }
+  // ชื่อผู้เชิญมาจาก attendeeStaffList (แคชรายชื่อพนักงานที่ใช้ร่วมกับฟอร์มเชิญผู้เข้าร่วมอยู่แล้ว) — โหลดแบบ lazy
+  // เหมือนเดิม ถ้ายังไม่เคยโหลดเลย (เช่นเข้าหน้านี้เป็นจุดแรกโดยไม่เคยเปิดฟอร์มกิจกรรมมาก่อน) โชว์ "กำลังโหลด…"
+  // ระหว่างรอก่อนเหมือนแพทเทิร์นของ renderDailyActivity()
+  if(!attendeeStaffList) pendingBody.innerHTML = '<div class="agenda-empty">กำลังโหลด…</div>';
+  await ensureAttendeeStaffLoaded_();
+  const pending = myPendingInvites_();
+  pendingBody.innerHTML = pending.length
+    ? pending.map(x=>renderInviteRowHtml_(x.ev, x.row, false)).join('')
+    : '<div class="agenda-empty">ไม่มีคำเชิญค้างอยู่ตอนนี้</div>';
+  const responded = myRespondedInvites_();
+  if(responded.length){
+    respondedWrap.classList.remove('hidden');
+    respondedBody.innerHTML = responded.map(x=>renderInviteRowHtml_(x.ev, x.row, true)).join('');
+  } else {
+    respondedWrap.classList.add('hidden');
+    respondedBody.innerHTML = '';
+  }
+}
+// ปุ่มตอบรับในหน้า "คำเชิญ" — ต่างจาก respondToInvite_ ตรงที่ไม่มีฟอร์มเปิดอยู่ จึงรับ eventId ตรงๆ แล้วส่งต่อ
+// แกนกลางร่วมกัน (respondToInviteCore_) ตอบสำเร็จแล้ววาดหน้านี้ใหม่ (รายการหายไปจากฝั่ง "รอตอบ" ทันที) +
+// อัปเดตป้ายแดงบนเมนูให้ตรงด้วย
+async function respondToInviteFromList_(eventId, status){
+  const ok = await respondToInviteCore_(eventId, status);
+  if(!ok) return;
+  renderInvitesPage_();
+  refreshInviteBadge_();
 }
 // เขียนความต่างของผู้เข้าร่วมเทียบกับที่มีอยู่เดิม (เพิ่มก่อน ลบทีหลัง — ห้ามลบทั้งหมดแล้วใส่ใหม่ กันข้อมูลหายถ้า
 // ขั้นใส่ล้มเหลวหลังขั้นลบสำเร็จ บั๊กคลาสนี้เคยเกิดในโปรเจกต์นี้มาแล้วกับฟีเจอร์อื่น — ดู CLAUDE.md) เรียกจาก
@@ -2739,6 +2907,7 @@ async function logoutCrmAccount(){
   enforceFilterAccess();
   toast('ออกจากระบบแล้ว กลับสู่โหมด Local');
   refreshDailyActivityAccess();
+  refreshInvitesMenuAccess_();
   renderSettings();
   if(activeMenu==='calendar') renderCalendar();   // ให้ tag ที่ค้างอยู่หายไปจากหน้าจอจริงๆ ไม่ใช่แค่ล้างในหน่วยความจำ
   if(activeMenu==='tasks') renderTasks();         // งาน (kanban) ก็ต้องกลับไปโชว์ชุด Local ด้วยเช่นกัน
@@ -2779,6 +2948,10 @@ async function loadCloudProfile(){
     lsSet('dcbc_profile', profile);
     enforceFilterAccess();
     refreshDailyActivityAccess();
+    // dataMode ยังไม่สลับเป็น 'cloud' ตอนนี้ (เกิดทีหลังใน loadCloudEventsAndTasks) — เมนู "คำเชิญ" จะยังซ่อนอยู่
+    // ชั่วครู่ตรงนี้ แล้วโผล่จริงอีกทีหลัง enterCloudModeImpl() โหลด attendeesByEvent เสร็จ (ดูจุดเรียกที่นั่น)
+    // เรียกไว้ที่นี่ด้วยเพื่อความสม่ำเสมอกับ refreshDailyActivityAccess() เท่านั้น ไม่ได้พึ่งจุดนี้เป็นจุดหลัก
+    refreshInvitesMenuAccess_();
   }catch(e){ toast('โหลดโปรไฟล์จาก CRM ไม่สำเร็จ'); }
 }
 async function loadCrmClients(){
@@ -2980,7 +3153,13 @@ async function enterCloudModeImpl(){
     if(ok){
       if(activeMenu==='calendar') renderCalendar();
       if(activeMenu==='tasks') renderTasks();
+      if(activeMenu==='invites') renderInvitesPage_();
     }
+    // เรียกไม่ว่า ok จะเป็น true/false ก็ตาม — ถ้าโหลดไม่สำเร็จ dataMode ยังเป็น 'local' อยู่
+    // refreshInvitesMenuAccess_() จะซ่อนเมนูให้เองถูกต้องตามเงื่อนไขเดิม (ไม่ใช่ค้างโชว์ป้ายเลขเก่าผิดๆ) ถ้าสำเร็จ
+    // นี่คือจุดแรกที่ attendeesByEvent พร้อมข้อมูลจริงแล้ว (โหลดคู่มากับ cal_events ใน loadCloudEventsAndTasks)
+    // ตัวเลขป้ายแดงจึงถูกต้องจากจุดนี้เป็นต้นไป
+    refreshInvitesMenuAccess_();
   }catch(e){ toast('เข้าสู่โหมดคลาวด์ไม่สำเร็จ ใช้ข้อมูลในเครื่องต่อไปก่อน'); }
 }
 
@@ -3135,6 +3314,16 @@ function init(){
     const collapsed = kids.classList.toggle('hidden');   // true = กลับไปพับแล้ว, false = กางอยู่ตอนนี้
     const caret = header.querySelector('.da-caret');
     if(caret) caret.textContent = collapsed ? '▸' : '▾';
+  });
+
+  // หน้า "คำเชิญ" (view-invites) — ผูก listener เดียวที่ตัว <section> ครอบทั้งส่วน "รอตอบ"/"ตอบไปแล้ว" (2 กล่อง
+  // ข้างใน) เช็ค data-action="invite-respond" (ปุ่ม) ก่อนเสมอแล้ว return — ปุ่มจึงไม่โดนคลิกทะลุไปตกที่
+  // data-action="open-invite-event" ของแถวที่ครอบอยู่ (ไม่ต้อง stopPropagation ในปุ่มเลย)
+  document.getElementById('view-invites').addEventListener('click', e=>{
+    const btn = e.target.closest('[data-action="invite-respond"]');
+    if(btn){ respondToInviteFromList_(btn.dataset.id, btn.dataset.status); return; }
+    const row = e.target.closest('[data-action="open-invite-event"]');
+    if(row){ openEventModal(row.dataset.id); return; }
   });
 
   // ลาก/เลื่อน/ขยายกิจกรรม (ดูส่วน DRAG / RESIZE ด้านบน) — pointerdown ดักจับก่อน ส่วน click ยังทำงานตามปกติ
