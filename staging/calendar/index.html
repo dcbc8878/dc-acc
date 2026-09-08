@@ -249,6 +249,16 @@ body.cal-resize-active{cursor:ns-resize !important;}
 .chk-row label{margin:0;}
 .modal-actions{display:flex;align-items:center;gap:8px;margin-top:16px;}
 .modal-actions .spacer{flex:1;}
+/* ผู้เข้าร่วมกิจกรรม (attendees) — เชิญเป็นรายคน + ตอบรับ/ปฏิเสธแบบ Google Calendar (ดูส่วน ATTENDEES ในสคริปต์
+   ด้านล่าง) รายชื่อติ๊กเลือกได้หลายคนพร้อมช่องค้นหา แสดงเฉพาะโหมดคลาวด์และเฉพาะฝั่งผู้จัดนัด (ev_attendees_row) —
+   ฝั่งผู้ถูกเชิญที่ไม่ใช่ผู้จัดจะเห็น ev_rsvp_row (ปุ่มตอบรับ) แทน ไม่ใช่รายชื่อนี้ */
+.attendee-list{max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:2px 8px;background:var(--panel);}
+.attendee-row{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;}
+.attendee-row + .attendee-row{border-top:1px solid var(--border);}
+.modal-box .attendee-row input[type="checkbox"]{width:auto;flex:none;}
+#ev_attendee_search{margin-bottom:6px;}
+.rsvp-buttons{display:flex;gap:8px;margin-bottom:6px;}
+.rsvp-buttons .btn.active-rsvp{outline:2px solid var(--accent);outline-offset:-1px;}
 
 /* Toast */
 #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#1D1B17;color:#fff;padding:11px 20px;border-radius:8px;font-size:13px;opacity:0;transition:.25s;pointer-events:none;z-index:200;box-shadow:0 6px 20px rgba(29,27,23,.3);}
@@ -492,6 +502,24 @@ body.cal-resize-active{cursor:ns-resize !important;}
         <label>ทีม *</label>
         <select id="ev_team_id"></select>
         <div class="desc hidden" id="ev_team_single_label" style="margin-top:2px;"></div>
+      </div>
+      <!-- ผู้เข้าร่วม (เชิญเป็นรายคน) — เฉพาะโหมดคลาวด์ + ฝั่งผู้จัดนัดเท่านั้น (renderAttendeeSection_ สลับกับ
+           ev_rsvp_row ด้านล่างให้ฝั่งผู้ถูกเชิญแทน) รายชื่อ (#ev_attendee_list) ถูกเติมด้วย renderAttendeeChecklist_() -->
+      <div class="field hidden" id="ev_attendees_row">
+        <label>ผู้เข้าร่วม (เลือกได้หลายคน)</label>
+        <input type="text" id="ev_attendee_search" placeholder="ค้นหาชื่อพนักงาน...">
+        <div class="attendee-list" id="ev_attendee_list"></div>
+      </div>
+      <!-- ฝั่งผู้ถูกเชิญที่ไม่ใช่ผู้จัดนัด — ฟอร์มทั้งฟอร์มถูกปิดเป็นอ่านอย่างเดียว (setEventFormReadOnly_) แทนที่ด้วย
+           ปุ่มตอบรับ 3 ปุ่มนี้แทนปุ่ม "บันทึก" -->
+      <div class="field hidden" id="ev_rsvp_row">
+        <label>คุณถูกเชิญให้เข้าร่วมกิจกรรมนี้</label>
+        <div class="rsvp-buttons">
+          <button type="button" class="btn sm" id="ev_rsvp_accept">✓ มา</button>
+          <button type="button" class="btn sm" id="ev_rsvp_tentative">? ไม่แน่ใจ</button>
+          <button type="button" class="btn sm" id="ev_rsvp_decline">✗ ไม่มา</button>
+        </div>
+        <div id="ev_rsvp_current" style="font-size:12.5px;color:var(--muted);"></div>
       </div>
       <div class="field"><label>โน้ต</label><textarea id="ev_note"></textarea></div>
       <div class="modal-actions">
@@ -799,6 +827,10 @@ let cloudClients = [];     // crm_clients loaded live once logged in, for the ev
 // RLS ของ cal_events) คนอื่นๆ = เฉพาะทีมที่ตัวเองเป็นสมาชิกหรือหัวหน้าทีม — โหลดโดย loadMyTeams() ด้านล่าง
 // ว่างเปล่า ([]) เสมอในโหมด Local (ยังไม่ล็อกอิน ไม่มีทีมจริง)
 let myTeams = [];
+// ผู้เข้าร่วมกิจกรรม (cal_event_attendees) — event_id(string) -> [{event_id,staff_id,status,invited_by,
+// created_at,responded_at}, ...] โหลดครั้งเดียวตอน loadCloudEventsAndTasks() แล้วอัปเดตเองในหน่วยความจำทุกครั้ง
+// ที่เขียน (ไม่ re-fetch ทั้งก้อนซ้ำ) — ดูส่วน "ATTENDEES" ท้ายไฟล์ ว่างเปล่า ({}) เสมอในโหมด Local
+let attendeesByEvent = {};
 // 'local' = events/tasks อ่าน-เขียนผ่าน localStorage เหมือนเดิมทุกอย่าง (ยังไม่ได้ล็อกอิน CRM)
 // 'cloud' = events/tasks อ่าน-เขียนผ่าน Supabase (cal_events/cal_tasks) แทน — สลับเป็น cloud หลัง enterCloudMode()
 // ทำงานเสร็จเท่านั้น (ไม่ใช่ทันทีที่ authUser!=null เฉยๆ เพราะต้องรอขั้นตอนย้ายข้อมูล/โหลดข้อมูลคลาวด์ก่อน)
@@ -896,10 +928,13 @@ function switchMenu(name){
 // "ปฏิทินส่วนตัว" = ทุกอย่างที่มีตัวเราเกี่ยวข้อง คือนัดของตัวเอง + นัดของทีมที่เราอยู่ (ตามที่เจ้าของโปรเจกต์
 // กำหนด 2026-09-07) — เดิมกรองแค่ !e.is_team ทำให้นัดของทีมตัวเองหายไปจากมุมมองนี้ทั้งที่เป็นงานของเราด้วย
 // เจ้าของ/ผู้จัดการนับว่าอยู่ทุกทีม เพราะ loadMyTeams() ใส่ทุกทีมให้อยู่แล้ว (ตรงกับ RLS ของ cal_events)
+// ถูกเชิญเป็นผู้เข้าร่วม (cal_event_attendees — ดูส่วน "ATTENDEES" ท้ายไฟล์) ก็นับเป็น "ของฉัน" ด้วยเช่นกัน
+// (isInvitedTo_ ประกาศอยู่ในส่วนนั้น เป็น function declaration จึง hoist มาเรียกที่นี่ได้ตามปกติ)
 function isMyEvent_(e){
   if(dataMode!=='cloud') return true;   // โหมด Local ไม่มีบัญชี/ทีม — ทุกอย่างเป็นของตัวเองอยู่แล้ว
   if(authUser && e.user_id===authUser.id) return true;
   if(e.is_team && e.team_id!=null && myTeams.some(t=>String(t.id)===String(e.team_id))) return true;
+  if(authUser && isInvitedTo_(e.id)) return true;
   return false;
 }
 function getFilteredEvents(){
@@ -1096,11 +1131,14 @@ function renderAgendaList(){
       html += `<div class="agenda-item" style="border-color:#3b82f6" data-action="view-activity" data-date="${iso}"><span class="dot" style="background:#3b82f6"></span><span class="time">🔧</span><span class="title">${escapeHtml(label)}</span></div>`;
     });
     dayEvents.forEach(ev=>{
+      // จำนวนผู้เข้าร่วม (ถ้ามี) — ใช้ .client class เดิม (ไม่เพิ่ม CSS ใหม่) ไม่แตะ month/week grid เลย
+      const attCount = dataMode==='cloud' ? attendeesFor_(ev.id).length : 0;
       html += `<div class="agenda-item" data-action="edit-event" data-id="${ev.id}">
         <span class="dot" style="background:${catOf(ev.category).color}"></span>
         <span class="time">${timeLabel(ev)}</span>
         <span class="title">${catOf(ev.category).emoji} ${escapeHtml(ev.title)}</span>
         ${ev.client?`<span class="client">${escapeHtml(ev.client)}</span>`:''}
+        ${attCount?`<span class="client">👥 ${attCount}</span>`:''}
       </div>`;
     });
     html += '</div>';
@@ -1137,12 +1175,15 @@ const DEFAULT_EVENT_CATEGORY = 'client';
 function fillCategorySelect(sel){
   sel.innerHTML = Object.keys(CATEGORIES).map(k=>`<option value="${k}">${CATEGORIES[k].emoji} ${CATEGORIES[k].label}</option>`).join('');
 }
-function openEventModal(id, presetDate){
+async function openEventModal(id, presetDate){
   const modal = document.getElementById('eventModal');
   const isEdit = !!id;
-  document.getElementById('eventModalTitle').textContent = isEdit ? 'แก้ไขกิจกรรม' : 'เพิ่มกิจกรรม';
-  document.getElementById('ev_delete').classList.toggle('hidden', !isEdit);
   const ev = isEdit ? events.find(e=>sameId(e.id,id)) : null;
+  // ผู้ถูกเชิญ (cal_event_attendees) ที่ไม่ใช่ผู้จัดนัด (isEventOrganizer_) เปิดฟอร์มนี้ได้แค่ดู+ตอบรับเท่านั้น
+  // ตรงกับ RLS จริงที่ปฏิเสธการแก้/ลบตัวนัดสำหรับคนกลุ่มนี้ — ดู setEventFormReadOnly_/renderAttendeeSection_ ท้ายฟังก์ชันนี้
+  const isInvitee = dataMode==='cloud' && isEdit && !!ev && isInvitedTo_(ev.id) && !isEventOrganizer_(ev);
+  document.getElementById('eventModalTitle').textContent = isEdit ? (isInvitee ? 'รายละเอียดกิจกรรม' : 'แก้ไขกิจกรรม') : 'เพิ่มกิจกรรม';
+  document.getElementById('ev_delete').classList.toggle('hidden', !isEdit || isInvitee);
   document.getElementById('ev_id').value = ev ? ev.id : '';
   document.getElementById('ev_title').value = ev ? ev.title : '';
   populateClientDatalist();
@@ -1175,6 +1216,8 @@ function openEventModal(id, presetDate){
   document.getElementById('ev_note').value = ev ? (ev.note||'') : '';
   toggleEventTimeRow();
   toggleEventTeamRow();
+  await renderAttendeeSection_(ev, isInvitee);
+  setEventFormReadOnly_(isInvitee);
   modal.classList.add('open');
   document.getElementById('ev_title').focus();
 }
@@ -1286,12 +1329,19 @@ async function updateEventCore_(id, patch, isTeam){
 }
 async function saveEventForm(e){
   e.preventDefault();
+  // แผงอ่านอย่างเดียว (ผู้ถูกเชิญ ไม่ใช่ผู้จัดนัด) — กันชั้นสอง ปุ่มบันทึกถูกซ่อน+ปิดไว้แล้วปกติ (setEventFormReadOnly_)
+  // แต่กันไว้อีกชั้นเผื่อ submit หลุดมาทางอื่น
+  if(eventFormReadOnly) return;
   const id = document.getElementById('ev_id').value;
   const clientName = document.getElementById('ev_client').value.trim();
   const isTeam = document.getElementById('ev_team').checked;
   // team_id มีความหมายแค่โหมดคลาวด์ (โหมด Local ไม่มีทีมจริง — select ถูกซ่อนไว้เสมอ ค่าจึงเป็น null คงที่
   // ดู toggleEventTeamRow()) ตอนติ๊กทีมเดียว select ถูกเติม option เดียวไว้ให้อัตโนมัติแล้วใน toggleEventTeamRow()
   const teamIdRaw = document.getElementById('ev_team_id').value;
+  // เก็บผู้เข้าร่วมที่ติ๊กไว้ตอนนี้ (ก่อน await ใดๆ — DOM ไม่ถูกแตะระหว่างรอ) ว่างเปล่าเสมอถ้าไม่ใช่โหมดคลาวด์/
+  // ผู้จัดนัด (ev_attendees_row ถูกซ่อนไว้ ไม่มี checkbox ให้เลือก) — syncEventAttendees_ ด้านล่างเช็ค dataMode
+  // ซ้ำอีกชั้นเองด้วย จึงไม่มีทาง sync อะไรผิดโหมด
+  const wantedAttendeeIds = collectWantedAttendeeIds_();
   const data = {
     title: document.getElementById('ev_title').value.trim(),
     client: clientName,
@@ -1320,6 +1370,9 @@ async function saveEventForm(e){
     const saveBtn = document.querySelector('#eventForm button[type="submit"]');
     if(dataMode==='cloud' && saveBtn) saveBtn.disabled = true;
     const ok = await updateEventCore_(id, patch, data.is_team);
+    // sync ผู้เข้าร่วมหลังบันทึกกิจกรรมหลักสำเร็จเท่านั้น (ok===true) — ไม่ทำถ้า RLS ปฏิเสธการแก้กิจกรรม (ok===false)
+    // เพราะแปลว่าคนนี้ไม่มีสิทธิ์แก้กิจกรรมนี้อยู่แล้ว ไม่ควรพยายามแก้ผู้เข้าร่วมต่อให้ล้มเหลวซ้ำอีกรอบ
+    if(ok && dataMode==='cloud') await syncEventAttendees_(id, wantedAttendeeIds);
     if(dataMode==='cloud' && saveBtn) saveBtn.disabled = false;
     if(!ok) return;
   } else if(dataMode==='cloud'){
@@ -1337,7 +1390,7 @@ async function saveEventForm(e){
       const { data: inserted, error } = await client.from('cal_events').insert(row).select();
       if(error){ toast(cloudEventErrorMessage(error, data.is_team)); return; }
       const newRow = inserted && inserted[0];
-      if(newRow) events.push(cloudEventToLocal(newRow));
+      if(newRow){ events.push(cloudEventToLocal(newRow)); await syncEventAttendees_(newRow.id, wantedAttendeeIds); }
       else { toast('บันทึกสำเร็จ แต่โหลดข้อมูลกลับไม่ได้ ลองรีเฟรชหน้า'); }
     }catch(err){ toast('บันทึกไม่สำเร็จ (เชื่อมต่อคลาวด์ไม่ได้)'); return; }
     finally{ if(saveBtn) saveBtn.disabled = false; }
@@ -1362,6 +1415,7 @@ async function deleteEvent(){
       if(error){ toast('ลบไม่สำเร็จ: ' + (error.message || 'เกิดข้อผิดพลาด')); return; }
       if(!data || !data.length){ toast('ลบไม่สำเร็จ: ไม่มีสิทธิ์ลบรายการนี้ (นัดส่วนตัวลบได้เฉพาะเจ้าของนัด · กิจกรรมทีมลบได้เฉพาะสมาชิกทีมนั้นหรือเจ้าของ/ผู้จัดการ)'); return; }
       events = events.filter(e=>!sameId(e.id,id));
+      delete attendeesByEvent[String(id)];   // ฐานข้อมูลลบผู้เข้าร่วมตามด้วย FK cascade อยู่แล้ว — เคลียร์แคชในหน่วยความจำด้วย
     }catch(err){ toast('ลบไม่สำเร็จ (เชื่อมต่อคลาวด์ไม่ได้)'); return; }
     finally{ if(delBtn) delBtn.disabled = false; }
   } else {
@@ -1371,6 +1425,210 @@ async function deleteEvent(){
   closeEventModal();
   renderCalendar();
   toast('ลบกิจกรรมแล้ว');
+}
+
+/* ========================= ATTENDEES (ผู้เข้าร่วมกิจกรรม — เชิญเป็นรายคน + ตอบรับ/ปฏิเสธแบบ Google Calendar) =========
+   ตาราง cal_event_attendees (PK: event_id+staff_id) เชิญคนได้หลายคนต่อกิจกรรม แยกจาก "ปฏิทินทีม" (is_team/team_id
+   ด้านบน) โดยสิ้นเชิง — ปฏิทินทีมคือ "สมาชิกทีมเห็นได้ทั้งทีมอัตโนมัติ" (ไม่ต้องเชิญทีละคน) ส่วนผู้เข้าร่วมคือ
+   "เชิญเป็นรายคนพร้อมสถานะตอบรับ" ใช้ร่วมกันได้ทั้งนัดส่วนตัวและนัดทีม (เช่น เชิญคนนอกทีมเข้าร่วมนัดทีมก็ได้)
+   attendeesByEvent (ประกาศไว้ที่ STATE ด้านบน): event_id(string) -> [{event_id,staff_id,status,invited_by,
+   created_at,responded_at}, ...] โหลดครั้งเดียวตอน loadCloudEventsAndTasks() แล้วอัปเดตเองในหน่วยความจำทุกครั้งที่
+   เขียน (insert/delete/update ในไฟล์นี้) ไม่ re-fetch ทั้งก้อนซ้ำ */
+function attendeesFor_(eventId){
+  if(eventId==null) return [];
+  return attendeesByEvent[String(eventId)] || [];
+}
+function isInvitedTo_(eventId){
+  if(!authUser || eventId==null) return false;
+  return attendeesFor_(eventId).some(a=>String(a.staff_id)===String(authUser.id));
+}
+// "ผู้จัดนัด" ต้องตรงกับเงื่อนไขฝั่ง RLS ของ cal_events เป๊ะ (เจ้าของนัด / เจ้าของ-ผู้จัดการซึ่งจัดการได้ทุกนัด /
+// สมาชิกทีมของนัดทีมนั้น รวมหัวหน้าทีม) — ใช้ตัดสินว่าเปิดฟอร์มเป็นโหมดแก้ไข (จัดการผู้เข้าร่วมได้) หรือโหมดอ่าน
+// อย่างเดียว+ปุ่มตอบรับ (ดู openEventModal ด้านบน)
+function isEventOrganizer_(e){
+  if(!e) return true;             // กิจกรรมใหม่ที่ยังไม่มีแถว — ผู้สร้างเป็นผู้จัดเสมอ
+  if(dataMode!=='cloud') return true;
+  if(authUser && e.user_id===authUser.id) return true;
+  if(isOwnerOrManager()) return true;
+  if(e.is_team && e.team_id!=null && myTeams.some(t=>String(t.id)===String(e.team_id))) return true;
+  return false;
+}
+const ATTENDEE_STATUS = {
+  pending:   {label:'– รอตอบ',    color:'#6B7280'},
+  accepted:  {label:'✓ มา',       color:'#16a34a'},
+  declined:  {label:'✗ ไม่มา',    color:'#dc2626'},
+  tentative: {label:'? ไม่แน่ใจ', color:'#F59E0B'}
+};
+function attendeeStatusOf_(status){ return ATTENDEE_STATUS[status] || ATTENDEE_STATUS.pending; }
+function attendeeStatusTagHtml_(status){
+  const s = attendeeStatusOf_(status);
+  return `<span class="pill" style="background:${s.color}22;color:${s.color};margin-left:auto;">${s.label}</span>`;
+}
+
+// null = ยังไม่โหลด/โหลดพลาดล่าสุด (ลองใหม่เองตอนเปิดฟอร์มครั้งถัดไป), array = แคชไว้แล้วทั้งบริษัท (ทั้ง
+// active/inactive — จงใจไม่กรอง is_active ตอน query เพราะคนที่ถูกเชิญไว้แล้วแต่ inactive แล้วยังต้องโชว์ในฟอร์ม
+// ด้วย กรองว่าใครเลือกเป็นผู้เข้าร่วม "ใหม่" ได้เฉพาะตอน render แทน — ดู renderAttendeeChecklist_)
+let attendeeStaffList = null;
+async function ensureAttendeeStaffLoaded_(){
+  if(attendeeStaffList) return;
+  if(!authUser){ attendeeStaffList = []; return; }
+  try{
+    const client = await getSupabaseClient();
+    const { data, error } = await client.from('org_staff').select('id, display_name, is_active').order('display_name');
+    if(error || !data){ attendeeStaffList = null; return; }
+    attendeeStaffList = data;
+  }catch(e){ attendeeStaffList = null; }
+}
+function renderAttendeeChecklist_(ev){
+  const listEl = document.getElementById('ev_attendee_list');
+  const eventId = ev ? ev.id : null;
+  const invited = attendeesFor_(eventId);
+  const invitedIds = new Set(invited.map(a=>String(a.staff_id)));
+  const fullRoster = (attendeeStaffList||[]).filter(s=>!authUser || String(s.id)!==String(authUser.id)); // ไม่ต้องมีตัวเองในรายการ
+  // ตัวเลือก "เชิญใหม่" จำกัดเฉพาะคนที่ยังทำงานอยู่ (is_active) — ยกเว้นคนที่ถูกเชิญไว้แล้วก่อนหน้านี้ (ไม่ว่าจะยัง
+  // active หรือไม่) ต้องยังโชว์เสมอ กันบันทึกเฉยๆ แล้วถูกถอนออกเงียบๆ เพราะแค่ "ไม่โผล่ในฟอร์ม" (บั๊กคลาสนี้เคย
+  // เกิดในโปรเจกต์นี้มาแล้วกับฟีเจอร์อื่น — ดู CLAUDE.md "saveTeam()"/"saveAssigneeModal()")
+  const visible = fullRoster.filter(s => s.is_active !== false || invitedIds.has(String(s.id)));
+  const knownIds = new Set(fullRoster.map(s=>String(s.id)));
+  // ถูกเชิญไว้แล้วแต่หาไม่เจอใน org_staff เลย (บัญชีถูกลบไปจริงๆ — หายากมาก) ก็ยังต้องโชว์กันหายเงียบๆ เหมือนกัน
+  const orphanInvited = invited.filter(a=>!knownIds.has(String(a.staff_id)))
+    .map(a=>({id:a.staff_id, display_name:'(ไม่พบพนักงานคนนี้แล้ว)', is_active:false}));
+  const combined = visible.concat(orphanInvited);
+  combined.sort((a,b)=>{
+    const ax = a.is_active===false?1:0, bx = b.is_active===false?1:0;
+    if(ax!==bx) return ax-bx;
+    return String(a.display_name||'').localeCompare(String(b.display_name||''), 'th');
+  });
+  if(!combined.length){ listEl.innerHTML = '<div class="muted" style="padding:6px 2px;">ไม่มีพนักงานคนอื่นในระบบ</div>'; return; }
+  listEl.innerHTML = combined.map(s=>{
+    const idStr = String(s.id);
+    const checked = invitedIds.has(idStr);
+    const row = invited.find(a=>String(a.staff_id)===idStr);
+    const tag = row ? attendeeStatusTagHtml_(row.status) : '';
+    const inactiveTag = s.is_active===false ? ' <span class="muted">(ออกแล้ว)</span>' : '';
+    return `<label class="attendee-row" data-name="${escapeHtml((s.display_name||'').toLowerCase())}">
+      <input type="checkbox" class="attendee-checkbox" value="${escapeHtml(idStr)}" ${checked?'checked':''}>
+      <span>${escapeHtml(s.display_name||'(ไม่ทราบชื่อ)')}${inactiveTag}</span>
+      ${tag}
+    </label>`;
+  }).join('');
+}
+function collectWantedAttendeeIds_(){
+  return [...document.querySelectorAll('#ev_attendee_list .attendee-checkbox:checked')].map(cb=>cb.value);
+}
+function filterAttendeeList_(query){
+  const q = String(query||'').trim().toLowerCase();
+  document.querySelectorAll('#ev_attendee_list .attendee-row').forEach(row=>{
+    row.classList.toggle('hidden', !!q && !(row.dataset.name||'').includes(q));
+  });
+}
+function renderRsvpButtons_(ev){
+  const eventId = ev ? ev.id : null;
+  const mine = (eventId && authUser) ? attendeesFor_(eventId).find(a=>String(a.staff_id)===String(authUser.id)) : null;
+  const status = mine ? (mine.status || 'pending') : 'pending';
+  document.getElementById('ev_rsvp_current').textContent = 'สถานะของคุณตอนนี้: ' + attendeeStatusOf_(status).label;
+  const map = {ev_rsvp_accept:'accepted', ev_rsvp_tentative:'tentative', ev_rsvp_decline:'declined'};
+  Object.keys(map).forEach(btnId=>{
+    const btn = document.getElementById(btnId);
+    if(btn) btn.classList.toggle('active-rsvp', map[btnId]===status);
+  });
+}
+// เรียกจาก openEventModal() หลัง populate ฟิลด์หลักเสร็จ — โหมด Local: ซ่อนทั้ง 2 ส่วน (ไม่มีแนวคิดผู้เข้าร่วมเลย)
+// ผู้จัดนัด (คลาวด์): โชว์ตัวเลือกผู้เข้าร่วม (ev_attendees_row) · ผู้ถูกเชิญที่ไม่ใช่ผู้จัด: โชว์ปุ่มตอบรับแทน
+// (ev_rsvp_row) — คู่กับ setEventFormReadOnly_ ที่ปิดช่องกรอกอื่นทั้งหมดของฟอร์ม
+async function renderAttendeeSection_(ev, isInvitee){
+  const attendeesRow = document.getElementById('ev_attendees_row');
+  const rsvpRow = document.getElementById('ev_rsvp_row');
+  if(dataMode!=='cloud'){ attendeesRow.classList.add('hidden'); rsvpRow.classList.add('hidden'); return; }
+  if(isInvitee){
+    attendeesRow.classList.add('hidden');
+    rsvpRow.classList.remove('hidden');
+    renderRsvpButtons_(ev);
+    return;
+  }
+  rsvpRow.classList.add('hidden');
+  attendeesRow.classList.remove('hidden');
+  const searchEl = document.getElementById('ev_attendee_search');
+  if(searchEl) searchEl.value = '';
+  await ensureAttendeeStaffLoaded_();
+  renderAttendeeChecklist_(ev);
+}
+// ปุ่มตอบรับ — แก้ได้เฉพาะ status/responded_at ของแถวตัวเองเท่านั้น (บังคับด้วย GRANT ระดับคอลัมน์ฝั่ง RLS อยู่แล้ว
+// .eq('staff_id', authUser.id) ตรงนี้คือการยิงแถวที่ถูกต้องตั้งแต่ต้น ไม่ใช่พึ่ง RLS อย่างเดียว)
+async function respondToInvite_(status){
+  const id = document.getElementById('ev_id').value;
+  if(!id || !authUser) return;
+  try{
+    const client = await getSupabaseClient();
+    const { data, error } = await client.from('cal_event_attendees')
+      .update({ status, responded_at: new Date().toISOString() })
+      .eq('event_id', id).eq('staff_id', authUser.id)
+      .select();
+    if(error){ toast('ตอบรับไม่สำเร็จ: ' + (error.message || 'เกิดข้อผิดพลาด')); return; }
+    if(!data || !data.length){ toast('ตอบรับไม่สำเร็จ: ไม่พบคำเชิญของคุณสำหรับกิจกรรมนี้ (อาจถูกถอนคำเชิญไปแล้ว)'); return; }
+    const list = attendeesFor_(id).filter(a=>String(a.staff_id)!==String(authUser.id));
+    list.push(data[0]);
+    attendeesByEvent[String(id)] = list;
+    renderRsvpButtons_(events.find(e=>sameId(e.id,id)));
+    renderCalendar();
+    toast('บันทึกการตอบรับแล้ว');
+  }catch(e){ toast('ตอบรับไม่สำเร็จ (เชื่อมต่อคลาวด์ไม่ได้)'); }
+}
+// เขียนความต่างของผู้เข้าร่วมเทียบกับที่มีอยู่เดิม (เพิ่มก่อน ลบทีหลัง — ห้ามลบทั้งหมดแล้วใส่ใหม่ กันข้อมูลหายถ้า
+// ขั้นใส่ล้มเหลวหลังขั้นลบสำเร็จ บั๊กคลาสนี้เคยเกิดในโปรเจกต์นี้มาแล้วกับฟีเจอร์อื่น — ดู CLAUDE.md) เรียกจาก
+// saveEventForm() เท่านั้น หลังบันทึกกิจกรรมหลักสำเร็จแล้ว (ทั้งสร้างใหม่และแก้ไข) — ไม่ส่ง status ตอนเชิญใหม่ (ปล่อย
+// ให้ค่าเริ่มต้น 'pending' จากฐานข้อมูล) คืน true ถ้าสำเร็จทั้งหมด, false ถ้ามีบางส่วนล้มเหลว (แจ้ง toast เองแล้ว)
+async function syncEventAttendees_(eventId, wantedStaffIds){
+  if(dataMode!=='cloud') return true;
+  const existing = attendeesFor_(eventId);
+  const existingIds = new Set(existing.map(a=>String(a.staff_id)));
+  const wantedSet = new Set((wantedStaffIds||[]).map(String));
+  const toAdd = [...wantedSet].filter(id=>!existingIds.has(id));
+  const toRemove = [...existingIds].filter(id=>!wantedSet.has(id));
+  if(!toAdd.length && !toRemove.length) return true;   // ไม่มีอะไรเปลี่ยน — ไม่ยิง insert/delete เลย
+  let ok = true;
+  try{
+    const client = await getSupabaseClient();
+    if(toAdd.length){
+      const rows = toAdd.map(staffId=>({ event_id: eventId, staff_id: staffId, invited_by: authUser.id }));
+      const { data, error } = await client.from('cal_event_attendees').insert(rows).select();
+      if(error){ toast('เชิญผู้เข้าร่วมไม่สำเร็จ: ' + (error.message||'เกิดข้อผิดพลาด')); ok = false; }
+      else{
+        const got = data || [];
+        const list = attendeesFor_(eventId).slice();
+        got.forEach(row=>list.push(row));
+        attendeesByEvent[String(eventId)] = list;
+        if(got.length < toAdd.length){ toast('เชิญผู้เข้าร่วมได้ไม่ครบทุกคน (ไม่มีสิทธิ์เชิญบางราย)'); ok = false; }
+      }
+    }
+    if(toRemove.length){
+      const { data, error } = await client.from('cal_event_attendees').delete()
+        .eq('event_id', eventId).in('staff_id', toRemove).select();
+      if(error){ toast('ถอนผู้เข้าร่วมไม่สำเร็จ: ' + (error.message||'เกิดข้อผิดพลาด')); ok = false; }
+      else{
+        const removedIds = new Set((data||[]).map(r=>String(r.staff_id)));
+        attendeesByEvent[String(eventId)] = attendeesFor_(eventId).filter(a=>!removedIds.has(String(a.staff_id)));
+        if(removedIds.size < toRemove.length){ toast('ถอนผู้เข้าร่วมได้ไม่ครบทุกคน (ไม่มีสิทธิ์ถอนบางราย)'); ok = false; }
+      }
+    }
+  }catch(e){ toast('บันทึกผู้เข้าร่วมไม่สำเร็จ (เชื่อมต่อคลาวด์ไม่ได้)'); ok = false; }
+  return ok;
+}
+// ปิด/เปิดฟอร์มทั้งฟอร์มเป็นโหมดอ่านอย่างเดียว — ใช้เมื่อผู้เปิดฟอร์มถูกเชิญแต่ไม่ใช่ผู้จัดนัด (isEventOrganizer_ เป็น
+// false) เท่านั้น ev_team/ev_team_id มี logic disabled ของตัวเอง (canTeam) อยู่แล้วตอน readOnly=false จึงไม่แตะ
+// 2 ช่องนี้เวลาไม่ readOnly (กันเขียนทับ logic เดิม) แต่บังคับปิดเพิ่มเมื่อ readOnly=true เสมอ
+let eventFormReadOnly = false;
+function setEventFormReadOnly_(readOnly){
+  eventFormReadOnly = readOnly;
+  ['ev_title','ev_client','ev_date','ev_allday','ev_time','ev_endtime','ev_category','ev_note'].forEach(id=>{
+    const el = document.getElementById(id); if(el) el.disabled = readOnly;
+  });
+  if(readOnly){
+    const teamChk = document.getElementById('ev_team'); if(teamChk) teamChk.disabled = true;
+    const teamSel = document.getElementById('ev_team_id'); if(teamSel) teamSel.disabled = true;
+  }
+  const submitBtn = document.querySelector('#eventForm button[type="submit"]');
+  if(submitBtn){ submitBtn.classList.toggle('hidden', readOnly); submitBtn.disabled = readOnly; }
 }
 
 /* ========================= DRAG / RESIZE (ลาก-เลื่อน-ขยายกิจกรรมแบบ Google Calendar) =========================
@@ -2450,6 +2708,7 @@ async function logoutCrmAccount(){
   // ยังเห็น tag ของคนก่อนหน้าค้างบนตาราง — RLS ฝั่งเซิร์ฟเวอร์ช่วยไม่ได้เพราะข้อมูลอยู่ในหน่วยความจำแล้ว
   staffCodeMap = {}; clientCodeMap = {}; clientNameMap = {};
   calActivityByDate = {}; calActivityRangeKey = ''; calActivityRequestKey = '';
+  attendeesByEvent = {}; attendeeStaffList = null;   // ผู้เข้าร่วมกิจกรรม/แคชรายชื่อพนักงานสำหรับเชิญ — เป็นของบัญชีที่เพิ่งออกจากระบบเช่นกัน
   icsToken = null; icsTokenLoaded = false;   // ลิงก์ iCal เป็นความลับส่วนตัว ห้ามค้างให้คนถัดไปเห็น
   // คืน events/tasks กลับไปเป็นชุดที่เก็บใน localStorage เดิม (ไม่เคยถูกแตะเลยระหว่างอยู่ในโหมดคลาวด์) —
   // ไม่งั้นตัวแปร events/tasks ในหน่วยความจำจะยังเป็นข้อมูลคลาวด์ของบัญชีที่เพิ่งออกจากระบบไปค้างอยู่
@@ -2591,9 +2850,12 @@ function cloudEventErrorMessage(error, isTeam){
 // สลับโหมด คงอยู่ในโหมด Local ต่อไปเป็นทางสำรอง พร้อมแจ้งผู้ใช้ ไม่ใช่ทำให้หน้าจอว่างเปล่าเงียบๆ)
 async function loadCloudEventsAndTasks(client){
   try{
-    const [evRes, tkRes] = await Promise.all([
+    // cal_event_attendees ยิงคู่ไปพร้อมกันเลย (ไม่ใช่แค่ตอนเปิดฟอร์ม) เพราะ isMyEvent_()/isInvitedTo_() ต้องรู้
+    // "ใครถูกเชิญ" ตั้งแต่ตอน render ปฏิทินครั้งแรกแล้ว (ไม่งั้นนัดที่ถูกเชิญจะไม่โผล่ในตัวกรอง "ปฏิทินส่วนตัว")
+    const [evRes, tkRes, attRes] = await Promise.all([
       client.from('cal_events').select('*'),
-      client.from('cal_tasks').select('*')
+      client.from('cal_tasks').select('*'),
+      client.from('cal_event_attendees').select('*')
     ]);
     if(evRes.error || tkRes.error){
       toast('โหลดปฏิทิน/งานจากคลาวด์ไม่สำเร็จ — ใช้ข้อมูลในเครื่องแทนไปก่อน');
@@ -2601,6 +2863,12 @@ async function loadCloudEventsAndTasks(client){
     }
     events = (evRes.data||[]).map(cloudEventToLocal);
     tasks = tkRes.data||[];
+    // ผู้เข้าร่วมกิจกรรมเป็นฟีเจอร์เสริม — โหลดพลาดไม่ block การโหลดหลัก (attendeesByEvent แค่ว่างเปล่าไปก่อน
+    // ผู้ใช้ยังใช้ปฏิทินต่อได้ปกติ แค่ยังไม่เห็นว่าใครถูกเชิญ)
+    attendeesByEvent = {};
+    if(!attRes.error && attRes.data){
+      attRes.data.forEach(a=>{ (attendeesByEvent[String(a.event_id)] = attendeesByEvent[String(a.event_id)] || []).push(a); });
+    }
     dataMode = 'cloud';
     return true;
   }catch(e){
@@ -2879,6 +3147,11 @@ function init(){
   document.getElementById('ev_cancel').addEventListener('click', closeEventModal);
   document.getElementById('ev_delete').addEventListener('click', deleteEvent);
   document.getElementById('eventModal').addEventListener('click', e=>{ if(e.target.id==='eventModal') closeEventModal(); });
+  // ผู้เข้าร่วมกิจกรรม (ดูส่วน ATTENDEES ด้านบน) — ช่องค้นหากรองรายชื่อ, ปุ่มตอบรับ 3 ปุ่มของฝั่งผู้ถูกเชิญ
+  document.getElementById('ev_attendee_search').addEventListener('input', e=>filterAttendeeList_(e.target.value));
+  document.getElementById('ev_rsvp_accept').addEventListener('click', ()=>respondToInvite_('accepted'));
+  document.getElementById('ev_rsvp_tentative').addEventListener('click', ()=>respondToInvite_('tentative'));
+  document.getElementById('ev_rsvp_decline').addEventListener('click', ()=>respondToInvite_('declined'));
 
   // Tasks
   document.getElementById('addTaskBtn').addEventListener('click', ()=>openTaskModal(null));
