@@ -1,3 +1,4 @@
+<meta charset="UTF-8" />
 <title>พนักงาน — ระบบกลาง</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../../favicon-32.png?v=__BUILD__" />
 <link rel="icon" type="image/png" sizes="192x192" href="../../icon-192.png?v=__BUILD__" />
@@ -390,13 +391,24 @@ function isValidThaiTaxId_(v) {
 }
 
 // ── modal ทั่วไปที่ใช้ร่วมกัน (เพิ่ม/แก้ไขพนักงาน · ทีม · คำขอสมัคร) ──
+// postMessage({type:'dcacc-overlay', open}) บอกหน้ารวม (shell) ว่ามีแผง/โมดัลเปิดอยู่ในหน้านี้ไหม —
+// shell ใช้สัญญาณนี้ซ่อนปุ่มลอย "น้องบัญชี" (มุมขวาล่าง) ไม่ให้ลอยทับปุ่ม/ฟอร์มในโมดัลนี้ (ปุ่มอยู่คนละ
+// document กับ iframe จึงตั้ง z-index สูงแค่ไหนในนี้ก็บังไม่ได้เอง ต้องบอกออกไปให้ฝั่ง parent ซ่อนเอง) —
+// CRM/ปฏิทินส่งสัญญาณนี้อยู่แล้วเวลาเปิดแผง/โมดัลของตัวเอง (ดู dcacc-overlay ใน dc-acc/index.html ซึ่งมี
+// staff ผูกไว้ใน OVERLAY_IFRAME_BY_TARGET รออยู่แล้วด้วย) มีแค่โมดัลของไฟล์นี้เท่านั้นที่ไม่เคยส่งเลย
+// (เจอจาก negative control: เปิดโมดัลนี้แล้วไม่มี postMessage ออกไปเลยสักครั้ง) ผ่าน openGenModal/
+// closeGenModal เป็นจุดเดียวที่ทุกโมดัลในไฟล์นี้ใช้ร่วมกัน (เพิ่ม/แก้ไขพนักงาน, ทีม, คำขอสมัคร, คลิก
+// backdrop) จึงพอแค่แก้ตรงนี้ที่เดียวให้ครอบคลุมทุกจุด — ปลอดภัยแม้เปิดไฟล์นี้แบบไม่อยู่ใน iframe (ทดสอบ
+// ตรงๆ) เพราะ window.parent จะชี้กลับมาที่ตัวเอง กลายเป็นส่งข้อความหาตัวเองเฉยๆ ไม่มีใครฟังก็ไม่มีผลอะไร
 function openGenModal(html, opts) {
   document.getElementById('genModalBox').innerHTML = html;
   document.getElementById('genModalBox').style.maxWidth = (opts && opts.maxWidth) || '';
   document.getElementById('genModalOverlay').classList.add('show');
+  window.parent.postMessage({ type: 'dcacc-overlay', open: true }, location.origin);
 }
 function closeGenModal() {
   document.getElementById('genModalOverlay').classList.remove('show');
+  window.parent.postMessage({ type: 'dcacc-overlay', open: false }, location.origin);
 }
 
 // ── โหลดข้อมูลจริงจาก Supabase ──
@@ -983,8 +995,19 @@ async function deleteTeam(teamId) {
     msg += '\n\n(ข้อมูลไม่ได้ถูกลบทิ้ง แค่หลุดจากทีมนี้)';
   }
   if (!confirm(msg)) return;
-  const { error } = await sb.from('org_teams').delete().eq('id', teamId);
+  // .select('id') เพื่อรู้ว่าคำสั่งนี้ลบแถวจริงไหม — แพทเทิร์นเดียวกับ saveTeam()'s update ด้านบน (org_teams
+  // SELECT ไม่จำกัดตามสมาชิก ทุกคน active เห็นทุกทีมเสมอ จึง data.length===0 ที่นี่แปลว่า "ไม่ได้ลบจริง"
+  // อย่างเดียว ไม่มีเคส false-negative แบบ org_staff) — เดิมจุดนี้ไม่เช็คเลย ถ้า RLS บล็อกเงียบๆ (เช่น สิทธิ์
+  // เปลี่ยนกลางอากาศพอดีระหว่างเปิดโมดัลอยู่) DELETE จะ affect 0 แถวแบบไม่มี error (ไม่ตรงกับ WHERE เลย
+  // ไม่ใช่ error ตาม PostgREST) แต่โค้ดเดิมจะขึ้น toast "ลบทีมแล้ว" หลอกๆ ทั้งที่ทีมยังอยู่ครบ
+  const { data, error } = await sb.from('org_teams').delete().eq('id', teamId).select('id');
   if (error) { showToast(error.message, 'error'); return; }
+  if (!data || data.length === 0) {
+    showToast('ลบไม่สำเร็จ — ทีมนี้อาจถูกลบไปแล้ว หรือสิทธิ์เปลี่ยนไป กรุณาโหลดหน้าใหม่แล้วลองอีกครั้ง', 'error');
+    await loadTeams();
+    renderTeams();
+    return;
+  }
   await loadTeams();
   closeGenModal();
   renderTeams();
@@ -1005,6 +1028,18 @@ function showEmployeeSubTab(tab) {
   if (tab === 'requests') renderEmployeeRequests();
 }
 
+// วันนี้แบบ local-time ล้วน "YYYY-MM-DD" — ห้ามผ่าน new Date().toISOString().slice(0,10) เด็ดขาด (จะ
+// อ่านฟิลด์ UTC ซึ่งได้วันที่ผิดได้ช่วงกลางคืนตามเวลาไทย บั๊กคลาสนี้เจอมาแล้วหลายรอบในโปรเจกต์นี้) —
+// ใช้จำกัดวันเกิดในฟอร์มสมัครพนักงานไม่ให้เลือกวันในอนาคตได้ แบบเดียวกับ localTodayISODate() ที่ฟอร์ม
+// สมัครสมาชิกสาธารณะ (dc-acc/index.html) ทำไว้แล้ว — เดิมฟอร์มนี้ (ช่องทางภายใน ไม่ใช่สาธารณะ) ไม่มี
+// ข้อจำกัดนี้เลย ทั้งที่เขียนลงคอลัมน์เดียวกัน (org_staff_requests.birthdate)
+function staffReqTodayISODate_() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 // ── คำขอสมัครพนักงานใหม่: สมัคร + อนุมัติ/ปฏิเสธ ──
 function openEmployeeRequestForm() {
   openGenModal(`
@@ -1038,7 +1073,7 @@ function openEmployeeRequestForm() {
         </div>
         <div>
           <div style="font-size:11px;font-weight:600;color:var(--gray-600);margin-bottom:4px">วันเดือนปีเกิด</div>
-          <input type="date" id="req-birthdate" class="search-input" style="width:100%">
+          <input type="date" id="req-birthdate" class="search-input" style="width:100%" max="${staffReqTodayISODate_()}">
         </div>
         <div>
           <div style="font-size:11px;font-weight:600;color:var(--gray-600);margin-bottom:4px">ที่อยู่ตามบัตรประชาชน</div>
@@ -1061,13 +1096,21 @@ async function submitEmployeeRequest() {
   const firstName = document.getElementById('req-firstname').value.trim();
   const lastName = document.getElementById('req-lastname').value.trim();
   const nickname = document.getElementById('req-nickname').value.trim();
-  const taxId = document.getElementById('req-taxid').value.trim();
+  // taxIdRaw/taxId แยกกันแบบเดียวกับฟอร์มสมัครสมาชิกสาธารณะที่หน้ารวม (dc-acc/index.html) เป๊ะ:
+  // taxIdRaw = ค่าที่พิมพ์จริง (อาจมีขีดคั่นตาม placeholder "X-XXXX-XXXXX-XX-X") ใช้เช็ค "กรอกครบไหม"
+  // + ตรวจรูปแบบ, taxId = ตัวเลขล้วน 13 หลัก (ตัดขีด/ช่องว่างออกแล้ว) ใช้ตอนบันทึกลง org_staff_requests
+  // เท่านั้น — เดิมไฟล์นี้ส่งค่าดิบ (มีขีดติดไปด้วยได้) ลงคอลัมน์เดียวกับที่ฟอร์มหน้ารวมส่งแบบตัวเลขล้วน
+  // ทำให้ tax_id ในตารางเดียวกันมีได้ 2 รูปแบบไม่ตรงกันแล้วแต่ว่าสมัครผ่านช่องทางไหน (ตรวจสอบสแปม/หา
+  // ใบสมัครซ้ำโดยเทียบเลขนี้ตรงๆ จะพลาดได้ถ้าคนเดิมสมัคร 2 ช่องทางด้วยรูปแบบคนละแบบ) แก้ให้เก็บฟอร์แมต
+  // เดียวกันเสมอ ไม่ว่าจะสมัครผ่านช่องทางไหน
+  const taxIdRaw = document.getElementById('req-taxid').value.trim();
+  const taxId = taxIdRaw.replace(/\D/g, '');
   const birthDate = document.getElementById('req-birthdate').value;
   const idCardAddress = document.getElementById('req-address').value.trim();
   const personalEmail = document.getElementById('req-personalemail').value.trim();
   const errEl = document.getElementById('req-err');
   errEl.style.display = 'none';
-  if (!firstName || !lastName || !nickname || !taxId || !birthDate || !idCardAddress || !personalEmail) {
+  if (!firstName || !lastName || !nickname || !taxIdRaw || !birthDate || !idCardAddress || !personalEmail) {
     errEl.textContent = 'กรุณากรอกข้อมูลให้ครบทุกช่อง';
     errEl.style.display = 'block';
     return;
@@ -1075,7 +1118,7 @@ async function submitEmployeeRequest() {
   // เช็ครูปแบบฝั่ง client ก่อนส่ง (แพทเทิร์นเดียวกับเบอร์โทร/อีเมลส่วนตัวของ "แก้ไขข้อมูลพนักงาน" —
   // isValidEmailFormat_ ถูกใช้กับฟิลด์ personal_email แบบเดียวกันนี้อยู่แล้วที่อื่นในไฟล์นี้) กันข้อมูล
   // เพี้ยนหลุดไปถึง trigger ป้องกันสแปมฝั่ง DB (ซึ่งจะคืน error แบบ raw ที่ผู้ใช้ทั่วไปอ่านไม่รู้เรื่อง)
-  if (!isValidThaiTaxId_(taxId)) {
+  if (!isValidThaiTaxId_(taxIdRaw)) {
     errEl.textContent = 'รูปแบบเลขผู้เสียภาษีไม่ถูกต้อง (ต้องเป็นตัวเลข 13 หลัก)';
     errEl.style.display = 'block';
     return;
