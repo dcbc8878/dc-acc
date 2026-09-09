@@ -4178,6 +4178,11 @@ function refreshPageAfterClientSave_() {
 }
 
 async function savePanelInfo() {
+  // ด่านของตัวเอง (แพทเทิร์นเดียวกับ saveCredItem/saveDocModal ฯลฯ ทั้งไฟล์ — เดิมฟังก์ชันนี้พึ่งแค่ว่า
+  // input ที่ readonly/disabled จะไม่ถูกเก็บเข้า fields จน fields ว่างแล้ว no-op แต่ไม่ใช่ด่านสิทธิ์
+  // จริง ถ้าเรียกตรงจาก console หลังแก้ readonly ผ่าน DevTools ก็ยังยิง UPDATE ได้ ใส่กันไว้ให้ตรงกับ
+  // เกณฑ์เดียวกับที่ renderPanelInfo() ใช้ตั้ง readonly)
+  if (!canEditBasic()) return;
   const fields = {};
   document.querySelectorAll('#panel-info-fields [data-key]').forEach(el => {
     if (el.disabled || el.readOnly) return;
@@ -4902,6 +4907,10 @@ async function loadBillingContracts(clientId) {
 // FlowAccount sync (ใบกำกับภาษี/ใบเสร็จอัตโนมัติ) ถูกถอดออกทั้งหมดแล้วตามคำสั่งเจ้าของระบบ (2026-08-31) — เชื่อมต่อไว้แต่ไม่เคยตั้งค่าใช้งานจริง ฟีเจอร์ใบแจ้งหนี้/รับเงินของ CRM เองยังทำงานปกติทุกจุด (ดู createSingleInvoice/createBatchInvoices/markInvoicePaidCore_ ด้านล่าง)
 
 async function createSingleInvoice(clientId) {
+  // ด่านของตัวเอง (แพทเทิร์นเดียวกับ updateInvStatus/markInvoicePaidCore_ ด้านล่าง — เดิมพึ่งแค่ปุ่มที่
+  // ซ่อนด้วย canEdit() ในหน้าการเก็บเงิน เรียกตรงจาก console ข้ามได้) canEdit() === canSeeFinance()
+  // เกณฑ์เดียวกับปุ่มที่เรียกฟังก์ชันนี้เป๊ะ ไม่ได้จำกัดสิทธิ์เพิ่ม
+  if (!canEdit()) return;
   const c = clients.find(x => x.id === clientId);
   if (!c) return;
   // เหมือน createBatchInvoices/toggleFinCollected: ยอด/ประเภทมาจากสัญญาที่มีผลจริง ณ เดือนที่ออกใบ
@@ -4925,6 +4934,9 @@ async function createSingleInvoice(clientId) {
 }
 
 async function updateInvStatus(clientId, newStatus) {
+  // ด่านของตัวเอง (แพทเทิร์นเดียวกับ createSingleInvoice ด้านบน) — เกณฑ์เดียวกับปุ่ม "ส่งแล้ว"/"ยกเลิก"
+  // ที่เรียกฟังก์ชันนี้ (canEdit()) ไม่ได้จำกัดสิทธิ์เพิ่ม
+  if (!canEdit()) return;
   const inv = invoiceMap[clientId];
   if (!inv) return;
   const updateData = { status: newStatus };

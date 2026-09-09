@@ -1806,11 +1806,15 @@ async function syncEventAttendees_(eventId, wantedStaffIds){
 // ปิด/เปิดฟอร์มทั้งฟอร์มเป็นโหมดอ่านอย่างเดียว — ใช้เมื่อผู้เปิดฟอร์มถูกเชิญแต่ไม่ใช่ผู้จัดนัด (isEventOrganizer_ เป็น
 // false) เท่านั้น ev_team/ev_team_id มี logic disabled ของตัวเอง (canTeam) อยู่แล้วตอน readOnly=false จึงไม่แตะ
 // 2 ช่องนี้เวลาไม่ readOnly (กันเขียนทับ logic เดิม) แต่บังคับปิดเพิ่มเมื่อ readOnly=true เสมอ
+// ev_date เป็น <input type="date"> ที่ datefield.js (../../datefield.js) ครอบไว้ — ตัวจริงที่ผู้ใช้เห็น/คลิกคือช่อง
+// ข้อความคู่กัน id="ev_date__dcd" ส่วน ev_date เดิมถูกซ่อน (display:none) datefield.js ครอบแค่ property "value"
+// ให้ (ไม่ใช่ "disabled") การตั้ง .disabled บนช่องที่ถูกซ่อนจึงไม่มีผลกับช่องที่มองเห็นเลย ต้องตั้ง .disabled ให้ทั้งคู่เอง
 let eventFormReadOnly = false;
 function setEventFormReadOnly_(readOnly){
   eventFormReadOnly = readOnly;
   ['ev_title','ev_client','ev_date','ev_allday','ev_time','ev_endtime','ev_category','ev_note'].forEach(id=>{
     const el = document.getElementById(id); if(el) el.disabled = readOnly;
+    const dcd = document.getElementById(id+'__dcd'); if(dcd) dcd.disabled = readOnly;
   });
   if(readOnly){
     const teamChk = document.getElementById('ev_team'); if(teamChk) teamChk.disabled = true;
