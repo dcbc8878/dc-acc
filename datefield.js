@@ -58,6 +58,24 @@
     return g.slice(0, 2) + '/' + g.slice(2, 4) + '/' + g.slice(4);
   }
 
+  // แก้ไขวันที่ที่พิมพ์ค้างอยู่กลางข้อความ (ไม่ใช่ท้ายสุด) — reassignment ของ disp.value ปกติจะเด้ง
+  // caret ไปท้ายข้อความเสมอ ทำให้พิมพ์แทรก/แก้ตัวเลขกลางวันที่ไม่ได้จริง (ยืนยันด้วยเทส: พิมพ์ "0809"
+  // แล้วแทรกเลขหลังตัวแรก กลายเป็นเลขไปต่อท้ายแทน) นับ "จำนวนหลักตัวเลขก่อน caret เดิม" แล้วหาตำแหน่ง
+  // ในสตริงที่จัดรูปแบบใหม่แล้วที่มีจำนวนหลักก่อนหน้าเท่ากัน (ทนทานต่อเครื่องหมาย "/" ที่เพิ่ม/หายไป)
+  function digitsBefore(str, pos) {
+    var n = 0;
+    for (var i = 0; i < pos && i < str.length; i++) if (/\d/.test(str.charAt(i))) n++;
+    return n;
+  }
+  function caretForDigitCount(str, count) {
+    if (count <= 0) return 0;
+    var seen = 0;
+    for (var i = 0; i < str.length; i++) {
+      if (/\d/.test(str.charAt(i))) { seen++; if (seen === count) return i + 1; }
+    }
+    return str.length;
+  }
+
   function todayIso() {
     var t = new Date();
     return t.getFullYear() + '-' + pad(t.getMonth() + 1) + '-' + pad(t.getDate());
@@ -92,7 +110,12 @@
       '#dcd-pop .dcd-foot{display:flex;gap:6px;margin-top:7px}',
       '#dcd-pop .dcd-foot button{flex:1;border:1px solid var(--border,#d8d5cd);background:transparent;',
       '  border-radius:6px;padding:4px 0;font-size:11.5px;cursor:pointer;color:inherit;font-family:inherit}',
-      '#dcd-pop .dcd-foot button:hover{background:var(--surface-2,var(--panel-2,rgba(0,0,0,.06)))}'
+      '#dcd-pop .dcd-foot button:hover{background:var(--surface-2,var(--panel-2,rgba(0,0,0,.06)))}',
+      // วันที่พิมพ์ครบรูปแบบแล้วแต่เกิน min/max (เช่น เกินวันเกิดสูงสุดที่อนุญาต) — เดิมค่าจริงถูกล้าง
+      // เป็นค่าว่างเงียบๆ พอออกจากช่อง (blur) ข้อความที่พิมพ์ไว้ก็หายไปโดยไม่มีคำอธิบายเลยว่าทำไม
+      // (พิมพ์ผิด/เกินช่วง/ระบบพัง แยกไม่ออก) ทำแค่ตัวบอกเบาที่สุด ไม่รื้อกลไกเดิม: ขอบแดง + title
+      // อธิบายช่วงที่รับได้ ให้เห็นตอนพิมพ์ และยังอยู่ต่อหลัง blur จนกว่าจะแก้ไขใหม่
+      '.dcd-invalid{border-color:#dc2626!important;outline:1px solid #dc2626}'
     ].join('');
     document.head.appendChild(s);
   }
@@ -110,9 +133,38 @@
     return pop;
   }
 
+  function closePopFor(ctl) { if (popTarget === ctl) closePop(); }
+
   function closePop() {
     if (pop) pop.style.display = 'none';
     popTarget = null;
+    stopLiveCheck();
+  }
+
+  // ปุ่มปฏิทิน #dcd-pop มีตัวเดียว ผูกไว้ที่ document.body ตลอด ไม่เคยถูกลบ — ถ้าช่องที่มันกำลัง
+  // อ้างอิงอยู่ (popTarget.disp) หายไปจาก DOM หรือถูกซ่อนระหว่างที่ป๊อปอัปเปิดค้างอยู่ (เช่น โมดัลที่ครอบ
+  // ช่องนี้ถูกปิด/แทนที่เนื้อหาใหม่ผ่าน innerHTML — ทั้งคู่เป็นแพทเทิร์นจริงที่ไฟล์ staff/calendar ใช้)
+  // ป๊อปอัปจะกลายเป็นค้างลอยอยู่กลางจอชี้ไปยัง element ที่ตายไปแล้ว ไม่มีกลไกใดปิดให้เอง
+  // (ตัวปิดเดิมมีแค่: คลิกนอกป๊อปอัป/Esc/scroll — ไม่ครอบคลุมกรณีโมดัลถูกปิดด้วยคีย์บอร์ด (Enter/Space
+  // บนปุ่ม ซึ่งไม่มี mousedown นำหน้า) หรือถูกปิด/แทนที่เนื้อหาจากโค้ดโดยตรงแบบไม่ผ่านการคลิกของผู้ใช้เลย)
+  // แก้ด้วยการเช็คทุก 300ms *เฉพาะช่วงที่ป๊อปอัปเปิดอยู่เท่านั้น* ว่าช่องที่อ้างอิงยังอยู่ในหน้าและมองเห็น
+  // ได้จริงไหม ถ้าไม่แล้วปิดป๊อปอัปให้เอง — ไม่ใช้ MutationObserver (หนักกว่าและไม่ครอบกรณีถูกซ่อนด้วย CSS
+  // class ที่ไม่ใช่ childList mutation) เพราะช่วงเวลาที่ต้องเช็คสั้นมาก (แค่ตอนป๊อปอัปเปิดอยู่จริง)
+  var liveTimer = null;
+  function ctlAlive(ctl) {
+    var el = ctl && ctl.disp;
+    if (!el || !document.body.contains(el)) return false;
+    if (el.offsetParent === null && window.getComputedStyle(el).position !== 'fixed') return false;
+    return true;
+  }
+  function startLiveCheck() {
+    stopLiveCheck();
+    liveTimer = setInterval(function () {
+      if (popTarget && !ctlAlive(popTarget)) closePop();
+    }, 300);
+  }
+  function stopLiveCheck() {
+    if (liveTimer) { clearInterval(liveTimer); liveTimer = null; }
   }
 
   function openPop(ctl) {
@@ -124,6 +176,7 @@
     renderPop();
     pop.style.display = 'block';
     positionPop(ctl.disp);
+    startLiveCheck();
   }
 
   function positionPop(anchor) {
@@ -195,6 +248,8 @@
 
   // ── ต่อช่องกรอกจริง ──────────────────────────────────────────────────────
   var NATIVE_VALUE = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+  var NATIVE_DISABLED = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'disabled');
+  var NATIVE_READONLY = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'readOnly');
 
   function wire(native) {
     if (native.getAttribute('data-dcdate')) return;
@@ -240,10 +295,19 @@
         if (mx && iso > mx) return false;
         return true;
       },
+      rangeMsg: function () {
+        var mn = native.getAttribute('min'), mx = native.getAttribute('max');
+        if (mn && mx) return 'ต้องอยู่ระหว่าง ' + fmt(mn) + ' – ' + fmt(mx);
+        if (mx) return 'ต้องไม่เกิน ' + fmt(mx);
+        if (mn) return 'ต้องไม่ก่อน ' + fmt(mn);
+        return 'วันที่นี้อยู่นอกช่วงที่กำหนด';
+      },
       setIso: function (iso) {
         var cur = NATIVE_VALUE.get.call(native);
         NATIVE_VALUE.set.call(native, iso || '');
         disp.value = fmt(NATIVE_VALUE.get.call(native));
+        disp.classList.remove('dcd-invalid');
+        disp.removeAttribute('title');
         if (cur !== (NATIVE_VALUE.get.call(native) || '')) {
           native.dispatchEvent(new Event('input', { bubbles: true }));
           native.dispatchEvent(new Event('change', { bubbles: true }));
@@ -264,11 +328,39 @@
       }
     });
 
+    // เหตุผลเดียวกับ value: โค้ดเดิมที่สั่ง el.disabled = true / el.readOnly = true ตรงๆ กับช่องวันที่
+    // ต้องมีผลกับช่องที่ผู้ใช้เห็นจริงด้วย ไม่ใช่แค่ช่องที่ถูกซ่อนไว้
+    // (เจอจริงแล้ว 1 จุด: setEventFormReadOnly_() ของปฏิทิน สั่ง ev_date.disabled = true ตอนผู้ถูกเชิญ
+    //  เปิดดูนัด — ช่องอื่นล็อกหมดแต่ช่องวันที่ยังพิมพ์/เปิดปฏิทินได้ เพราะสั่งไปโดนช่องที่ซ่อนอยู่
+    //  ฝั่งปฏิทินแก้เฉพาะจุดไปแล้ว ตรงนี้คือแก้ที่ต้นเหตุ เพื่อไม่ให้ไฟล์อื่นเจอกับดักเดียวกันอีก)
+    [['disabled', NATIVE_DISABLED], ['readOnly', NATIVE_READONLY]].forEach(function (pair) {
+      var name = pair[0], d = pair[1];
+      if (!d || !d.set) return;
+      Object.defineProperty(native, name, {
+        configurable: true,
+        enumerable: true,
+        get: function () { return d.get.call(this); },
+        set: function (v) {
+          d.set.call(this, v);
+          disp[name] = !!v;
+          if (v) closePopFor(ctl); // ปิดปฏิทินที่เปิดค้างอยู่ของช่องนี้ ถ้าถูกล็อกระหว่างเปิดอยู่
+        }
+      });
+    });
+
     disp.addEventListener('input', function () {
+      var caretDigits = digitsBefore(disp.value, disp.selectionStart == null ? disp.value.length : disp.selectionStart);
       var next = autoSlash(disp.value);
-      if (next !== disp.value) disp.value = next;
-      var iso = parse(disp.value);
-      if (iso && !ctl.inRange(iso)) iso = null;
+      if (next !== disp.value) {
+        disp.value = next;
+        var pos = caretForDigitCount(next, caretDigits);
+        try { disp.setSelectionRange(pos, pos); } catch (e) { /* ช่องบางชนิดไม่รองรับ ไม่ต้องทำอะไร */ }
+      }
+      var parsedIso = parse(disp.value);
+      var outOfRange = !!(parsedIso && !ctl.inRange(parsedIso));
+      if (outOfRange) { disp.classList.add('dcd-invalid'); disp.title = ctl.rangeMsg(); }
+      else { disp.classList.remove('dcd-invalid'); disp.removeAttribute('title'); }
+      var iso = outOfRange ? null : parsedIso;
       var cur = NATIVE_VALUE.get.call(native) || '';
       var val = iso || '';
       if (cur !== val) {
