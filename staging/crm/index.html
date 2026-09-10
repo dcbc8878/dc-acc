@@ -5282,13 +5282,19 @@ async function savePanelCreds() {
   inputs.forEach(inp => { fields[inp.dataset.key] = inp.value; });
   const { error } = await sb.from('crm_client_credentials').upsert(fields, { onConflict: 'client_id' });
   if (error) { showToast('บันทึกไม่สำเร็จ: ' + error.message, 'error'); return; }
-  credMap[panelClientId] = fields;
+  // รวมค่าใหม่ทับของเดิม ไม่ใช่แทนที่ทั้งก้อน — ช่องที่ถูกปิดไว้ (DBD ของบุคคลธรรมดา / SSO ที่ยังไม่ขึ้น
+  // ทะเบียนนายจ้าง) ไม่มี data-key จึงไม่อยู่ใน fields และ upsert ก็ไม่แตะคอลัมน์นั้นในฐานข้อมูลเช่นกัน
+  // ถ้าแทนที่ทั้งก้อน แคชในเครื่องจะขาดคอลัมน์เหล่านั้นไปทั้งที่ฐานข้อมูลยังเก็บไว้อยู่
+  credMap[panelClientId] = { ...(credMap[panelClientId] || {}), ...fields };
   await logActivity('client_creds_update', 'client', panelClientId, `แก้ไขรหัสผ่านเข้าระบบ`);
   panelDirty = false;
   document.getElementById('panel-save-bar').classList.add('hidden');
   showToast('บันทึกสำเร็จ');
   credEditMode = false;
   renderPanelCreds(); // กลับสู่โหมดคัดลอกหลังบันทึกเสร็จ
+  // ป้าย "(ขาด RD, DBD, SSO)" ในหน้าลูกค้าอ่านจาก credMap ตรงๆ — เดิมฟังก์ชันนี้ไม่ re-render อะไรเลย
+  // ปิดแผงออกมาจึงยังเห็นป้ายเดิมค้างจนกว่าจะสลับหน้า/รีเฟรช (แพทเทิร์นเดียวกับ savePanelInfo)
+  refreshPageAfterClientSave_();
 }
 
 // ── Docs Tab ──
