@@ -1615,7 +1615,7 @@ let yearEndLoaded = false;
 let panelClientId = null;
 let panelTab     = 'info';
 let panelDirty   = false;
-let panelOrigin  = 'full'; // 'full' (opened from ลูกค้า page) or 'limited' (tracking/yearend)
+let panelOrigin  = 'full'; // เป็น 'full' เสมอตั้งแต่ 2026-09-04 (ดู openPanel) — ค่า 'limited' เดิมเลิกใช้แล้ว ห้ามนำกลับมา
 // แท็บรหัสผ่านเปิดมาเป็นโหมด "คลิกเพื่อคัดลอก" เสมอ (พนักงานต้องก็อปไปล็อกอิน RD/DBD/SSO ทุกวัน)
 // ต้องกดปุ่ม "แก้ไข" ก่อนช่องถึงจะกลายเป็นช่องพิมพ์ — ตั้งแต่เปิดให้แก้ไขได้ทุกหน้า (2026-09-03) ช่อง
 // รหัสผ่านกลายเป็นช่องพิมพ์ทันที ทำให้คลิกแล้วไม่คัดลอกเหมือนเดิม
@@ -3860,11 +3860,17 @@ async function openPanel(clientId) {
   document.getElementById('panel-overlay').classList.remove('hidden');
   document.getElementById('client-panel').style.transform = 'translateX(0)';
 
-  const isLimited = panelOrigin === 'limited';
-  document.getElementById('tab-btn-history').classList.toggle('hidden', isLimited);
+  // แท็บ "เอกสาร"/"ประวัติงาน" + ปุ่ม "ลบ" ขึ้นเฉพาะตอนเปิดแผงจากหน้าที่เป็น "ทะเบียนลูกค้า" จริงๆ
+  // (ลูกค้า/ลูกค้าเก่า/ค่าบริการ/การเก็บเงิน/มอบหมายงาน) — เปิดจากหน้าติดตามงาน (รายเดือน/รายปี) ให้เห็น
+  // แค่ "ข้อมูลทั่วไป" + "รหัสผ่าน" ซึ่งเป็นสองอย่างที่ต้องใช้ตอนทำงานจริง (ผู้ใช้ยืนยัน 2026-09-10)
+  // ⚠️ ห้ามกลับไปใช้ panelOrigin = 'limited' ทำเรื่องนี้เด็ดขาด — panelOrigin คุม "สิทธิ์แก้ไข" อีก 14 จุด
+  // ทั่วทั้งแผง ถ้าตั้งเป็น 'limited' จะกลับไปเป็นบั๊กเดิมที่ผู้ใช้แจ้งไว้เมื่อ 2026-09-03 ทันที
+  // ("เปิดแผงจากหน้ารายเดือนแล้วทำอะไรไม่ได้เลย") — เรื่องนี้เป็นแค่ "ซ่อนแท็บ" ไม่ใช่เรื่องสิทธิ์
+  const compactTabs = (curPage === 'tracking' || curPage === 'yearend');
+  document.getElementById('tab-btn-history').classList.toggle('hidden', compactTabs);
   document.getElementById('tab-btn-creds').classList.toggle('hidden', !canCred());
-  document.getElementById('tab-btn-docs').classList.toggle('hidden', isLimited);
-  document.getElementById('panel-deactivate-btn').classList.toggle('hidden', !isOwner() || isLimited);
+  document.getElementById('tab-btn-docs').classList.toggle('hidden', compactTabs);
+  document.getElementById('panel-deactivate-btn').classList.toggle('hidden', !isOwner() || compactTabs);
 
   switchTab('info', true); // force: panelTab was already set to 'info' above, so this must always render (see switchTab's force param)
 }
