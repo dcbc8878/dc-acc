@@ -890,9 +890,9 @@ let calActivityRequestKey = '';// which range is being fetched right now, so out
 // แยกเป็นฟังก์ชันเพราะต้องเรียกซ้ำตอนออกจากระบบด้วย (คืนข้อมูลโหมด Local เดิมที่ไม่เคยถูกแตะเลยกลับมาใช้งาน)
 function loadLocalEventsAndTasksIntoState(){
   events = lsGet('dcbc_events', null);
-  if(events === null){ events = seedEvents(); lsSet('dcbc_events', events); }
+  if(events === null){ events = []; lsSet('dcbc_events', events); }
   tasks = lsGet('dcbc_tasks', null);
-  if(tasks === null){ tasks = seedTasks(); lsSet('dcbc_tasks', tasks); }
+  if(tasks === null){ tasks = []; lsSet('dcbc_tasks', tasks); }
 }
 loadLocalEventsAndTasksIntoState();
 if(profile === null){ profile = {name:'ผู้ใช้งาน', role: ROLES[4].label}; lsSet('dcbc_profile', profile); }
@@ -914,24 +914,9 @@ let calFilter = (function(){
 let activeMenu = 'calendar';
 let dragTaskId = null;
 
-function seedEvents(){
-  const t = new Date();
-  const iso = (offset)=> toISODate(addDays(t, offset));
-  return [
-    {id:lsId(), user_id:'local', title:'(ตัวอย่าง) นัดลูกค้า ABC ตรวจสอบเอกสาร', client:'บริษัท เอบีซี จำกัด', date: iso(1), time:'10:00', end_time:'11:00', category:'client', all_day:false, note:'เตรียมสมุดบัญชีย้อนหลัง 3 เดือน', is_team:false, source:'local', external_id:null, created_at:new Date().toISOString(), updated_at:new Date().toISOString()},
-    {id:lsId(), user_id:'local', title:'(ตัวอย่าง) ยื่น ภ.พ.30', client:'', date: iso(3), time:'', end_time:'', category:'tax', all_day:true, note:'', is_team:false, source:'local', external_id:null, created_at:new Date().toISOString(), updated_at:new Date().toISOString()},
-    {id:lsId(), user_id:'local', title:'(ตัวอย่าง) อบรมภาษีออนไลน์', client:'', date: iso(6), time:'13:30', end_time:'16:00', category:'training', all_day:false, note:'', is_team:false, source:'local', external_id:null, created_at:new Date().toISOString(), updated_at:new Date().toISOString()}
-  ];
-}
-function seedTasks(){
-  const t = new Date();
-  const iso = (offset)=> toISODate(addDays(t, offset));
-  return [
-    {id:lsId(), user_id:'local', title:'(ตัวอย่าง) สรุปยอดขาย VAT ลูกค้า KKRB', description:'ตรวจสอบยอดขายก่อนยื่น ภ.พ.30', due_date: iso(2), due_time:'17:00', priority:'high', category:'work', status:'todo', created_at:new Date().toISOString(), updated_at:new Date().toISOString()},
-    {id:lsId(), user_id:'local', title:'(ตัวอย่าง) เตรียมเอกสารตรวจสอบบัญชีประจำปี', description:'', due_date: iso(10), due_time:'', priority:'medium', category:'work', status:'in_progress', created_at:new Date().toISOString(), updated_at:new Date().toISOString()},
-    {id:lsId(), user_id:'local', title:'(ตัวอย่าง) ส่งประกันสังคมเดือนที่แล้ว', description:'', due_date: iso(-1), due_time:'', priority:'high', category:'work', status:'done', created_at:new Date().toISOString(), updated_at:new Date().toISOString()}
-  ];
-}
+// หมายเหตุ: เดิมตรงนี้มีฟังก์ชันสร้างนัด/งาน "ตัวอย่าง" 6 ชิ้นให้อัตโนมัติตอนเปิดแอปครั้งแรก (ไว้ไม่ให้
+// หน้าจอว่างเปล่าตอนยังไม่มีข้อมูล) — ลบออกเมื่อ 2026-09-10 เพราะระบบใช้งานจริงแล้ว และข้อมูลตัวอย่าง
+// พวกนั้นถูกย้ายขึ้นฐานข้อมูลจริงได้ตอนล็อกอิน ไปปนกับนัดหมายจริงของพนักงาน — เปิดครั้งแรกให้ว่างแทน
 
 /* ========================= TOAST ========================= */
 let toastTimer=null;
@@ -3277,8 +3262,8 @@ function clearAllData(){
   // ทั้งหมดในเครื่องนี้ไปแล้ว จึงไม่มี "ข้อมูลของบัญชีก่อนหน้า" เหลือให้ต้องกันรั่วอีกต่อไป ปล่อยให้บัญชีถัดไปที่
   // ล็อกอินบนเครื่องนี้ (ถ้ามีข้อมูลใหม่ที่สร้างเพิ่มระหว่างนี้) เคลมข้อมูล local รอบใหม่ได้ตามปกติ
   localStorage.removeItem(CAL_LOCAL_CLAIM_KEY);
-  events = seedEvents(); lsSet('dcbc_events', events);
-  tasks = seedTasks(); lsSet('dcbc_tasks', tasks);
+  events = []; lsSet('dcbc_events', events);
+  tasks = []; lsSet('dcbc_tasks', tasks);
   profile = {name:'ผู้ใช้งาน', role: ROLES[4].label}; lsSet('dcbc_profile', profile);
   toast('ล้างข้อมูลแล้ว');
   switchMenu(activeMenu);
