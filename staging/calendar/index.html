@@ -3125,8 +3125,12 @@ async function enterCloudModeImpl(){
         localStorage.setItem(migKey, '1');
       } else {
         localStorage.setItem(CAL_LOCAL_CLAIM_KEY, authUser.id);
-        const localEvents = lsGet('dcbc_events', []) || [];
-        const localTasks = lsGet('dcbc_tasks', []) || [];
+        // กรองนัด/งาน "ตัวอย่าง" ที่แอปเคยสร้างให้อัตโนมัติตอนเปิดครั้งแรก (เลิกสร้างแล้วตั้งแต่ 2026-09-10 แต่
+        // เครื่อง/เบราว์เซอร์ที่เคยเปิดก่อนหน้านั้นยังมีค้างอยู่ใน localStorage) — เคยหลุดขึ้นฐานข้อมูลจริงมาแล้ว
+        // ปนกับนัดหมายจริงของพนักงาน ไม่ควรเสนอย้ายขึ้นคลาวด์อีก · ไม่ลบออกจากเครื่องผู้ใช้ แค่ไม่ย้ายขึ้นไป
+        const isDemoSeed_ = (x) => String((x && x.title) || '').startsWith('(ตัวอย่าง)');
+        const localEvents = (lsGet('dcbc_events', []) || []).filter(x => !isDemoSeed_(x));
+        const localTasks = (lsGet('dcbc_tasks', []) || []).filter(x => !isDemoSeed_(x));
         if(localEvents.length || localTasks.length){
           const result = await migrateLocalDataToCloud(client, localEvents, localTasks);
           if(!result.declined){
