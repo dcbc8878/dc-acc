@@ -2666,6 +2666,14 @@ function renderTracking() {
       } else if (sent) {
         const pc = pillColors_('amber');
         chip = `<span class="tog-chip" style="background:${pc.bg};color:${pc.fg};border-color:${pc.border}" title="${progTitle}">→ SENT</span>`;
+      } else if (group === 'tax1' && gApp > 0) {
+        // ยังไม่ได้กด SENT — โชว์ความคืบหน้ารายการย่อยเป็น "เสร็จ/ทั้งหมด" แทนขีด (ผู้ใช้ขอ 2026-09-13)
+        // เพื่อให้เห็นจากหน้ารายเดือนได้เลยว่าติ๊ก PND1/3/53/54/PP36 ไปกี่รายการแล้ว ไม่ต้องเปิดโมดัลทีละราย
+        // นับเฉพาะรายการที่ "เกี่ยวข้อง" เท่านั้น (ตัดรายการที่ตั้งเป็น "ไม่มี"/na ออกจากตัวหาร เหมือน
+        // progTitle ด้านบนเป๊ะ) — ถ้าตั้งเป็น "ไม่มี" ครบทุกรายการ (gApp === 0) ตกไปที่กิ่งล่างแสดง "—"
+        // ตามเดิม เพราะ "0/0" อ่านไม่ได้ความ · กลุ่ม SSO/TAX 2 มีรายการย่อยกลุ่มละ 1 รายการ ไม่ได้ให้
+        // ประโยชน์อะไรจาก x/y จึงคงพฤติกรรมเดิมไว้ (ผู้ใช้ระบุเฉพาะ TAX 1)
+        chip = `<span class="tog-chip tog-empty" title="${progTitle}">${gDone}/${gApp}</span>`;
       } else {
         chip = canTask ? `<span class="tog-chip tog-empty" title="${progTitle}">—</span>` : `<span class="dot na" title="${progTitle}">—</span>`;
       }
@@ -2841,12 +2849,17 @@ async function saveGroupItemField(clientId, field, value, group) {
   if (!taskMap[clientId]) taskMap[clientId] = { client_id: clientId, year: curYear, month: curMonth };
   const prev = taskMap[clientId][field];
   taskMap[clientId][field] = value;
+  // วาดตารางรายเดือนใหม่ด้วย ไม่ใช่แค่โมดัล — ตั้งแต่ช่อง TAX 1 โชว์ x/y (ดู mkGroupCell) ตัวเลขในตาราง
+  // ข้างหลังโมดัลต้องขยับตามทุกครั้งที่ติ๊กรายการย่อย ไม่งั้นปิดโมดัลมาแล้วยังเห็นเลขเก่าค้างจนกว่าจะ
+  // เปลี่ยนเดือน/โหลดหน้าใหม่ (แพทเทิร์นเดียวกับ cycleGroupFromModal ที่เรียกคู่กันแบบนี้อยู่แล้ว)
+  renderTracking();
   openGroupModal(clientId, group);
   const { data, error } = await sb.from('crm_tax_tasks')
     .upsert({ client_id: clientId, year: curYear, month: curMonth, [field]: value },
       { onConflict: 'client_id,year,month' }).select().single();
   if (error) {
     taskMap[clientId][field] = prev;
+    renderTracking();
     openGroupModal(clientId, group);
     showToast('บันทึกไม่สำเร็จ: ' + (error.message || error.code || JSON.stringify(error)), 'error');
   } else if (data) {
