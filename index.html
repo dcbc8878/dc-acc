@@ -330,6 +330,54 @@
     font-size: 0.72rem; font-weight: 500; color: var(--accent-text);
     background: var(--surface-2); padding: 4px 12px; border-radius: 999px;
   }
+  .ai-panel-body[hidden], .ai-chat[hidden], .ai-map[hidden], .ai-head-btn[hidden] { display: none; }
+
+  /* ── แชทจริงกับน้องบัญชี (คุยผ่าน Apps Script ตัวเดียวกับ LINE — ดู botCall ด้านล่าง) ── */
+  .ai-head-btn {
+    margin-left: auto; height: 28px; padding: 0 10px; border-radius: 8px;
+    border: 1px solid var(--border); background: transparent; color: var(--ink-muted);
+    font: inherit; font-size: 0.74rem; cursor: pointer;
+  }
+  .ai-head-btn:hover { background: var(--border); color: var(--ink); }
+  .ai-head-btn + .ai-panel-close { margin-left: 6px; }
+  .ai-chat, .ai-map { flex-grow: 1; display: flex; flex-direction: column; min-height: 0; }
+  .ai-log {
+    flex-grow: 1; overflow-y: auto; padding: 14px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .ai-msg {
+    max-width: 85%; padding: 8px 12px; border-radius: 14px;
+    font-size: 0.86rem; line-height: 1.6; white-space: pre-wrap; word-break: break-word;
+  }
+  .ai-msg.bot { align-self: flex-start; background: var(--surface-2); color: var(--ink); border-bottom-left-radius: 4px; }
+  .ai-msg.me { align-self: flex-end; background: var(--accent); color: var(--accent-contrast); border-bottom-right-radius: 4px; }
+  .ai-msg.wait { color: var(--ink-muted); font-style: italic; }
+  .ai-msg.err { background: transparent; border: 1px solid var(--border); color: var(--ink-muted); }
+  .ai-input-row {
+    display: flex; gap: 8px; padding: 10px 12px;
+    border-top: 1px solid var(--border); background: var(--surface);
+  }
+  .ai-input-row textarea {
+    flex-grow: 1; resize: none; max-height: 120px;
+    font: inherit; font-size: 0.86rem; line-height: 1.5;
+    padding: 8px 10px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--surface-2); color: var(--ink);
+  }
+  .ai-input-row textarea:focus { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+  .ai-input-row button {
+    flex-shrink: 0; padding: 0 14px; border-radius: 10px; border: none; cursor: pointer;
+    background: var(--accent); color: var(--accent-contrast); font: inherit; font-size: 0.84rem;
+  }
+  .ai-input-row button:disabled { opacity: 0.5; cursor: default; }
+  .ai-map-list { flex-grow: 1; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+  .ai-map-note { font-size: 0.76rem; color: var(--ink-muted); line-height: 1.6; margin: 0; }
+  .ai-map-row { display: flex; flex-direction: column; gap: 4px; }
+  .ai-map-row label { font-size: 0.82rem; color: var(--ink); }
+  .ai-map-row label small { color: var(--ink-muted); }
+  .ai-map-row select {
+    font: inherit; font-size: 0.84rem; padding: 6px 8px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--surface-2); color: var(--ink);
+  }
 
   /* ── ตั้งค่า > ธีม (centered dialog, same open/backdrop pattern as .ai-panel
      above, just centered instead of anchored bottom-right since this is a
@@ -697,16 +745,27 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
       </div>
       <div class="who"><b>น้องบัญชี</b><span>ผู้ช่วย AI</span></div>
+      <button class="ai-head-btn" id="aiMapBtn" type="button" hidden>จับคู่ LINE</button>
       <button class="ai-panel-close" id="aiClose" aria-label="ปิด">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
       </button>
     </div>
-    <div class="ai-panel-body">
+    <div class="ai-panel-body" id="aiIntro">
       <div class="icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
       </div>
-      <p>ตอนนี้น้องบัญชีทำงานผ่านไลน์อยู่ (ถาม/ตอบ, งาน, เตือนความจำ, อ่านเอกสาร) กำลังเตรียมให้คุยหน้าเว็บนี้ได้เหมือนกัน</p>
-      <span class="status">เร็วๆ นี้</span>
+      <p id="aiIntroText">กำลังเชื่อมต่อน้องบัญชี…</p>
+      <span class="status" id="aiIntroStatus">รอสักครู่</span>
+    </div>
+    <div class="ai-chat" id="aiChat" hidden>
+      <div class="ai-log" id="aiLog" aria-live="polite"></div>
+      <form class="ai-input-row" id="aiForm">
+        <textarea id="aiInput" rows="1" placeholder="ถามน้องบัญชี เช่น มีเรื่องอะไรค้างอยู่บ้าง"></textarea>
+        <button type="submit" id="aiSend">ส่ง</button>
+      </form>
+    </div>
+    <div class="ai-map" id="aiMap" hidden>
+      <div class="ai-map-list" id="aiMapList"></div>
     </div>
   </div>
 
@@ -1079,9 +1138,173 @@
   const aiPanel = document.getElementById('aiPanel');
   const aiBackdrop = document.getElementById('aiBackdrop');
   const aiClose = document.getElementById('aiClose');
-  function openAi() { aiPanel.classList.add('open'); aiBackdrop.classList.add('open'); }
+  function openAi() { aiPanel.classList.add('open'); aiBackdrop.classList.add('open'); aiStart(); }
   function closeAi() { aiPanel.classList.remove('open'); aiBackdrop.classList.remove('open'); }
   aiFab.addEventListener('click', openAi);
+
+  // ── แชทกับน้องบัญชี ──
+  // คุยกับ Apps Script ตัวเดียวกับ LINE bot (?web=1) โดยส่ง access token ของ Supabase ที่ล็อกอินเว็บนี้อยู่แล้ว
+  // ไปให้ฝั่งบอทถาม Supabase เองว่าเป็นใคร แล้วหา LINE userId จากชีต _WebUsers ที่ owner/manager จับคู่ไว้
+  // (ปุ่ม "จับคู่ LINE") -- สิทธิ์/งบ AI/ด่านความปลอดภัยใช้ชุดเดียวกับฝั่ง LINE ทุกอย่าง ดู WebChat.gs ในโปรเจกต์บอท
+  // ส่ง body เป็น text/plain (ไม่ใส่ Content-Type) เพื่อไม่ให้เบราว์เซอร์ยิง preflight ที่ Apps Script ตอบไม่ได้
+  const BOT_URL = 'https://script.google.com/macros/s/AKfycbxJZO-PQOdmiKSRjaNWc0OUGlgUK8EfBJyN8PqAqZJGX-UXjSMeB-361UW6pUoqIjCOcA/exec?web=1';
+  const aiIntro = document.getElementById('aiIntro');
+  const aiIntroText = document.getElementById('aiIntroText');
+  const aiIntroStatus = document.getElementById('aiIntroStatus');
+  const aiChat = document.getElementById('aiChat');
+  const aiLog = document.getElementById('aiLog');
+  const aiForm = document.getElementById('aiForm');
+  const aiInput = document.getElementById('aiInput');
+  const aiSend = document.getElementById('aiSend');
+  const aiMap = document.getElementById('aiMap');
+  const aiMapList = document.getElementById('aiMapList');
+  const aiMapBtn = document.getElementById('aiMapBtn');
+  let aiMe = null;          // ผลของ action 'me' (null = ยังไม่ได้ถาม หรือเพิ่งสลับบัญชี)
+  let aiBusy = false;
+
+  async function botCall(action, extra) {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) return { ok: false, error: 'login' };
+    const res = await fetch(BOT_URL, {
+      method: 'POST',
+      body: JSON.stringify(Object.assign({ action, access_token: session.access_token }, extra || {}))
+    });
+    return res.json();
+  }
+
+  const AI_ERRORS = {
+    login: 'กรุณาล็อกอินเว็บก่อน',
+    inactive: 'บัญชีนี้ยังไม่ได้เปิดใช้งานในระบบพนักงาน',
+    unmapped: 'บัญชีนี้ยังไม่ได้จับคู่กับ LINE ให้ owner หรือ manager กด "จับคู่ LINE" ให้ก่อน',
+    forbidden: 'เฉพาะ owner และ manager เท่านั้น',
+    server: 'น้องบัญชีมีปัญหาชั่วคราว ลองใหม่อีกครั้ง'
+  };
+  const aiErrText = (code) => AI_ERRORS[code] || ('เชื่อมต่อไม่สำเร็จ (' + code + ')');
+
+  function aiShow(view) {
+    aiIntro.hidden = view !== 'intro';
+    aiChat.hidden = view !== 'chat';
+    aiMap.hidden = view !== 'map';
+    aiMapBtn.textContent = view === 'map' ? 'กลับไปแชท' : 'จับคู่ LINE';
+  }
+  function aiIntroMsg(text, status) {
+    aiIntroText.textContent = text;
+    aiIntroStatus.textContent = status || '';
+    aiIntroStatus.hidden = !status;
+    aiShow('intro');
+  }
+  function aiBubble(cls, text) {
+    const div = document.createElement('div');
+    div.className = 'ai-msg ' + cls;
+    div.textContent = text;
+    aiLog.appendChild(div);
+    aiLog.scrollTop = aiLog.scrollHeight;
+    return div;
+  }
+
+  async function aiStart() {
+    if (aiMe) return;
+    aiIntroMsg('กำลังเชื่อมต่อน้องบัญชี…', 'รอสักครู่');
+    try {
+      const r = await botCall('me');
+      if (!r.ok) return aiIntroMsg(aiErrText(r.error));
+      aiMe = r.me;
+      aiMapBtn.hidden = !aiMe.admin;
+      if (!aiMe.active) return aiIntroMsg(aiErrText('inactive'));
+      if (!aiMe.mapped) return aiIntroMsg(aiErrText('unmapped'));
+      aiShow('chat');
+      if (!aiLog.childElementCount) aiBubble('bot', 'สวัสดีครับ ' + (aiMe.name || '') + ' ถามน้องบัญชีได้เหมือนในไลน์เลยครับ พิมพ์ /help เพื่อดูคำสั่งทั้งหมด');
+      aiInput.focus();
+    } catch (e) {
+      aiIntroMsg('เชื่อมต่อน้องบัญชีไม่ได้ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่');
+    }
+  }
+
+  aiForm.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const text = aiInput.value.trim();
+    if (!text || aiBusy) return;
+    aiBusy = true; aiSend.disabled = true;
+    aiInput.value = '';
+    aiBubble('me', text);
+    const wait = aiBubble('bot wait', 'น้องบัญชีกำลังคิด…');
+    try {
+      const r = await botCall('chat', { text });
+      wait.remove();
+      if (!r.ok) aiBubble('bot err', aiErrText(r.error));
+      else r.messages.forEach(m => aiBubble('bot', m));
+    } catch (e) {
+      wait.remove();
+      aiBubble('bot err', 'ส่งไม่สำเร็จ ลองใหม่อีกครั้ง');
+    }
+    aiBusy = false; aiSend.disabled = false;
+    aiInput.focus();
+  });
+  aiInput.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing) { ev.preventDefault(); aiForm.requestSubmit(); }
+  });
+
+  // ── จับคู่บัญชีเว็บ ↔ LINE (owner/manager) ──
+  aiMapBtn.addEventListener('click', () => {
+    if (aiMap.hidden) return aiLoadMap();
+    if (!aiMe) return aiStart();
+    aiMe.mapped ? aiShow('chat') : aiIntroMsg(aiErrText('unmapped'));
+  });
+
+  async function aiLoadMap() {
+    aiShow('map');
+    aiMapList.textContent = 'กำลังโหลดรายชื่อ…';
+    try {
+      const r = await botCall('admin_list');
+      if (!r.ok) { aiMapList.textContent = aiErrText(r.error); return; }
+      aiMapList.textContent = '';
+      const note = document.createElement('p');
+      note.className = 'ai-map-note';
+      note.textContent = 'เลือกว่าพนักงานแต่ละคนบนเว็บคือใครในไลน์ (รายชื่อฝั่งไลน์มาจากชีต _Staff ของบอท) จับคู่แล้วคนนั้นคุยกับน้องบัญชีบนเว็บได้ทันที ด้วยสิทธิ์เดียวกับในไลน์';
+      aiMapList.appendChild(note);
+      r.web.filter(s => s.active).forEach(s => {
+        const row = document.createElement('div');
+        row.className = 'ai-map-row';
+        const label = document.createElement('label');
+        label.textContent = (s.name || '(ไม่มีชื่อ)') + ' ';
+        const small = document.createElement('small');
+        small.textContent = s.role;
+        label.appendChild(small);
+        const sel = document.createElement('select');
+        sel.appendChild(new Option('— ยังไม่จับคู่ —', ''));
+        r.line.forEach(l => sel.appendChild(new Option(l.name + ' (ไลน์)', l.user_id)));
+        sel.value = s.line_user_id || '';
+        sel.addEventListener('change', async () => {
+          sel.disabled = true;
+          try {
+            const m = await botCall('admin_map', { staff_id: s.id, staff_name: s.name, line_user_id: sel.value });
+            small.textContent = s.role + (m.ok ? ' · บันทึกแล้ว' : ' · ' + aiErrText(m.error));
+            if (m.ok) aiMe = null;   // ถ้าจับคู่ตัวเอง ให้ถามสถานะใหม่ตอนกลับไปแชท
+          } catch (e) {
+            small.textContent = s.role + ' · บันทึกไม่สำเร็จ';
+          }
+          sel.disabled = false;
+        });
+        label.htmlFor = sel.id = 'aiMap_' + s.id;
+        row.appendChild(label);
+        row.appendChild(sel);
+        aiMapList.appendChild(row);
+      });
+    } catch (e) {
+      aiMapList.textContent = 'โหลดรายชื่อไม่สำเร็จ ลองใหม่อีกครั้ง';
+    }
+  }
+
+  // สลับบัญชี/ออกจากระบบ: ล้างสถานะและประวัติแชท กันคนถัดไปเห็นของคนก่อน
+  let aiUserId = null;
+  sb.auth.onAuthStateChange((event, session) => {
+    const uid = (session && session.user && session.user.id) || null;
+    if (uid === aiUserId) return;   // TOKEN_REFRESHED ฯลฯ ของคนเดิม ไม่ต้องล้าง
+    aiUserId = uid;
+    aiMe = null;
+    aiLog.textContent = '';
+    aiMapBtn.hidden = true;
+  });
   aiClose.addEventListener('click', closeAi);
   aiBackdrop.addEventListener('click', closeAi);
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAi(); });
