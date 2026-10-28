@@ -544,6 +544,33 @@
   .logout-btn:hover { background: var(--surface-2); color: var(--ink); }
   .logout-btn svg { width: 16px; height: 16px; }
 
+  /* ── สลิปค่าบริการรอออกใบเสร็จ (บอทอ่านจากห้อง LINE ลูกค้า ดู SlipPay.gs) ── */
+  .slip-btn {
+    margin-left: 12px; height: 30px; padding: 0 12px; border-radius: 15px; border: none;
+    background: var(--accent); color: var(--accent-contrast);
+    font: inherit; font-size: 0.8rem; font-weight: 600; cursor: pointer;
+  }
+  .slip-btn[hidden], .slip-pop[hidden] { display: none; }
+  .slip-pop {
+    position: fixed; top: 66px; right: 22px; z-index: 60;
+    width: min(440px, calc(100vw - 32px)); max-height: calc(100vh - 90px); overflow-y: auto;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    box-shadow: var(--shadow-lg); padding: 14px;
+  }
+  .slip-pop h3 { margin: 0 0 4px; font-size: 0.92rem; }
+  .slip-pop .hint { margin: 0 0 10px; font-size: 0.76rem; color: var(--ink-muted); line-height: 1.6; }
+  .slip-card { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-top: 8px; font-size: 0.82rem; }
+  .slip-card .top { display: flex; justify-content: space-between; gap: 8px; font-weight: 600; }
+  .slip-card .meta { color: var(--ink-muted); font-size: 0.76rem; line-height: 1.6; margin-top: 2px; }
+  .slip-card .inv { margin-top: 6px; font-size: 0.78rem; }
+  .slip-card .inv.hit { color: var(--accent-text); font-weight: 600; }
+  .slip-card .acts { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
+  .slip-card .acts a { color: var(--accent-text); font-size: 0.78rem; margin-right: auto; }
+  .slip-card .acts button {
+    font: inherit; font-size: 0.76rem; padding: 4px 10px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--surface-2); color: var(--ink);
+  }
+
   /* ── สมัครสมาชิก (public sign-up screen) ──
      Purely additive rules -- nothing above this comment is edited. Reuses the
      .login-card box model (border/radius/shadow/padding) so the sign-up card
@@ -664,6 +691,7 @@
     <div class="mark">DC</div>
     <span class="name">เด็กชายบัญชี</span>
     <span class="page-title" id="pageTitle">CRM</span>
+    <button class="slip-btn" id="slipBtn" hidden></button>
     <span class="staff-name" id="shellStaffName"></span>
     <button class="logout-btn" id="logoutBtn" aria-label="ออกจากระบบ" title="ออกจากระบบ">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
@@ -1304,7 +1332,77 @@
     aiMe = null;
     aiLog.textContent = '';
     aiMapBtn.hidden = true;
+    slipReset();
+    if (uid) slipLoad();
   });
+
+  // ── สลิปค่าบริการรอออกใบเสร็จ ──
+  // บอทอ่านสลิปที่ลูกค้าส่งในห้อง LINE แล้วเก็บเฉพาะที่โอนเข้าบัญชีบริษัท (SlipPay.gs ในโปรเจกต์บอท)
+  // หน้านี้แค่เตือน: คนออกใบเสร็จเองใน FlowAccount แล้วกด "ทำแล้ว" -- ไม่แตะ CRM/FlowAccount
+  const slipBtn = document.getElementById('slipBtn');
+  const slipPop = document.createElement('div');
+  slipPop.className = 'slip-pop';
+  slipPop.hidden = true;
+  document.body.appendChild(slipPop);
+  let slipItems = [];
+  let slipTimer = null;
+  const baht = (n) => Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const slipEl = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+
+  function slipReset() {
+    slipItems = []; slipPop.hidden = true; slipBtn.hidden = true;
+    clearInterval(slipTimer); slipTimer = null;
+  }
+  async function slipLoad() {
+    if (!slipTimer) slipTimer = setInterval(slipLoad, 5 * 60 * 1000);
+    try {
+      const r = await botCall('slip_list');
+      if (!r.ok) return;
+      slipItems = r.slips || [];
+      slipBtn.textContent = 'สลิปค่าบริการ ' + slipItems.length;
+      slipBtn.hidden = !slipItems.length;
+      if (!slipItems.length) slipPop.hidden = true;
+      if (!slipPop.hidden) slipRender();
+    } catch (e) { /* บอทไม่ตอบ ไว้รอบหน้า */ }
+  }
+  function slipRender() {
+    slipPop.textContent = '';
+    slipPop.appendChild(slipEl('h3', '', 'สลิปค่าบริการรอออกใบเสร็จ (' + slipItems.length + ')'));
+    slipPop.appendChild(slipEl('p', 'hint', 'บอทอ่านจากห้อง LINE ลูกค้า ตรวจกับรูปสลิปก่อนออกใบเสร็จใน FlowAccount แล้วกด "ทำแล้ว"'));
+    slipItems.forEach(s => {
+      const card = slipEl('div', 'slip-card');
+      const top = slipEl('div', 'top');
+      top.appendChild(slipEl('span', '', s.group + (s.client_name ? ' · ' + s.client_name : '')));
+      top.appendChild(slipEl('span', '', baht(s.amount) + ' บาท'));
+      card.appendChild(top);
+      card.appendChild(slipEl('div', 'meta', 'โอนเมื่อ ' + (s.paid_at || '-') + ' · ผู้โอน ' + (s.payer || '-') + (s.ref ? ' · อ้างอิง ' + s.ref : '')));
+      if (!s.invoices.length) card.appendChild(slipEl('div', 'inv', 'ไม่พบใบแจ้งหนี้ค้างใน CRM'));
+      s.invoices.forEach(v => card.appendChild(slipEl('div', 'inv' + (v.match ? ' hit' : ''),
+        (v.match ? '✓ ยอดตรง ' : '') + 'ใบแจ้งหนี้ ' + v.month + '/' + v.year + (v.fa_invoice_no ? ' ' + v.fa_invoice_no : '') +
+        ' · ค่าบริการ ' + baht(v.fee_amount) + ' · รับสุทธิ ' + baht(v.expected_payment))));
+      const acts = slipEl('div', 'acts');
+      const link = slipEl('a', '', 'ดูสลิป');
+      if (/^https:\/\//.test(s.url)) { link.href = s.url; link.target = '_blank'; link.rel = 'noopener'; }
+      acts.appendChild(link);
+      [['done', 'ทำแล้ว'], ['not', 'ไม่ใช่ค่าบริการ']].forEach(([st, label]) => {
+        const b = slipEl('button', '', label);
+        b.addEventListener('click', async () => {
+          b.disabled = true;
+          const r = await botCall('slip_mark', { row: s.row, file_id: s.file_id, status: st }).catch(() => ({ ok: false }));
+          if (!r.ok) { b.disabled = false; b.textContent = 'ไม่สำเร็จ ลองใหม่'; return; }
+          slipLoad();
+        });
+        acts.appendChild(b);
+      });
+      card.appendChild(acts);
+      slipPop.appendChild(card);
+    });
+  }
+  slipBtn.addEventListener('click', () => {
+    slipPop.hidden = !slipPop.hidden;
+    if (!slipPop.hidden) slipRender();
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') slipPop.hidden = true; });
   aiClose.addEventListener('click', closeAi);
   aiBackdrop.addEventListener('click', closeAi);
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAi(); });
