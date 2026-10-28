@@ -1241,7 +1241,7 @@
       if (!aiMe.active) return aiIntroMsg(aiErrText('inactive'));
       if (!aiMe.mapped) return aiIntroMsg(aiErrText('unmapped'));
       aiShow('chat');
-      if (!aiLog.childElementCount) aiBubble('bot', 'สวัสดีครับ ' + (aiMe.name || '') + ' ถามน้องบัญชีได้เหมือนในไลน์เลยครับ พิมพ์ /help เพื่อดูคำสั่งทั้งหมด');
+      if (!aiLog.childElementCount) aiBubble('bot', 'สวัสดีครับ ' + (aiMe.name || '') + ' พิมพ์คุยกับน้องบัญชีได้เลย ไม่ต้องใส่คำสั่งหรือเรียกชื่อ เช่น "มีเรื่องอะไรค้างอยู่บ้าง" หรือ "สัญญาเช่าของ RRT1 ขาดอะไร"');
       aiInput.focus();
     } catch (e) {
       aiIntroMsg('เชื่อมต่อน้องบัญชีไม่ได้ ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่');
