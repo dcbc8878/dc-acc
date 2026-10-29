@@ -570,8 +570,7 @@
             <option value="all">ทั้งหมด</option>
             <option value="monthly">รายเดือน</option>
             <option value="filing">แบบเปล่า</option>
-            <option value="annual">รายปี</option>
-            <!-- ไม่มี "เลิกกิจการ" ในตัวกรองนี้แล้ว — ลูกค้ากลุ่มนั้นถูกกันออกจากหน้ารายเดือนทั้งหมด
+            <!-- ไม่มี "รายปี" (ซ่อนจากหน้ารายเดือน 2026-10-29) และไม่มี "เลิกกิจการ" ในตัวกรองนี้แล้ว — ลูกค้ากลุ่มนั้นถูกกันออกจากหน้ารายเดือนทั้งหมด
                  (ดู renderTracking) เลือกแล้วจะได้ตารางว่างเสมอ ไปดูที่ "รายปี > เลิกกิจการ" แทน -->
           </select>
           <button onclick="goToCurrentTrkMonth()" class="text-xs font-semibold text-[var(--ink-muted)] border border-[var(--border)] hover:bg-[var(--surface-2)] px-3 py-1.5 rounded-lg transition-colors flex-shrink-0">เดือนปัจจุบัน</button>
@@ -2567,11 +2566,12 @@ function renderTracking() {
   const monthLastStr = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(new Date(curYear, curMonth, 0).getDate()).padStart(2,'0')}`;
   const myIds = myTeamIds();
   const visibleClients = clients.filter(c => (c.is_active || c.end_date))
+    // ลูกค้ารายปีไม่มีงานรายเดือน ไม่ต้องขึ้นหน้านี้ (ผู้ใช้สั่ง 2026-10-29) ดูที่หน้า "รายปี" แทน
     // ลูกค้าที่เลิกกิจการแล้วไม่ต้องขึ้นหน้ารายเดือน — งานที่เหลือเป็นงานปิดบริษัท ติดตามที่แท็บ
     // "รายปี > เลิกกิจการ" แทน — ใช้ประเภท "ณ เดือนที่กำลังดู" (ประวัติสัญญา) ไม่ใช่ประเภทปัจจุบัน
     // เพราะเดือนก่อนหน้าที่เขายังเป็นลูกค้ารายเดือนอยู่ ต้องเห็นงานเดือนนั้นย้อนหลังได้ตามปกติ
     // (เช่น เลิกกิจการมีผล ก.ย. — เดือน ส.ค. ลงไปยังต้องอยู่ในหน้ารายเดือนเหมือนเดิม)
-    .filter(c => resolveEffectiveFee(c, curYear, curMonth, billingContractsByClient[c.id]).billing_type !== 'dissolved')
+    .filter(c => !['dissolved','annual'].includes(resolveEffectiveFee(c, curYear, curMonth, billingContractsByClient[c.id]).billing_type))
     .filter(c => trackingTypeFilter === 'all' ||
       resolveEffectiveFee(c, curYear, curMonth, billingContractsByClient[c.id]).billing_type === trackingTypeFilter)
     .filter(c => (!c.start_date || c.start_date <= monthLastStr) && (!c.end_date || c.end_date >= monthFirstStr))
@@ -2914,11 +2914,12 @@ function renderTrackingSummary() {
   const monthLastStr = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(new Date(curYear, curMonth, 0).getDate()).padStart(2,'0')}`;
   const trkSummaryMyIds = myTeamIds();
   const visibleClients = clients.filter(c => (c.is_active || c.end_date))
+    // ลูกค้ารายปีไม่มีงานรายเดือน ไม่ต้องขึ้นหน้านี้ (ผู้ใช้สั่ง 2026-10-29) ดูที่หน้า "รายปี" แทน
     // ลูกค้าที่เลิกกิจการแล้วไม่ต้องขึ้นหน้ารายเดือน — งานที่เหลือเป็นงานปิดบริษัท ติดตามที่แท็บ
     // "รายปี > เลิกกิจการ" แทน — ใช้ประเภท "ณ เดือนที่กำลังดู" (ประวัติสัญญา) ไม่ใช่ประเภทปัจจุบัน
     // เพราะเดือนก่อนหน้าที่เขายังเป็นลูกค้ารายเดือนอยู่ ต้องเห็นงานเดือนนั้นย้อนหลังได้ตามปกติ
     // (เช่น เลิกกิจการมีผล ก.ย. — เดือน ส.ค. ลงไปยังต้องอยู่ในหน้ารายเดือนเหมือนเดิม)
-    .filter(c => resolveEffectiveFee(c, curYear, curMonth, billingContractsByClient[c.id]).billing_type !== 'dissolved')
+    .filter(c => !['dissolved','annual'].includes(resolveEffectiveFee(c, curYear, curMonth, billingContractsByClient[c.id]).billing_type))
     .filter(c => (!c.start_date || c.start_date <= monthLastStr) && (!c.end_date || c.end_date >= monthFirstStr))
     .filter(c => isClientVisibleOnTeamScopedPages(c, trkSummaryMyIds));
   visibleClients.forEach(c => {
