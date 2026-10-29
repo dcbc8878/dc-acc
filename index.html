@@ -571,6 +571,28 @@
     border: 1px solid var(--border); background: var(--surface-2); color: var(--ink);
   }
 
+  /* ── สถานะลูกค้า + ค่าใช้จ่ายรออนุมัติ (Dashboard.gs / ExpenseDraft.gs ในโปรเจกต์บอท) ──
+     ใช้กล่อง .slip-pop เดิม แค่กว้างขึ้น */
+  .st-btn { background: var(--surface-2); color: var(--ink); border: 1px solid var(--border); }
+  .slip-pop.st-pop { width: min(1040px, calc(100vw - 32px)); }
+  .st-tabs { display: flex; gap: 6px; margin: 2px 0 10px; }
+  .st-tabs button {
+    font: inherit; font-size: 0.8rem; padding: 5px 12px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--surface-2); color: var(--ink);
+  }
+  .st-tabs button.on { background: var(--accent); color: var(--accent-contrast); border-color: transparent; }
+  .st-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+  .st-table th { text-align: left; font-weight: 600; color: var(--ink-muted); font-size: 0.74rem; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  .st-table td { padding: 7px 8px; border-bottom: 1px solid var(--border); vertical-align: top; line-height: 1.5; }
+  .st-table tr.row { cursor: pointer; }
+  .st-table tr.row:hover td { background: var(--surface-2); }
+  .st-table .sub { color: var(--ink-muted); font-size: 0.74rem; }
+  .st-table .warn { color: var(--accent-text); font-weight: 600; }
+  .st-table tr.det td { background: var(--surface-2); font-size: 0.78rem; }
+  .st-table tr.det ul { margin: 4px 0 0; padding-left: 18px; }
+  .st-wrap { overflow-x: auto; }
+  .st-filter { font: inherit; font-size: 0.78rem; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--ink); margin-bottom: 4px; }
+
   /* ── สมัครสมาชิก (public sign-up screen) ──
      Purely additive rules -- nothing above this comment is edited. Reuses the
      .login-card box model (border/radius/shadow/padding) so the sign-up card
@@ -692,6 +714,7 @@
     <span class="name">เด็กชายบัญชี</span>
     <span class="page-title" id="pageTitle">CRM</span>
     <button class="slip-btn" id="slipBtn" hidden></button>
+    <button class="slip-btn st-btn" id="stBtn" hidden>สถานะลูกค้า</button>
     <span class="staff-name" id="shellStaffName"></span>
     <button class="logout-btn" id="logoutBtn" aria-label="ออกจากระบบ" title="ออกจากระบบ">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
@@ -1333,7 +1356,8 @@
     aiLog.textContent = '';
     aiMapBtn.hidden = true;
     slipReset();
-    if (uid) slipLoad();
+    stReset();
+    if (uid) { slipLoad(); stLoadExp(); }
   });
 
   // ── สลิปค่าบริการรอออกใบเสร็จ ──
@@ -1400,9 +1424,170 @@
   }
   slipBtn.addEventListener('click', () => {
     slipPop.hidden = !slipPop.hidden;
+    stPop.hidden = true;
     if (!slipPop.hidden) slipRender();
   });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') slipPop.hidden = true; });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { slipPop.hidden = true; stPop.hidden = true; } });
+
+  // ── สถานะลูกค้า + ค่าใช้จ่ายรออนุมัติ ──
+  // บอทสรุปทุกห้องลูกค้า (Dashboard.gs) และร่างค่าใช้จ่ายจากเอกสารที่ลูกค้าส่ง (ExpenseDraft.gs)
+  // หน้านี้แค่อนุมัติ/ปฏิเสธร่าง -- ไม่แตะ FlowAccount (คนสั่ง Claude คีย์รายการที่อนุมัติแล้วเอง)
+  const stBtn = document.getElementById('stBtn');
+  const stPop = slipEl('div', 'slip-pop st-pop');
+  stPop.hidden = true;
+  document.body.appendChild(stPop);
+  let stTab = 'status';
+  let stData = null;        // ผล dashboard
+  let stExp = [];           // รายการ draft + approved
+  let stGroup = '';         // ตัวกรองห้องในแท็บค่าใช้จ่าย
+  let stOpen = {};          // แถวสถานะที่กางดูรายละเอียด
+
+  function stReset() {
+    stData = null; stExp = []; stGroup = ''; stOpen = {};
+    stPop.hidden = true; stBtn.hidden = true;
+  }
+  function stBtnText() {
+    const n = stExp.filter(x => x.status === 'draft').length;
+    stBtn.textContent = 'สถานะลูกค้า' + (n ? ' · รออนุมัติ ' + n : '');
+  }
+  async function stLoadExp() {
+    try {
+      const r = await botCall('expense_list');
+      if (!r.ok) return;
+      stExp = r.items || [];
+      stBtn.hidden = false;
+      stBtnText();
+      if (!stPop.hidden) stRender();
+    } catch (e) { /* บอทไม่ตอบ ไว้เปิดใหม่ */ }
+  }
+  async function stLoadStatus() {
+    try {
+      const r = await botCall('dashboard');
+      stData = r.ok ? r : { error: true };
+    } catch (e) { stData = { error: true }; }
+    if (!stPop.hidden) stRender();
+  }
+
+  function stRender() {
+    stPop.textContent = '';
+    const tabs = slipEl('div', 'st-tabs');
+    const nDraft = stExp.filter(x => x.status === 'draft').length;
+    [['status', 'สถานะลูกค้า'], ['exp', 'ค่าใช้จ่ายรออนุมัติ' + (nDraft ? ' (' + nDraft + ')' : '')]].forEach(([k, label]) => {
+      const b = slipEl('button', stTab === k ? 'on' : '', label);
+      b.addEventListener('click', () => { stTab = k; stRender(); });
+      tabs.appendChild(b);
+    });
+    const re = slipEl('button', '', 'โหลดใหม่');
+    re.style.marginLeft = 'auto';
+    re.addEventListener('click', () => { stData = null; stRender(); stLoadStatus(); stLoadExp(); });
+    tabs.appendChild(re);
+    stPop.appendChild(tabs);
+    if (stTab === 'status') stRenderStatus(); else stRenderExp();
+  }
+
+  function stInvoiceText(o) {
+    const v = o.invoice;
+    if (!v) return ['-', ''];
+    const paid = !/^(draft|sent)$/.test(v.status || '');
+    return [v.month + '/' + v.year + (paid ? ' จ่ายแล้ว' : ' ค้าง ' + baht(v.expected || v.fee)), paid ? '' : 'warn'];
+  }
+
+  function stRenderStatus() {
+    if (!stData) { stPop.appendChild(slipEl('p', 'hint', 'กำลังโหลด…')); return; }
+    if (stData.error) { stPop.appendChild(slipEl('p', 'hint', 'โหลดไม่สำเร็จ กด "โหลดใหม่"')); return; }
+    stPop.appendChild(slipEl('p', 'hint', 'เดือน ' + stData.month + ' · กดที่แถวเพื่อดูเรื่องค้างจากโปรไฟล์ลูกค้า · "รอตอบ" = ลูกค้าทักแล้วทีมยังไม่ตอบ'));
+    const wrap = slipEl('div', 'st-wrap');
+    const t = slipEl('table', 'st-table');
+    const hr = slipEl('tr');
+    ['ลูกค้า', 'เอกสารเดือนนี้', 'ค่าบริการล่าสุด', 'ค่าใช้จ่าย', 'งานค้าง', 'รอตอบ'].forEach(h => hr.appendChild(slipEl('th', '', h)));
+    t.appendChild(hr);
+    stData.rows.forEach(o => {
+      const tr = slipEl('tr', 'row');
+      tr.appendChild(slipEl('td', '', o.group));
+      const d = slipEl('td');
+      d.appendChild(slipEl('div', '', o.docs_month + ' ไฟล์' + (o.docs_unread ? ' (ยังไม่อ่าน ' + o.docs_unread + ')' : '')));
+      d.appendChild(slipEl('div', 'sub', o.doc_types.length ? o.doc_types.join(' · ') : 'ล่าสุด ' + (o.last_doc || '-')));
+      tr.appendChild(d);
+      const [inv, cls] = stInvoiceText(o);
+      const ti = slipEl('td', cls, inv);
+      if (o.slips) ti.appendChild(slipEl('div', 'sub', 'มีสลิปรอออกใบเสร็จ ' + o.slips));
+      tr.appendChild(ti);
+      tr.appendChild(slipEl('td', o.exp_draft ? 'warn' : '',
+        o.exp_draft || o.exp_approved ? 'รออนุมัติ ' + o.exp_draft + (o.exp_approved ? ' · รอคีย์ ' + o.exp_approved : '') : '-'));
+      tr.appendChild(slipEl('td', o.tasks ? 'warn' : '', o.tasks ? o.tasks + ' งาน' : '-'));
+      tr.appendChild(slipEl('td', o.waiting_hours != null ? 'warn' : '', o.waiting_hours != null ? o.waiting_hours + ' ชม.' : '-'));
+      tr.addEventListener('click', () => { stOpen[o.group] = !stOpen[o.group]; stRender(); });
+      t.appendChild(tr);
+      if (stOpen[o.group]) {
+        const dr = slipEl('tr', 'det');
+        const td = slipEl('td');
+        td.colSpan = 6;
+        td.appendChild(slipEl('div', 'sub', 'เรื่องค้าง/ข้อควรระวัง จากโปรไฟล์ลูกค้า' + (o.profile_updated ? ' (อัปเดต ' + o.profile_updated + ')' : '')));
+        if (!o.pending_items.length) td.appendChild(slipEl('div', '', 'ไม่มีข้อมูล'));
+        else { const ul = slipEl('ul'); o.pending_items.forEach(x => ul.appendChild(slipEl('li', '', x))); td.appendChild(ul); }
+        dr.appendChild(td);
+        t.appendChild(dr);
+      }
+    });
+    wrap.appendChild(t);
+    stPop.appendChild(wrap);
+  }
+
+  function stRenderExp() {
+    stPop.appendChild(slipEl('p', 'hint', 'บอทร่างจากเอกสารที่ลูกค้าส่งในห้อง LINE (ตั้งแต่ 1 ต.ค. 69) ตรวจกับไฟล์จริงก่อนกดอนุมัติ · รายการที่อนุมัติแล้วรอสั่ง Claude คีย์เข้า FlowAccount'));
+    const groups = [...new Set(stExp.map(x => x.group))];
+    if (groups.length > 1) {
+      const sel = slipEl('select', 'st-filter');
+      sel.appendChild(new Option('ทุกห้อง (' + stExp.length + ')', ''));
+      groups.forEach(g => sel.appendChild(new Option(g + ' (' + stExp.filter(x => x.group === g).length + ')', g)));
+      sel.value = stGroup;
+      sel.addEventListener('change', () => { stGroup = sel.value; stRender(); });
+      stPop.appendChild(sel);
+    }
+    const items = stExp.filter(x => !stGroup || x.group === stGroup);
+    if (!items.length) { stPop.appendChild(slipEl('p', 'hint', 'ไม่มีรายการรออนุมัติ')); return; }
+    items.forEach(x => {
+      const card = slipEl('div', 'slip-card');
+      const top = slipEl('div', 'top');
+      top.appendChild(slipEl('span', '', x.group + ' · ' + (x.vendor || '(ไม่ทราบผู้ขาย)')));
+      top.appendChild(slipEl('span', '', x.total ? baht(x.total) + ' บาท' : '-'));
+      card.appendChild(top);
+      card.appendChild(slipEl('div', 'meta', [
+        'วันที่ ' + (x.doc_date || '-'), 'เลขที่ ' + (x.doc_no || '-'),
+        x.vendor_tax_id ? 'เลขภาษี ' + x.vendor_tax_id : '', x.category_hint].filter(Boolean).join(' · ')));
+      card.appendChild(slipEl('div', 'meta', (x.description || '') +
+        ' · ก่อน VAT ' + (x.subtotal ? baht(x.subtotal) : '-') + ' · VAT ' + (x.vat ? baht(x.vat) : '-') +
+        (Number(x.wht_rate) ? ' · หัก ณ ที่จ่าย ' + x.wht_rate + '% ' + baht(x.wht_amount) : '') + ' · ' + (x.paid || '')));
+      if (x.status === 'approved') card.appendChild(slipEl('div', 'inv hit', '✓ อนุมัติแล้ว รอคีย์ · ' + (x.reviewed_by || '')));
+      else if (x.note) card.appendChild(slipEl('div', 'inv', x.note));
+      const acts = slipEl('div', 'acts');
+      const link = slipEl('a', '', 'ดูไฟล์ ' + (x.filename || ''));
+      if (/^https:\/\//.test(x.url)) { link.href = x.url; link.target = '_blank'; link.rel = 'noopener'; }
+      acts.appendChild(link);
+      const btns = x.status === 'approved' ? [['draft', 'ย้อนกลับ']] : [['approved', 'อนุมัติ'], ['rejected', 'ไม่ใช่/ไม่ต้องคีย์']];
+      btns.forEach(([st, label]) => {
+        const b = slipEl('button', '', label);
+        b.addEventListener('click', async () => {
+          b.disabled = true;
+          const r = await botCall('expense_mark', { row: x.row, file_id: x.file_id, status: st }).catch(() => ({ ok: false }));
+          if (!r.ok) { b.disabled = false; b.textContent = 'ไม่สำเร็จ ลองใหม่'; return; }
+          stLoadExp();
+        });
+        acts.appendChild(b);
+      });
+      card.appendChild(acts);
+      stPop.appendChild(card);
+    });
+  }
+
+  stBtn.addEventListener('click', () => {
+    stPop.hidden = !stPop.hidden;
+    slipPop.hidden = true;
+    if (stPop.hidden) return;
+    stRender();
+    if (!stData) stLoadStatus();
+    stLoadExp();
+  });
   aiClose.addEventListener('click', closeAi);
   aiBackdrop.addEventListener('click', closeAi);
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAi(); });
