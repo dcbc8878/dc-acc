@@ -497,6 +497,10 @@
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
         รายปี
       </div>
+      <div class="nav-item" data-page="dissolved" onclick="navigate('dissolved')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        เลิกกิจการ
+      </div>
       <div class="nav-item" data-page="clients" onclick="navigate('clients')">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 7v1a3 3 0 006 0V7m0 1a3 3 0 006 0V7m0 1a3 3 0 006 0V7H3l2-4h14l2 4"/></svg>
         ลูกค้า
@@ -545,6 +549,7 @@
       <div class="flex border-b-0">
         <button class="tab-btn section-tab" data-page="tracking" onclick="navigate('tracking')">รายเดือน</button>
         <button class="tab-btn section-tab" data-page="yearend" onclick="navigate('yearend')">รายปี</button>
+        <button class="tab-btn section-tab" data-page="dissolved" onclick="navigate('dissolved')">เลิกกิจการ</button>
       </div>
     </div>
     <div id="program-section-subnav" class="hidden bg-[var(--surface)] border-b border-[var(--border)] px-6 overflow-x-auto" style="scrollbar-width:none">
@@ -696,7 +701,6 @@
             <div class="flex items-center">
               <button class="tab-btn active" id="yeTab-tasks" onclick="showYearEndSubTab('tasks')">งานรายปี</button>
               <button class="tab-btn" id="yeTab-fin" onclick="showYearEndSubTab('fin')">งบการเงิน</button>
-              <button class="tab-btn" id="yeTab-dissolved" onclick="showYearEndSubTab('dissolved')">เลิกกิจการ</button>
             </div>
           </div>
           <div class="flex items-center gap-2">
@@ -816,8 +820,17 @@
         </div>
       </div>
 
-      <!-- SUBTAB: เลิกกิจการ (วันที่เลิกกิจการ · การปิดงบการเงิน · ยื่นแบบ · ปิดงบการเงินสำเร็จ) -->
-      <div id="ye-sub-dissolved" class="hidden">
+    </div>
+
+    <!-- PAGE: dissolved — แยกออกมาจากแท็บย่อย "รายปี > เลิกกิจการ" เป็นหน้าของตัวเอง (ผู้ใช้สั่ง 2026-10-30)
+         ไม่มีตัวเลือกปี เพราะเลิกกิจการเป็นเหตุการณ์ครั้งเดียวต่อลูกค้า ไม่ผูกกับปี -->
+    <div id="page-dissolved" class="hidden">
+      <div class="bg-[var(--surface)] border-b border-[var(--border)] px-6 sticky top-0 z-10">
+        <div class="flex items-center justify-between py-4 flex-wrap gap-y-2">
+          <h2 class="text-base font-bold text-[var(--ink)]">เลิกกิจการ</h2>
+        </div>
+      </div>
+      <div id="dsl-body">
         <!-- เดิมมีสเปเซอร์ล่องหนตรงนี้ เอาออกแล้วตามคำสั่งผู้ใช้ (2026-09-01) — ดู #ye-sub-tasks ด้านบน -->
         <div class="grid grid-cols-3 gap-4 px-6 py-3">
           <div class="bg-[var(--surface)] rounded-xl border border-[var(--border)] px-4 py-2.5">
@@ -2142,6 +2155,7 @@ async function toggleFavorite(clientId) {
   if (curPage === 'tracking') renderTracking();
   if (curPage === 'finance') { renderFinanceCollection(); renderFinanceFees(); }
   if (curPage === 'yearend') renderYearEnd();
+  if (curPage === 'dissolved') renderDissolved();
 }
 async function loadTasks() {
   const prevMonths = [];
@@ -2338,7 +2352,7 @@ async function saveAppSettings() {
 // ─────────────────────────────────────────────────────────────
 // NAVIGATION
 // ─────────────────────────────────────────────────────────────
-const ALL_PAGES = ['tracking','yearend','clients','finance','settings','owncompany','employees','assign','appsettings','activitylog'];
+const ALL_PAGES = ['tracking','yearend','dissolved','clients','finance','settings','owncompany','employees','assign','appsettings','activitylog'];
 
 // ─────────────────────────────────────────────────────────────
 // AUTO-FIT BOTTOM BOXES — stretches whichever ".fit-bottom" scroll box is visible on the
@@ -2395,7 +2409,7 @@ function navigate(p) {
   // ที่ยังจำกัดแค่สิทธิ์เดิม) — หน้าเหล่านี้เปิดให้ทุกระดับดูได้ (assign: ดูได้ แก้ไม่ได้ ดู
   // canManageTeams ใน assignRowHtml/assignAssigneeSpanHtml_, activitylog: canSeeAuditLog() คืน true เสมอ
   // RLS กรองแถวการเงินให้เองแล้วที่ฐานข้อมูล)
-  if (myLevel() > 3 && !['tracking','yearend','clients','finance','settings','employees','assign','activitylog'].includes(p)) p = 'tracking';
+  if (myLevel() > 3 && !['tracking','yearend','dissolved','clients','finance','settings','employees','assign','activitylog'].includes(p)) p = 'tracking';
   curPage = p;
   ALL_PAGES.forEach(pg => {
     document.getElementById(`page-${pg}`).classList.toggle('hidden', pg !== p);
@@ -2415,6 +2429,7 @@ function navigate(p) {
   });
   if (p === 'tracking') renderTracking();
   else if (p === 'yearend') { if (!yearEndLoaded) loadYearEndTasks().then(renderYearEnd); else renderYearEnd(); }
+  else if (p === 'dissolved') renderDissolved();
   else if (p === 'clients') showClientsSubTab('current');
   // LV4-5 ไม่มีสิทธิ์ดูข้อมูลการเงินเลย (canSeeFinance = canEdit, LV1-3) — ไม่ยิง ensureFinanceDataLoaded()
   // (จะไปเรียก loadFinInvoices() ยิง query เข้า crm_invoices) เลยสำหรับระดับนี้ ยังคงเรียก
@@ -2457,7 +2472,7 @@ document.addEventListener('click', (ev) => {
 // เรียก navigate() ต่อเท่านั้น ไม่มีระบบนำทางคู่ขนาน
 // ─────────────────────────────────────────────────────────────
 const PAGE_SECTION = {
-  tracking: 'crm', yearend: 'crm',
+  tracking: 'crm', yearend: 'crm', dissolved: 'crm',
   clients: 'customer',
   finance: 'service',
   settings: 'personal',
@@ -3286,6 +3301,9 @@ function yearEndVisibleClients() {
   const yeMyIds = myTeamIds();
   return clients.filter(c => (c.is_active || c.end_date))
     .filter(c => (!c.start_date || c.start_date <= yearLastStr) && (!c.end_date || c.end_date >= yearFirstStr))
+    // ลูกค้าที่เป็นเลิกกิจการ ณ สิ้นปีที่ดู ไปอยู่หน้า "เลิกกิจการ" แทน ไม่ขึ้นซ้ำในงานรายปี/งบการเงิน
+    // (ผู้ใช้สั่ง 2026-10-30) — ปีก่อนหน้าที่ยังไม่เลิกกิจการยังเห็นตามปกติ
+    .filter(c => resolveEffectiveFee(c, yearEndYear, 12, billingContractsByClient[c.id]).billing_type !== 'dissolved')
     .filter(c => isClientVisibleOnTeamScopedPages(c, yeMyIds))
     .sort((a, b) => clientSortCompare_(a, b, yeMyIds));
 }
@@ -3428,10 +3446,8 @@ async function changeYearEnd(delta) {
 function showYearEndSubTab(tab) {
   document.getElementById('ye-sub-tasks').classList.toggle('hidden', tab !== 'tasks');
   document.getElementById('ye-sub-fin').classList.toggle('hidden', tab !== 'fin');
-  document.getElementById('ye-sub-dissolved').classList.toggle('hidden', tab !== 'dissolved');
   document.getElementById('yeTab-tasks').classList.toggle('active', tab === 'tasks');
   document.getElementById('yeTab-fin').classList.toggle('active', tab === 'fin');
-  document.getElementById('yeTab-dissolved').classList.toggle('active', tab === 'dissolved');
 }
 
 // ── แท็บย่อย "เลิกกิจการ" — ต่างจากงานรายปี/งบการเงินตรงที่ข้อมูลอยู่บน crm_clients ตรงๆ (คอลัมน์
@@ -3559,7 +3575,7 @@ async function saveDissolutionDate(clientId) {
   await logActivity('client_info_update', 'client', clientId, `บันทึกวันที่เลิกกิจการ → ${val ? fmtDate(val) : '—'}`);
   closeModal();
   showToast('บันทึกสำเร็จ');
-  if (curPage === 'yearend') renderDissolved();
+  if (curPage === 'dissolved') renderDissolved();
   if (panelClientId === clientId) renderPanelInfo();
 }
 
@@ -3883,7 +3899,7 @@ async function openPanel(clientId) {
   // ⚠️ ห้ามกลับไปใช้ panelOrigin = 'limited' ทำเรื่องนี้เด็ดขาด — panelOrigin คุม "สิทธิ์แก้ไข" อีก 14 จุด
   // ทั่วทั้งแผง ถ้าตั้งเป็น 'limited' จะกลับไปเป็นบั๊กเดิมที่ผู้ใช้แจ้งไว้เมื่อ 2026-09-03 ทันที
   // ("เปิดแผงจากหน้ารายเดือนแล้วทำอะไรไม่ได้เลย") — เรื่องนี้เป็นแค่ "ซ่อนแท็บ" ไม่ใช่เรื่องสิทธิ์
-  const compactTabs = (curPage === 'tracking' || curPage === 'yearend');
+  const compactTabs = (curPage === 'tracking' || curPage === 'yearend' || curPage === 'dissolved');
   document.getElementById('tab-btn-history').classList.toggle('hidden', compactTabs);
   document.getElementById('tab-btn-creds').classList.toggle('hidden', !canCred());
   document.getElementById('tab-btn-docs').classList.toggle('hidden', compactTabs);
@@ -4190,6 +4206,7 @@ function toggleTaxPill(checkbox, onLabel, offLabel) {
 function refreshPageAfterClientSave_() {
   if (curPage === 'tracking') { renderTracking(); renderTrackingSummary(); }
   else if (curPage === 'yearend') renderYearEnd();
+  else if (curPage === 'dissolved') renderDissolved();
   else if (curPage === 'clients') {
     if (document.getElementById('clients-sub-old')?.classList.contains('hidden') === false) renderOldClients();
     else renderClientList();
@@ -4790,6 +4807,7 @@ async function saveEditType(clientId) {
   if (curPage === 'finance') renderFinanceFees();
   if (curPage === 'tracking') renderTracking();
   if (curPage === 'yearend') renderYearEnd();
+  if (curPage === 'dissolved') renderDissolved();
   if (panelClientId === clientId) renderPanelInfo();
 }
 
