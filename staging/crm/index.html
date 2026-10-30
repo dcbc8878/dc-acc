@@ -2920,6 +2920,9 @@ function renderTrackingSummary() {
     // เพราะเดือนก่อนหน้าที่เขายังเป็นลูกค้ารายเดือนอยู่ ต้องเห็นงานเดือนนั้นย้อนหลังได้ตามปกติ
     // (เช่น เลิกกิจการมีผล ก.ย. — เดือน ส.ค. ลงไปยังต้องอยู่ในหน้ารายเดือนเหมือนเดิม)
     .filter(c => !['dissolved','annual'].includes(resolveEffectiveFee(c, curYear, curMonth, billingContractsByClient[c.id]).billing_type))
+    // ตัวกรองประเภทเดียวกับตาราง (renderTracking) — เดิมไม่มี การ์ดสรุปเลยเด้งกลับไปนับทุกประเภทหลังกดติ๊ก
+    .filter(c => trackingTypeFilter === 'all' ||
+      resolveEffectiveFee(c, curYear, curMonth, billingContractsByClient[c.id]).billing_type === trackingTypeFilter)
     .filter(c => (!c.start_date || c.start_date <= monthLastStr) && (!c.end_date || c.end_date >= monthFirstStr))
     .filter(c => isClientVisibleOnTeamScopedPages(c, trkSummaryMyIds));
   visibleClients.forEach(c => {
@@ -4911,7 +4914,7 @@ async function loadBillingContracts(clientId) {
     return;
   }
 
-  const BILLING_LABEL = { monthly: 'รายเดือน', yearly: 'รายปี', per_form: 'ยื่นแบบเปล่า' };
+  const BILLING_LABEL = { monthly: 'รายเดือน', annual: 'รายปี', filing: 'ยื่นแบบเปล่า', dissolved: 'เลิกกิจการ' };
   el.innerHTML = `<h4 class="text-sm font-bold text-[var(--ink)] mb-2">ประวัติสัญญาค่าบริการ</h4>` +
     data.map(ct => `
     <div class="flex items-start justify-between py-2 border-b border-[var(--border)] last:border-0">
@@ -5776,12 +5779,14 @@ function openBatchInvoice(year, month) {
     const expected = fee - wht;
     const inv = monthInvMap[c.id];
     const alreadyExists = !!inv;
+    // รายปี/เลิกกิจการ ยังเลือกออกใบได้ (เช่นใบค่าบริการรายปี) แต่ไม่ติ๊กไว้ให้ก่อน (ผู้ใช้สั่ง 2026-10-30)
+    const nonMonthly = ['annual','dissolved'].includes(resolved.billing_type);
     return `<tr class="border-b border-[var(--border)] ${alreadyExists ? 'opacity-50' : ''}">
       <td class="py-2 pr-2">
-        ${!alreadyExists ? `<input type="checkbox" class="batch-chk w-4 h-4" data-cid="${c.id}" checked>` : '<span class="text-xs text-[var(--ink-muted)]">มีแล้ว</span>'}
+        ${!alreadyExists ? `<input type="checkbox" class="batch-chk w-4 h-4" data-cid="${c.id}"${nonMonthly ? '' : ' checked'}>` : '<span class="text-xs text-[var(--ink-muted)]">มีแล้ว</span>'}
       </td>
       <td class="py-2 pr-3 text-left">
-        <span class="text-xs font-bold text-[var(--accent-text)]">${e(c.code)}</span>
+        <span class="text-xs font-bold text-[var(--accent-text)]">${e(c.code)}</span>${nonMonthly ? ` <span class="text-[10px] text-amber-600">${e(BILLING_TYPE_LABEL[resolved.billing_type])}</span>` : ''}
         <div class="text-xs text-[var(--ink-muted)] truncate max-w-[140px]">${e(c.thai_name)}</div>
       </td>
       <td class="py-2 pr-3 text-right text-xs font-mono">${fmtMoney(fee)}</td>
@@ -5998,6 +6003,10 @@ function financeCollectionClients() {
   const monthLastStr = `${finYear}-${String(finMonth).padStart(2,'0')}-${String(new Date(finYear, finMonth, 0).getDate()).padStart(2,'0')}`;
   return clients.filter(c => (c.is_active || c.end_date) && !c.is_own_company)
     .filter(c => (!c.start_date || c.start_date <= monthLastStr) && (!c.end_date || c.end_date >= monthFirstStr))
+    // ลูกค้ารายปี/เลิกกิจการ (ณ เดือนที่ดู) ไม่มีค่าบริการรายเดือน — ขึ้นเฉพาะเดือนที่มีใบแจ้งหนี้จริง
+    // (เช่นใบเก็บค่าบริการรายปี) ไม่งั้นจะค้างเป็น "ยังไม่เก็บ" ทุกเดือน (ผู้ใช้สั่ง 2026-10-30)
+    .filter(c => finInvoiceMap[c.id] ||
+      !['annual','dissolved'].includes(resolveEffectiveFee(c, finYear, finMonth, billingContractsByClient[c.id]).billing_type))
     .slice()
     .sort((a, b) =>
       (favoriteClientIds.has(b.id) - favoriteClientIds.has(a.id)) ||
