@@ -6279,10 +6279,14 @@ function renderFinanceFees() {
 
   // Same resolution financeFeeRowHtml() uses per-row (ค่าบริการ "ที่มีผลจริง ณ วันนี้" ผ่าน
   // ประวัติสัญญา), just summed across the full unsearched set for the stat-card row.
+  // ลูกค้ารายปีเก็บค่าบริการเป็นยอดต่อปี จึงไม่นับในยอดรวม/เฉลี่ยต่อเดือน (ผู้ใช้สั่ง 2026-10-30) —
+  // การ์ด "จำนวนลูกค้า" ยังนับทุกรายเหมือนเดิม
   const today = new Date();
-  const feeTotal = base.reduce((sum, c) =>
-    sum + (resolveEffectiveFee(c, today.getFullYear(), today.getMonth() + 1, billingContractsByClient[c.id]).fee_amount || 0), 0);
-  const feeAvg = base.length ? feeTotal / base.length : 0;
+  const feeBase = base
+    .map(c => resolveEffectiveFee(c, today.getFullYear(), today.getMonth() + 1, billingContractsByClient[c.id]))
+    .filter(r => r.billing_type !== 'annual');
+  const feeTotal = feeBase.reduce((sum, r) => sum + (r.fee_amount || 0), 0);
+  const feeAvg = feeBase.length ? feeTotal / feeBase.length : 0;
   document.getElementById('fee-total').textContent = feeTotal.toLocaleString('th-TH');
   document.getElementById('fee-avg').textContent = feeAvg.toLocaleString('th-TH', { maximumFractionDigits: 2 });
   document.getElementById('fee-count').textContent = base.length;
