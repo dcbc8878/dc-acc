@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>ติดตามปิดงบ | เด็กชายบัญชี</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+/* หน้าเดียว 2 มุมมอง: รายชื่อลูกค้าของรอบปี (/customer/2569) และเช็คลิสต์รายลูกค้า (/customer/2569/EPED) — โทนแบรนด์เดียวกับหน้า 404/หน้าแรก */
+:root{
+  --brand:#0f4c81; --brand-soft:#E6EEF6; --brand-ink:#0B3A63;
+  --paper:#F5F8FC; --surface:#FFFFFF; --sunk:#EDF2F8;
+  --ink:#0F1A24; --body:#45566A; --faint:#7D8B9B;
+  --rule:#DCE3EC; --rule-strong:#C2CCD8;
+  --ok:#23704B; --ok-soft:#E3F1E9;
+  --warn:#8A6414; --warn-soft:#F6EEDC;
+  --bad:#A23B2C; --bad-soft:#F8E8E4;
+  --na:#6C7280; --na-soft:#ECEDF0;
+  --f-body:"Noto Sans Thai",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --brand:#7FB2E5; --brand-soft:#16273A; --brand-ink:#A9CCF0;
+    --paper:#0E141B; --surface:#151D26; --sunk:#1B2530;
+    --ink:#E6ECF2; --body:#AAB6C3; --faint:#7B8896;
+    --rule:#253140; --rule-strong:#344354;
+    --ok:#6CC395; --ok-soft:#163023; --warn:#D7B064; --warn-soft:#2D2617;
+    --bad:#E58C78; --bad-soft:#33201C; --na:#A0A6B2; --na-soft:#22252B;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --brand:#7FB2E5; --brand-soft:#16273A; --brand-ink:#A9CCF0;
+  --paper:#0E141B; --surface:#151D26; --sunk:#1B2530;
+  --ink:#E6ECF2; --body:#AAB6C3; --faint:#7B8896;
+  --rule:#253140; --rule-strong:#344354;
+  --ok:#6CC395; --ok-soft:#163023; --warn:#D7B064; --warn-soft:#2D2617;
+  --bad:#E58C78; --bad-soft:#33201C; --na:#A0A6B2; --na-soft:#22252B;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper); color:var(--ink); font-family:var(--f-body); font-size:15.5px; line-height:1.6; -webkit-font-smoothing:antialiased}
+[hidden]{display:none!important}
+a{color:var(--brand)}
+button,input,select,textarea{font:inherit; color:inherit}
+:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+.mono{font-family:var(--f-mono); font-variant-numeric:tabular-nums}
+
+.top{background:var(--surface); border-bottom:1px solid var(--rule)}
+.top-in,.wrap{max-width:74rem; margin:0 auto; padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px))}
+.top-in{display:flex; align-items:center; gap:.75rem; padding-block:.7rem; flex-wrap:wrap}
+.top-in img{width:30px; height:30px}
+.top-in .t{font-weight:700; color:var(--ink); text-decoration:none; flex:1; min-width:0}
+.top-in .who{font-size:.82rem; color:var(--body)}
+.wrap{padding-block:1.5rem 4rem}
+
+.btn{cursor:pointer; border-radius:8px; padding:.45rem .95rem; border:1px solid var(--brand); background:var(--brand); color:var(--surface); font-weight:600; font-size:.9rem; white-space:nowrap}
+.btn.ghost{background:transparent; color:var(--brand)}
+.btn.small{padding:.25rem .65rem; font-size:.82rem}
+.btn.danger{border-color:var(--bad); background:transparent; color:var(--bad)}
+.btn:disabled{opacity:.5; cursor:not-allowed}
+input.f,select.f,textarea.f{background:var(--surface); border:1px solid var(--rule-strong); border-radius:8px; padding:.45rem .6rem; width:100%}
+label.fl{display:grid; gap:.2rem; font-size:.82rem; color:var(--body)}
+.err{color:var(--bad); font-size:.86rem; margin:0}
+.msg{border:1px solid var(--rule-strong); background:var(--surface); border-radius:10px; padding:.75rem .95rem; color:var(--body); font-size:.92rem}
+.msg.bad{border-color:var(--bad); background:var(--bad-soft); color:var(--ink)}
+
+/* login */
+.login{max-width:24rem; margin:3rem auto; background:var(--surface); border:1px solid var(--rule); border-radius:14px; padding:1.5rem; display:grid; gap:.8rem}
+.login h1{margin:0; font-size:1.3rem}
+
+/* list view */
+.head{display:flex; flex-wrap:wrap; gap:.75rem 1rem; align-items:end; justify-content:space-between; margin-bottom:1.25rem}
+.head h1{margin:0; font-size:clamp(1.4rem,3.4vw,1.9rem); line-height:1.25; text-wrap:balance}
+.eyebrow{font-family:var(--f-mono); font-size:.7rem; letter-spacing:.12em; text-transform:uppercase; color:var(--brand); margin:0 0 .3rem}
+.yearbar{display:flex; gap:.35rem; flex-wrap:wrap}
+.yearbar a{font-family:var(--f-mono); font-size:.85rem; text-decoration:none; padding:.25rem .65rem; border:1px solid var(--rule-strong); border-radius:999px; color:var(--body)}
+.yearbar a[aria-current="page"]{background:var(--brand); border-color:var(--brand); color:var(--surface)}
+.stats{display:flex; flex-wrap:wrap; gap:.4rem 1.4rem; font-size:.88rem; color:var(--body); margin:0 0 1rem}
+.stats b{font-family:var(--f-mono); font-weight:500; color:var(--ink)}
+.tools{display:flex; gap:.6rem; flex-wrap:wrap; align-items:center; margin-bottom:1rem}
+.tools input{max-width:18rem}
+
+.tablebox{overflow-x:auto; background:var(--surface); border:1px solid var(--rule); border-radius:12px}
+table.jobs{width:100%; border-collapse:collapse; font-size:.92rem; min-width:40rem}
+table.jobs th{text-align:left; font-weight:600; font-size:.78rem; color:var(--body); padding:.6rem .8rem; border-bottom:1px solid var(--rule-strong); white-space:nowrap}
+table.jobs td{padding:.6rem .8rem; border-bottom:1px solid var(--rule); vertical-align:middle}
+table.jobs tr:last-child td{border-bottom:0}
+table.jobs tbody tr{cursor:pointer}
+table.jobs tbody tr:hover{background:var(--sunk)}
+.cname a{color:var(--ink); text-decoration:none; font-weight:600}
+.cname a:hover{color:var(--brand)}
+.code{font-family:var(--f-mono); font-size:.8rem; color:var(--brand-ink)}
+.prog{display:flex; align-items:center; gap:.5rem; min-width:9rem}
+.bar{flex:1; height:6px; background:var(--sunk); border-radius:3px; overflow:hidden}
+.bar i{display:block; height:100%; background:var(--ok)}
+.pct{font-family:var(--f-mono); font-size:.8rem; width:2.6rem; text-align:right}
+.chip{display:inline-block; font-size:.74rem; padding:.08rem .5rem; border-radius:999px; white-space:nowrap; border:1px solid currentColor}
+.st-Pending{color:var(--faint)}
+.st-Preparing,.st-Draft{color:var(--warn); background:var(--warn-soft); border-color:transparent}
+.st-Sent{color:var(--brand-ink); background:var(--brand-soft); border-color:transparent}
+.st-Paid,.st-Uploaded{color:var(--ok); background:var(--ok-soft); border-color:transparent}
+.walk{font-size:.7rem; color:var(--warn); border:1px solid var(--warn); border-radius:4px; padding:0 .3rem; margin-left:.35rem; white-space:nowrap}
+.empty{background:var(--surface); border:1px dashed var(--rule-strong); border-radius:12px; padding:1.5rem; color:var(--body)}
+.empty b{color:var(--ink)}
+
+/* dialog */
+.dlg-back{position:fixed; inset:0; background:rgba(10,20,30,.45); display:grid; place-items:center; padding:max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); z-index:20}
+.dlg{background:var(--surface); border-radius:14px; width:100%; max-width:32rem; max-height:88vh; overflow:auto; padding:1.25rem; display:grid; gap:.9rem}
+.dlg h2{margin:0; font-size:1.15rem}
+.tabs{display:flex; gap:.3rem; border-bottom:1px solid var(--rule)}
+.tabs button{cursor:pointer; background:none; border:0; border-bottom:2px solid transparent; padding:.4rem .7rem; color:var(--body); font-weight:600}
+.tabs button[aria-selected="true"]{border-color:var(--brand); color:var(--brand)}
+.pick{list-style:none; margin:0; padding:0; max-height:16rem; overflow:auto; border:1px solid var(--rule); border-radius:8px}
+.pick li button{width:100%; text-align:left; background:none; border:0; border-bottom:1px solid var(--rule); padding:.5rem .7rem; cursor:pointer; display:flex; gap:.6rem; align-items:baseline}
+.pick li button:hover{background:var(--sunk)}
+.pick li button:disabled{cursor:default; color:var(--faint)}
+.pick .code{flex:0 0 4.5rem}
+.grid2{display:grid; gap:.7rem; grid-template-columns:1fr}
+@media (min-width:30rem){ .grid2{grid-template-columns:1fr 1fr} }
+.row-end{display:flex; gap:.5rem; justify-content:flex-end; flex-wrap:wrap}
+
+/* detail view */
+.crumb{font-size:.85rem; margin:0 0 .75rem}
+.crumb a{text-decoration:none}
+.dhead{display:flex; flex-wrap:wrap; gap:.75rem 1.5rem; align-items:start; justify-content:space-between; margin-bottom:1rem}
+.dhead h1{margin:0; font-size:clamp(1.3rem,3vw,1.75rem); line-height:1.3; text-wrap:balance}
+.dhead .sub{color:var(--body); font-size:.88rem}
+.dctl{display:flex; gap:.6rem; align-items:center; flex-wrap:wrap}
+.dctl label{font-size:.84rem; color:var(--body); display:flex; gap:.4rem; align-items:center}
+.dctl select{width:auto}
+.dlayout{display:grid; gap:1.5rem; grid-template-columns:1fr}
+@media (min-width:60rem){ .dlayout{grid-template-columns:1fr 18rem; align-items:start} .side{position:sticky; top:1rem} }
+.dlayout > *{min-width:0}
+.card{background:var(--surface); border:1px solid var(--rule); border-radius:12px; padding:1.1rem 1.2rem}
+.filter{display:flex; gap:.35rem; flex-wrap:wrap; margin:0 0 1rem}
+.filter button{cursor:pointer; border:1px solid var(--rule-strong); background:transparent; border-radius:999px; padding:.2rem .7rem; font-size:.82rem; color:var(--body)}
+.filter button[aria-pressed="true"]{border-color:var(--brand); background:var(--brand-soft); color:var(--brand-ink)}
+.grp{margin-bottom:1.6rem}
+.grp:last-child{margin-bottom:0}
+.ghead{display:flex; align-items:center; gap:.6rem; border-bottom:1px solid var(--rule-strong); padding-bottom:.4rem}
+.mark{font-weight:700; color:var(--surface); background:var(--brand); width:1.7rem; height:1.7rem; border-radius:6px; display:grid; place-items:center; flex:0 0 auto}
+.ghead h2{font-size:1.02rem; margin:0; flex:1}
+.gcount{font-family:var(--f-mono); font-size:.75rem; color:var(--body)}
+.gnote{color:var(--body); font-size:.85rem; margin:.45rem 0 .2rem; max-width:66ch}
+ul.items{list-style:none; margin:0; padding:0}
+ul.items li{border-bottom:1px solid var(--rule); padding:.6rem .1rem; display:grid; grid-template-columns:1fr auto; gap:.15rem 1rem; align-items:start}
+ul.items li:last-child{border-bottom:0}
+.iname{font-weight:600; line-height:1.45}
+.tag{font-size:.68rem; font-weight:500; color:var(--bad); border:1px solid var(--bad); border-radius:4px; padding:0 .3rem; margin-left:.4rem; white-space:nowrap; vertical-align:.1em}
+.ihint{grid-column:1; color:var(--body); font-size:.84rem; line-height:1.5}
+.iwho{grid-column:1; font-size:.75rem; color:var(--faint)}
+li.s-done .iname{color:var(--faint); text-decoration:line-through; text-decoration-color:var(--rule-strong)}
+li.s-na .iname{color:var(--faint)}
+.seg{grid-row:1 / span 3; grid-column:2; display:inline-flex; border:1px solid var(--rule-strong); border-radius:8px; overflow:hidden; align-self:center}
+.seg button{cursor:pointer; border:0; background:transparent; padding:.3rem .6rem; font-size:.8rem; color:var(--body); white-space:nowrap}
+.seg button + button{border-left:1px solid var(--rule-strong)}
+.seg button[aria-pressed="true"].b-wait{background:var(--sunk); color:var(--ink)}
+.seg button[aria-pressed="true"].b-done{background:var(--ok); color:var(--surface)}
+.seg button[aria-pressed="true"].b-na{background:var(--na-soft); color:var(--na)}
+.seg button:disabled{cursor:progress}
+@media (max-width:32rem){
+  ul.items li{grid-template-columns:1fr}
+  .seg{grid-row:auto; grid-column:1; justify-self:start; margin-top:.3rem}
+}
+.side{display:grid; gap:1rem}
+.sumrow{display:flex; justify-content:space-between; font-size:.9rem; padding:.25rem 0}
+.sumrow b{font-family:var(--f-mono); font-weight:500}
+.side textarea{min-height:8rem; resize:vertical; line-height:1.5}
+.saved{font-size:.75rem; color:var(--faint); min-height:1.1em; margin:.3rem 0 0}
+.side h2{font-size:.95rem; margin:0 0 .5rem}
+
+.toast{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(1rem + env(safe-area-inset-bottom, 0px)); background:var(--ink); color:var(--paper); padding:.5rem 1rem; border-radius:999px; font-size:.88rem; z-index:30}
+@media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-in">
+    <img src="/logo.png" alt="">
+    <a class="t" href="/customer/" data-nav>ติดตามปิดงบการเงิน</a>
+    <span class="who" id="who"></span>
+    <button class="btn ghost small" id="logout" type="button" hidden>ออกจากระบบ</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <p class="msg" id="boot">กำลังโหลด…</p>
+
+  <form class="login" id="login" hidden>
+    <h1>เข้าสู่ระบบพนักงาน</h1>
+    <label class="fl">อีเมล<input class="f" id="lg-email" type="email" autocomplete="username" required></label>
+    <label class="fl">รหัสผ่าน<input class="f" id="lg-pass" type="password" autocomplete="current-password" required></label>
+    <p class="err" id="lg-err" hidden></p>
+    <button class="btn" id="lg-btn" type="submit">เข้าสู่ระบบ</button>
+  </form>
+
+  <section id="v-list" hidden></section>
+  <section id="v-detail" hidden></section>
+</div>
+
+<div class="dlg-back" id="dlg" hidden></div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+(function(){
+  "use strict";
+  // ค่าเดียวกับหน้าหลัก dcacc (index.html) และ staging/crm — โดเมนเดียวกันจึงใช้ session ล็อกอินร่วมกัน
+  var SB_URL  = 'https://dqegkyobclqqichhnxfm.supabase.co';
+  var SB_ANON = 'sb_publishable_4U_v9BIrQjKppfchaevA6Q_zWj3zkxE';
+  var sb = window.supabase ? window.supabase.createClient(SB_URL, SB_ANON) : null;
+
+  // รายการเช็คลิสต์ — key ห้ามเปลี่ยนหลังใช้งานจริง (เป็น key ใน crm_fs_jobs.checks)
+  var GROUPS = [
+    { k:"ก", title:"เอกสารทะเบียนและยอดยกมา", note:"ใช้ตั้งยอดยกมาและยืนยันข้อมูลบริษัท ลูกค้าเดิมส่วนใหญ่มีอยู่แล้วจากปีก่อน", items:[
+      {id:"prior_fs", name:"งบการเงินปีก่อน ฉบับที่ผู้สอบบัญชีเซ็น พร้อมหมายเหตุประกอบงบ", hint:"ใช้เทียบยอดยกมาทุกบรรทัด"},
+      {id:"prior_tb", name:"งบทดลองปีก่อน (Excel)"},
+      {id:"prior_pnd50", name:"ภ.ง.ด.50 ปีก่อน พร้อมใบเสร็จ", hint:"ดูผลขาดทุนสะสมยกมา"},
+      {id:"cert", name:"หนังสือรับรองบริษัท อายุไม่เกิน 6 เดือน"},
+      {id:"boj5", name:"บอจ.5 บัญชีรายชื่อผู้ถือหุ้น ฉบับล่าสุด", hint:"ต้องนำส่งพร้อมงบทุกปี แม้ไม่มีการเปลี่ยนแปลง"},
+      {id:"pp20", name:"ภ.พ.20 ใบทะเบียนภาษีมูลค่าเพิ่ม", tag:"ถ้าจด VAT"}
+    ]},
+    { k:"ข", title:"เงินฝากธนาคารและเงินสด", note:"เริ่มหนังสือยืนยันยอดธนาคารก่อนอย่างอื่น ธนาคารใช้เวลาตอบหลายสัปดาห์", items:[
+      {id:"stmt", name:"Statement ธนาคาร ครบทุกบัญชี ครบ 12 เดือน", tag:"ห้ามขาด", hint:"รวมบัญชีที่ไม่เคลื่อนไหว ต้องเป็นไฟล์จากธนาคาร"},
+      {id:"bank_confirm_sent", name:"หนังสือยืนยันยอดธนาคาร ลูกค้าเซ็นและส่งธนาคารแล้ว"},
+      {id:"bank_confirm_reply", name:"ได้รับคำตอบยืนยันยอดจากธนาคาร"},
+      {id:"cash_cert", name:"หนังสือรับรองยอดเงินสดคงเหลือ ณ วันสิ้นปี", hint:"กรรมการเซ็นรับรอง"}
+    ]},
+    { k:"ค", title:"รายได้และลูกหนี้", items:[
+      {id:"sales", name:"รายงานขาย / ใบกำกับภาษีขาย ทั้งปี"},
+      {id:"rev_recon", name:"กระทบยอดรายได้ในบัญชีกับ ภ.พ.30", hint:"ผู้สอบบัญชีมักถามเมื่อยอดไม่ตรง"},
+      {id:"ar", name:"รายละเอียดลูกหนี้คงค้าง ณ วันสิ้นปี"},
+      {id:"unearned", name:"รายได้รับล่วงหน้า ณ วันสิ้นปี พร้อมสัญญา/ใบแจ้งหนี้ที่เกี่ยวข้อง", tag:"ถ้ามี"}
+    ]},
+    { k:"ง", title:"ต้นทุน ค่าใช้จ่าย และเจ้าหนี้", items:[
+      {id:"exp_docs", name:"เอกสารค่าใช้จ่ายทั้งปี ครบทุกใบ"},
+      {id:"ap", name:"รายละเอียดเจ้าหนี้และค่าใช้จ่ายค้างจ่าย ณ วันสิ้นปี", hint:"เช่น ค่าไฟฟ้า ค่าสอบบัญชี ภาษีหัก ณ ที่จ่ายค้างจ่าย"},
+      {id:"stock", name:"รายงานสินค้าคงเหลือ ณ วันสิ้นปี", tag:"ถ้ามีสินค้า"},
+      {id:"contracts", name:"สัญญาเช่าและสัญญาสำคัญที่มีผลในปี", hint:"ถ้าไม่เสียค่าเช่า ต้องมีหนังสือยินยอมให้ใช้สถานที่"}
+    ]},
+    { k:"จ", title:"ทรัพย์สิน", items:[
+      {id:"far", name:"ทะเบียนทรัพย์สินและตารางค่าเสื่อมราคา"},
+      {id:"ppe_move", name:"เอกสารซื้อ ขาย หรือตัดจำหน่ายทรัพย์สินในปี", tag:"ถ้ามี"}
+    ]},
+    { k:"ฉ", title:"เงินเดือนและพนักงาน", items:[
+      {id:"payroll", name:"ทะเบียนเงินเดือน (Payroll) ครบ 12 เดือน", tag:"ถ้ามีพนักงาน"},
+      {id:"pnd1", name:"ภ.ง.ด.1 ครบ 12 เดือน และ ภ.ง.ด.1ก พร้อมใบเสร็จ", tag:"ถ้ามีพนักงาน"},
+      {id:"sso", name:"สปส.1-10 ครบ 12 เดือน", tag:"ถ้ามีพนักงาน"}
+    ]},
+    { k:"ช", title:"รายการกับกรรมการและผู้ถือหุ้น", note:"จุดที่สรรพากรตรวจบ่อย ถามให้ได้คำตอบตั้งแต่ต้น", items:[
+      {id:"dir_loan_cert", name:"หนังสือรับรองยอดเงินกู้ยืม / เงินให้กู้ยืมกรรมการ ณ วันสิ้นปี", tag:"ถ้ามี"},
+      {id:"dir_loan_contract", name:"สัญญากู้ยืมเงินเป็นลายลักษณ์อักษร", tag:"ถ้ามี", hint:"ถ้าไม่มีสัญญา สรรพากรอาจประเมินดอกเบี้ยตามราคาตลาด"},
+      {id:"dir_interest", name:"นโยบายดอกเบี้ยระหว่างกันในปีนี้ (คิดหรือไม่คิด เพราะอะไร)", tag:"ถ้ามี"}
+    ]},
+    { k:"ซ", title:"แบบภาษีระหว่างปี พร้อมใบเสร็จ", note:"ขอทั้งแบบและใบเสร็จ แบบที่ยื่นยอดเป็นศูนย์ก็ต้องมีหลักฐาน", items:[
+      {id:"pp30", name:"ภ.พ.30 ครบ 12 เดือน", tag:"ถ้าจด VAT"},
+      {id:"pnd3_53", name:"ภ.ง.ด.3 / ภ.ง.ด.53 ครบทุกเดือนที่มีการจ่าย"},
+      {id:"pnd51", name:"ภ.ง.ด.51 (ครึ่งปี)"},
+      {id:"pnd54_pp36", name:"ภ.ง.ด.54 / ภ.พ.36", tag:"ถ้าจ่ายต่างประเทศ"}
+    ]},
+    { k:"ฌ", title:"งานปิดงบของสำนักงาน", note:"ขั้นตอนหลังได้เอกสารครบ", items:[
+      {id:"adj", name:"บันทึกรายการปรับปรุงสิ้นปี"},
+      {id:"draft", name:"ส่ง Draft งบการเงินให้ผู้สอบบัญชี"},
+      {id:"auditor_q", name:"ตอบคำถาม / ส่งเอกสารเพิ่มเติมที่ผู้สอบบัญชีขอครบแล้ว"},
+      {id:"signed_fs", name:"ได้งบการเงินที่ผู้สอบบัญชีเซ็นแล้ว (Signed FS)"},
+      {id:"agm", name:"รายงานการประชุมสามัญผู้ถือหุ้นอนุมัติงบ"},
+      {id:"pnd50", name:"ยื่น ภ.ง.ด.50"},
+      {id:"dbd", name:"นำส่งงบการเงินและ บอจ.5 ผ่าน DBD e-Filing"},
+      {id:"wht_auditor", name:"ออก 50 ทวิ ค่าสอบบัญชี", tag:"ถ้าหัก ณ ที่จ่าย"}
+    ]}
+  ];
+  var ALL_IDS = [];
+  GROUPS.forEach(function(g){ g.items.forEach(function(it){ ALL_IDS.push(it.id); }); });
+
+  var STATUSES = ["Pending","Preparing","Draft","Sent to Auditor","Paid","Uploaded"];
+  var STATUS_TH = {"Pending":"รอเอกสาร","Preparing":"กำลังทำ","Draft":"ร่างงบ","Sent to Auditor":"ส่งผู้สอบแล้ว","Paid":"รับเงินแล้ว","Uploaded":"นำส่ง DBD แล้ว"};
+  var ENTITY_TYPES = ["บริษัทจำกัด","ห้างหุ้นส่วน","บุคคลธรรมดา"];
+  var JOB_COLS = "id,client_id,year_be,status,note,checks,updated_at,crm_clients(id,code,thai_name,billing_type)";
+
+  var $ = function(id){ return document.getElementById(id); };
+  var me = { id:null, role:null, name:"" };
+  var staffNames = {};
+  var route = { year:null, code:null };
+  var cache = { years:[], jobs:[], job:null };
+  var filter = "all";
+
+  function lsGet(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
+  function lsSet(k,v){ try { localStorage.setItem(k,v); } catch(e){} }
+  filter = lsGet("dcbc-fs-filter") || "all";
+
+  function el(tag, attrs, kids){
+    var n = document.createElement(tag);
+    if (attrs) Object.keys(attrs).forEach(function(k){
+      var v = attrs[k];
+      if (v === null || v === undefined || v === false) return;
+      if (k === "text") n.textContent = v;
+      else if (k === "class") n.className = v;
+      else if (k === "on") Object.keys(v).forEach(function(ev){ n.addEventListener(ev, v[ev]); });
+      else n.setAttribute(k, v === true ? "" : v);
+    });
+    (kids || []).forEach(function(c){ if (c) n.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
+    return n;
+  }
+  function toast(t){ var n = $("toast"); n.textContent = t; n.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(function(){ n.hidden = true; }, 2200); }
+  function stKey(s){ return (s || "Pending").split(" ")[0]; }
+  function chip(s){ return el("span",{class:"chip st-" + stKey(s), text: STATUS_TH[s || "Pending"] || s}); }
+  function itemState(job, id){ var v = job.checks && job.checks[id]; return v && v.s ? v.s : null; }
+  function progress(job){
+    var done = 0, na = 0;
+    ALL_IDS.forEach(function(id){ var s = itemState(job, id); if (s === "done") done++; else if (s === "na") na++; });
+    return { done:done, na:na, wait:ALL_IDS.length - done - na, total:ALL_IDS.length, pct:Math.round((done + na) / ALL_IDS.length * 100) };
+  }
+  function thisYearBE(){ return new Date().getFullYear() + 543; }
+  function fmtDate(iso){ try { return new Date(iso).toLocaleDateString("th-TH",{day:"numeric",month:"short",year:"2-digit"}); } catch(e){ return ""; } }
+  function friendly(err){
+    var m = String((err && err.message) || err || "");
+    if (/crm_clients_code_key/.test(m)) return "รหัสลูกค้านี้มีอยู่แล้ว เลือกจากแท็บ \"ลูกค้าที่มีอยู่\" แทน";
+    if (/crm_fs_jobs_client_id_year_be_key/.test(m)) return "ลูกค้ารายนี้มีงานในรอบปีนี้อยู่แล้ว";
+    if (/row-level security|not allowed|permission/i.test(m)) return "บัญชีนี้ไม่มีสิทธิ์ทำรายการนี้";
+    if (/crm_fs_jobs|crm_fs_set_check/.test(m) && /does not exist|schema cache/i.test(m)) return "ฐานข้อมูลยังไม่ได้ตั้งค่าตาราง crm_fs_jobs (ต้องรัน supabase-customer-fs-migration.sql ก่อน)";
+    return m || "เกิดข้อผิดพลาด ลองอีกครั้ง";
+  }
+
+  // ── routing: /customer/ · /customer/2569 · /customer/2569/EPED (404.html ส่งต่อมาเป็น ?p=/2569/EPED) ──
+  function parseRoute(){
+    var p = location.pathname.replace(/^\/customer\/?/, "");
+    var q = new URLSearchParams(location.search).get("p");
+    if (q) { p = q.replace(/^\//, ""); history.replaceState(null, "", "/customer/" + p.replace(/\/$/, "")); }
+    var parts = p.split("/").filter(Boolean);
+    route.year = /^25\d\d$/.test(parts[0] || "") ? +parts[0] : null;
+    route.code = parts[1] ? decodeURIComponent(parts[1]).toUpperCase() : null;
+  }
+  function go(path){ history.pushState(null, "", path); parseRoute(); show(); window.scrollTo(0,0); }
+  document.addEventListener("click", function(e){
+    var a = e.target.closest && e.target.closest("a[data-nav]");
+    if (!a || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+    e.preventDefault(); go(a.getAttribute("href"));
+  });
+  window.addEventListener("popstate", function(){ parseRoute(); show(); });
+
+  // ── auth ──
+  function showLogin(){
+    $("boot").hidden = true; $("login").hidden = false;
+    $("v-list").hidden = true; $("v-detail").hidden = true; $("logout").hidden = true; $("who").textContent = "";
+  }
+  $("login").addEventListener("submit", function(e){
+    e.preventDefault();
+    var btn = $("lg-btn"), err = $("lg-err");
+    btn.disabled = true; btn.textContent = "กำลังเข้า…"; err.hidden = true;
+    sb.auth.signInWithPassword({ email: $("lg-email").value.trim(), password: $("lg-pass").value }).then(function(r){
+      btn.disabled = false; btn.textContent = "เข้าสู่ระบบ";
+      if (r.error){ err.textContent = "อีเมลหรือรหัสผ่านไม่ถูกต้อง"; err.hidden = false; return; }
+      $("lg-pass").value = ""; start();
+    });
+  });
+  $("logout").addEventListener("click", function(){ sb.auth.signOut().then(showLogin); });
+
+  function start(){
+    sb.auth.getSession().then(function(r){
+      var s = r.data && r.data.session;
+      if (!s){ showLogin(); return; }
+      me.id = s.user.id;
+      return sb.rpc("org_get_role").then(function(rr){
+        me.role = rr.data || null;
+        if (!me.role){
+          $("boot").hidden = false; $("boot").className = "msg bad";
+          $("boot").textContent = "บัญชีนี้ยังไม่ได้เป็นพนักงานในระบบ ติดต่อเจ้าของสำนักงาน";
+          $("login").hidden = true; $("logout").hidden = false; return;
+        }
+        $("login").hidden = true; $("logout").hidden = false;
+        return sb.from("org_staff").select("id,display_name").then(function(st){
+          (st.data || []).forEach(function(x){ staffNames[x.id] = x.display_name || ""; });
+          me.name = staffNames[me.id] || s.user.email;
+          $("who").textContent = me.name;
+          parseRoute(); show();
+        });
+      });
+    });
+  }
+
+  // ── list view ──
+  function loadYears(){
+    return sb.from("crm_fs_jobs").select("year_be").then(function(r){
+      if (r.error) throw r.error;
+      var ys = {}; (r.data || []).forEach(function(x){ ys[x.year_be] = 1; });
+      ys[thisYearBE()] = 1; ys[thisYearBE() - 1] = 1;
+      cache.years = Object.keys(ys).map(Number).sort(function(a,b){ return b - a; });
+    });
+  }
+  function defaultYear(){
+    var withJobs = lsGet("dcbc-fs-year");
+    return withJobs && /^25\d\d$/.test(withJobs) ? +withJobs : thisYearBE() - 1;
+  }
+
+  function show(){
+    $("boot").hidden = true;
+    if (route.year && route.code) return showDetail();
+    if (!route.year){ history.replaceState(null, "", "/customer/" + defaultYear()); route.year = defaultYear(); }
+    showList();
+  }
+
+  function showList(){
+    var v = $("v-list"); $("v-detail").hidden = true; v.hidden = false;
+    document.title = "ปิดงบ " + route.year + " | เด็กชายบัญชี";
+    lsSet("dcbc-fs-year", String(route.year));
+    v.innerHTML = ""; v.appendChild(el("p",{class:"msg", text:"กำลังโหลดรายชื่อ…"}));
+    Promise.all([ loadYears(), sb.from("crm_fs_jobs").select(JOB_COLS).eq("year_be", route.year) ]).then(function(r){
+      if (r[1].error) throw r[1].error;
+      cache.jobs = (r[1].data || []).filter(function(j){ return j.crm_clients; })
+        .sort(function(a,b){ return String(a.crm_clients.code).localeCompare(String(b.crm_clients.code)); });
+      renderList();
+    }).catch(function(e){ v.innerHTML = ""; v.appendChild(el("p",{class:"msg bad", text: friendly(e)})); });
+  }
+
+  function renderList(){
+    var v = $("v-list"); v.innerHTML = "";
+    if (cache.years.indexOf(route.year) < 0) cache.years.push(route.year), cache.years.sort(function(a,b){ return b - a; });
+    var yb = el("nav",{class:"yearbar", "aria-label":"รอบปี"});
+    cache.years.forEach(function(y){ yb.appendChild(el("a",{href:"/customer/" + y, "data-nav":true, "aria-current": y === route.year ? "page" : null, text:String(y)})); });
+
+    v.appendChild(el("div",{class:"head"},[
+      el("div",null,[ el("p",{class:"eyebrow", text:"รอบปีบัญชี " + route.year}), el("h1",{text:"ลูกค้าปิดงบ ปี " + route.year}) ]),
+      yb
+    ]));
+
+    var tot = { n:cache.jobs.length, done:0, sent:0, walk:0 };
+    cache.jobs.forEach(function(j){
+      if (j.status === "Uploaded") tot.done++;
+      if (["Sent to Auditor","Paid","Uploaded"].indexOf(j.status) >= 0) tot.sent++;
+      if (j.crm_clients.billing_type === "walkin") tot.walk++;
+    });
+    v.appendChild(el("p",{class:"stats"},[
+      el("span",null,["ทั้งหมด ", el("b",{text:String(tot.n)}), " ราย"]),
+      el("span",null,["ขาจร ", el("b",{text:String(tot.walk)})]),
+      el("span",null,["ส่งผู้สอบแล้ว ", el("b",{text:String(tot.sent)})]),
+      el("span",null,["นำส่ง DBD แล้ว ", el("b",{text:String(tot.done)})])
+    ]));
+
+    var search = el("input",{class:"f", type:"search", id:"q", placeholder:"ค้นหาชื่อหรือรหัส", "aria-label":"ค้นหาลูกค้า"});
+    v.appendChild(el("div",{class:"tools"},[ search, el("button",{class:"btn", type:"button", text:"+ เพิ่มลูกค้าในรอบปีนี้", on:{click:openAdd}}) ]));
+
+    if (!cache.jobs.length){
+      v.appendChild(el("div",{class:"empty"},[ el("b",{text:"ยังไม่มีลูกค้าในรอบปี " + route.year}), el("br"), "กด “เพิ่มลูกค้าในรอบปีนี้” เพื่อเลือกลูกค้าจาก CRM หรือเพิ่มลูกค้าขาจรรายใหม่" ]));
+      return;
+    }
+    var tb = el("tbody");
+    var rows = cache.jobs.map(function(j){
+      var c = j.crm_clients, p = progress(j);
+      var href = "/customer/" + route.year + "/" + encodeURIComponent(c.code);
+      var bar = el("span",{class:"bar"},[ el("i") ]); bar.firstChild.style.width = p.pct + "%";
+      var tr = el("tr",{on:{click:function(e){ if (!e.target.closest("a")) go(href); }}},[
+        el("td",null,[ el("span",{class:"code", text:c.code}) ]),
+        el("td",{class:"cname"},[ el("a",{href:href, "data-nav":true, text:c.thai_name || "(ไม่มีชื่อ)"}), c.billing_type === "walkin" ? el("span",{class:"walk", text:"ขาจร"}) : null ]),
+        el("td",null,[ chip(j.status) ]),
+        el("td",null,[ el("span",{class:"prog"},[ bar, el("span",{class:"pct", text:p.pct + "%"}) ]) ]),
+        el("td",{class:"mono", text: p.wait + " รายการ"}),
+        el("td",{style:"color:var(--body);font-size:.84rem;max-width:16rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap", text:j.note || "", title:j.note || null})
+      ]);
+      tr._q = (c.code + " " + c.thai_name).toLowerCase();
+      tb.appendChild(tr); return tr;
+    });
+    v.appendChild(el("div",{class:"tablebox"},[ el("table",{class:"jobs"},[
+      el("thead",null,[ el("tr",null,[ el("th",{text:"รหัส"}), el("th",{text:"ลูกค้า"}), el("th",{text:"สถานะงาน"}), el("th",{text:"ความคืบหน้า"}), el("th",{text:"ยังรอ"}), el("th",{text:"บันทึก"}) ]) ]),
+      tb
+    ]) ]));
+    search.addEventListener("input", function(){
+      var q = search.value.trim().toLowerCase();
+      rows.forEach(function(tr){ tr.hidden = q && tr._q.indexOf(q) < 0; });
+    });
+  }
+
+  // ── add dialog ──
+  function closeDlg(){ var d = $("dlg"); d.hidden = true; d.innerHTML = ""; }
+  $("dlg").addEventListener("click", function(e){ if (e.target === $("dlg")) closeDlg(); });
+  document.addEventListener("keydown", function(e){ if (e.key === "Escape" && !$("dlg").hidden) closeDlg(); });
+
+  function openAdd(){
+    var d = $("dlg"); d.innerHTML = ""; d.hidden = false;
+    var box = el("div",{class:"dlg", role:"dialog", "aria-modal":"true", "aria-labelledby":"dlg-t"});
+    var tabA = el("button",{type:"button", role:"tab", "aria-selected":"true", text:"ลูกค้าที่มีอยู่"});
+    var tabB = el("button",{type:"button", role:"tab", "aria-selected":"false", text:"ลูกค้าขาจรรายใหม่"});
+    var paneA = el("div"), paneB = el("form",{class:"grid2", hidden:true});
+    var err = el("p",{class:"err", hidden:true});
+    function tab(a){ tabA.setAttribute("aria-selected", String(a)); tabB.setAttribute("aria-selected", String(!a)); paneA.hidden = !a; paneB.hidden = a; err.hidden = true; }
+    tabA.addEventListener("click", function(){ tab(true); });
+    tabB.addEventListener("click", function(){ tab(false); setTimeout(function(){ $("nw-code").focus(); }); });
+
+    // existing clients
+    var q = el("input",{class:"f", type:"search", placeholder:"พิมพ์ชื่อหรือรหัสลูกค้า", "aria-label":"ค้นหาลูกค้าใน CRM"});
+    var list = el("ul",{class:"pick"},[ el("li",null,[ el("button",{type:"button", disabled:true, text:"กำลังโหลด…"}) ]) ]);
+    paneA.appendChild(el("div",{style:"display:grid;gap:.6rem"},[ q, list ]));
+    var inYear = {}; cache.jobs.forEach(function(j){ inYear[j.client_id] = 1; });
+    var all = [];
+    function draw(){
+      var s = q.value.trim().toLowerCase(); list.innerHTML = "";
+      var shown = all.filter(function(c){ return !s || (c.code + " " + c.thai_name).toLowerCase().indexOf(s) >= 0; }).slice(0, 80);
+      if (!shown.length) list.appendChild(el("li",null,[ el("button",{type:"button", disabled:true, text:"ไม่พบ ลองแท็บ “ลูกค้าขาจรรายใหม่”"}) ]));
+      shown.forEach(function(c){
+        var added = !!inYear[c.id];
+        list.appendChild(el("li",null,[ el("button",{type:"button", disabled:added, on:{click:function(){ addJob(c, this); }}},[
+          el("span",{class:"code", text:c.code}),
+          el("span",{style:"flex:1;min-width:0", text:c.thai_name}),
+          added ? el("span",{style:"font-size:.75rem", text:"มีแล้ว"}) : (c.billing_type === "walkin" ? el("span",{class:"walk", text:"ขาจร"}) : null)
+        ]) ]));
+      });
+    }
+    sb.from("crm_clients").select("id,code,thai_name,billing_type").eq("is_active", true).order("code").then(function(r){
+      if (r.error){ err.textContent = friendly(r.error); err.hidden = false; return; }
+      all = (r.data || []).filter(function(c){ return c.billing_type !== "dissolved"; }); draw();
+    });
+    q.addEventListener("input", draw);
+
+    // new walk-in
+    var sel = el("select",{class:"f", id:"nw-type"}); ENTITY_TYPES.forEach(function(t){ sel.appendChild(el("option",{value:t, text:t})); });
+    [
+      el("label",{class:"fl"},[ "รหัสลูกค้า (4 ตัว A-Z/0-9)", el("input",{class:"f mono", id:"nw-code", maxlength:"4", required:true, autocomplete:"off", style:"text-transform:uppercase", placeholder:"เช่น ABCD"}) ]),
+      el("label",{class:"fl"},[ "ประเภท", sel ]),
+      el("label",{class:"fl", style:"grid-column:1/-1"},[ "ชื่อบริษัท (ภาษาไทย)", el("input",{class:"f", id:"nw-name", required:true}) ]),
+      el("label",{class:"fl", style:"grid-column:1/-1"},[ "เลขประจำตัวผู้เสียภาษี (ถ้ามี)", el("input",{class:"f mono", id:"nw-tax", inputmode:"numeric", maxlength:"13"}) ]),
+      el("div",{class:"row-end", style:"grid-column:1/-1"},[ el("button",{class:"btn", type:"submit", id:"nw-btn", text:"เพิ่มลูกค้าขาจร"}) ])
+    ].forEach(function(n){ paneB.appendChild(n); });
+    paneB.addEventListener("submit", function(e){
+      e.preventDefault();
+      var code = $("nw-code").value.trim().toUpperCase(), name = $("nw-name").value.trim(), tax = $("nw-tax").value.replace(/\D/g, "");
+      if (!/^[A-Z0-9]{4}$/.test(code)){ err.textContent = "รหัสต้องเป็นตัวอักษรอังกฤษหรือตัวเลข 4 ตัว"; err.hidden = false; return; }
+      if (!name){ err.textContent = "กรอกชื่อบริษัท"; err.hidden = false; return; }
+      if (tax && tax.length !== 13){ err.textContent = "เลขผู้เสียภาษีต้องมี 13 หลัก"; err.hidden = false; return; }
+      var btn = $("nw-btn"); btn.disabled = true; err.hidden = true;
+      sb.from("crm_clients").insert({ code:code, thai_name:name, type:$("nw-type").value, tax_number:tax, billing_type:"walkin" })
+        .select("id,code,thai_name,billing_type").single().then(function(r){
+          if (r.error){ btn.disabled = false; err.textContent = friendly(r.error); err.hidden = false; return; }
+          addJob(r.data, btn);
+        });
+    });
+
+    box.appendChild(el("h2",{id:"dlg-t", text:"เพิ่มลูกค้าในรอบปี " + route.year}));
+    box.appendChild(el("div",{class:"tabs", role:"tablist"},[ tabA, tabB ]));
+    box.appendChild(paneA); box.appendChild(paneB); box.appendChild(err);
+    box.appendChild(el("div",{class:"row-end"},[ el("button",{class:"btn ghost", type:"button", text:"ปิด", on:{click:closeDlg}}) ]));
+    d.appendChild(box);
+    q.focus();
+
+    function addJob(c, btn){
+      if (btn) btn.disabled = true;
+      sb.from("crm_fs_jobs").insert({ client_id:c.id, year_be:route.year }).select("id").single().then(function(r){
+        if (r.error){ if (btn) btn.disabled = false; err.textContent = friendly(r.error); err.hidden = false; return; }
+        closeDlg(); toast("เพิ่ม " + c.thai_name + " แล้ว");
+        go("/customer/" + route.year + "/" + encodeURIComponent(c.code));
+      });
+    }
+  }
+
+  // ── detail view ──
+  function showDetail(){
+    var v = $("v-detail"); $("v-list").hidden = true; v.hidden = false;
+    v.innerHTML = ""; v.appendChild(el("p",{class:"msg", text:"กำลังโหลด…"}));
+    sb.from("crm_clients").select("id,code,thai_name,billing_type,tax_number").eq("code", route.code).maybeSingle().then(function(r){
+      if (r.error) throw r.error;
+      if (!r.data) return notFound("ไม่พบลูกค้ารหัส " + route.code);
+      var c = r.data;
+      return sb.from("crm_fs_jobs").select(JOB_COLS).eq("client_id", c.id).eq("year_be", route.year).maybeSingle().then(function(jr){
+        if (jr.error) throw jr.error;
+        if (!jr.data) return notFound(c.thai_name + " ยังไม่มีงานปิดงบรอบปี " + route.year, c);
+        cache.job = jr.data; renderDetail();
+      });
+    }).catch(function(e){ v.innerHTML = ""; v.appendChild(el("p",{class:"msg bad", text: friendly(e)})); });
+  }
+  function notFound(text, c){
+    var v = $("v-detail"); v.innerHTML = "";
+    v.appendChild(el("p",{class:"crumb"},[ el("a",{href:"/customer/" + route.year, "data-nav":true, text:"← รายชื่อปี " + route.year}) ]));
+    var box = el("div",{class:"empty"},[ el("b",{text:text}) ]);
+    if (c){
+      box.appendChild(el("br"));
+      box.appendChild(el("button",{class:"btn", type:"button", style:"margin-top:.75rem", text:"เปิดงานปิดงบรอบปี " + route.year, on:{click:function(){
+        var b = this; b.disabled = true;
+        sb.from("crm_fs_jobs").insert({ client_id:c.id, year_be:route.year }).then(function(r){ if (r.error){ b.disabled = false; toast(friendly(r.error)); return; } showDetail(); });
+      }}}));
+    }
+    v.appendChild(box);
+  }
+
+  var noteTimer = null, busy = {};
+  function renderDetail(){
+    var j = cache.job, c = j.crm_clients, v = $("v-detail"), p = progress(j);
+    document.title = c.code + " ปิดงบ " + j.year_be + " | เด็กชายบัญชี";
+    var keepNote = document.activeElement && document.activeElement.id === "note" ? $("note").value : null;
+    v.innerHTML = "";
+    v.appendChild(el("p",{class:"crumb"},[ el("a",{href:"/customer/" + j.year_be, "data-nav":true, text:"← รายชื่อปี " + j.year_be}) ]));
+
+    var stSel = el("select",{class:"f", id:"status"});
+    STATUSES.forEach(function(s){ stSel.appendChild(el("option",{value:s, selected: (j.status || "Pending") === s, text: STATUS_TH[s] + " · " + s})); });
+    stSel.addEventListener("change", function(){
+      var val = stSel.value; stSel.disabled = true;
+      sb.from("crm_fs_jobs").update({ status: val }).eq("id", j.id).then(function(r){
+        stSel.disabled = false;
+        if (r.error){ toast(friendly(r.error)); stSel.value = j.status; return; }
+        j.status = val; toast("เปลี่ยนสถานะแล้ว");
+      });
+    });
+    v.appendChild(el("div",{class:"dhead"},[
+      el("div",null,[
+        el("h1",null,[ c.thai_name, c.billing_type === "walkin" ? el("span",{class:"walk", text:"ขาจร"}) : null ]),
+        el("div",{class:"sub"},[ el("span",{class:"code", text:c.code}), " · รอบปี " + j.year_be + (c.tax_number ? " · " + c.tax_number : "") ])
+      ]),
+      el("div",{class:"dctl"},[ el("label",{for:"status"},[ "สถานะงาน", stSel ]) ])
+    ]));
+
+    var main = el("div",{class:"card"});
+    var fb = el("div",{class:"filter", role:"group", "aria-label":"กรองรายการ"});
+    [["all","ทั้งหมด"],["wait","เฉพาะที่ยังรอ"]].forEach(function(f){
+      fb.appendChild(el("button",{type:"button", "aria-pressed": String(filter === f[0]), text:f[1], on:{click:function(){ filter = f[0]; lsSet("dcbc-fs-filter", filter); renderDetail(); }}}));
+    });
+    main.appendChild(fb);
+
+    GROUPS.forEach(function(g){
+      var items = g.items.filter(function(it){ return filter === "all" || !itemState(j, it.id); });
+      if (!items.length) return;
+      var gdone = g.items.filter(function(it){ return itemState(j, it.id); }).length;
+      var ul = el("ul",{class:"items"});
+      items.forEach(function(it){
+        var s = itemState(j, it.id), rec = j.checks && j.checks[it.id];
+        var name = el("span",{class:"iname", text:it.name});
+        if (it.tag) name.appendChild(el("span",{class:"tag", text:it.tag}));
+        var who = rec && rec.s ? el("span",{class:"iwho", text:(rec.s === "done" ? "ได้แล้ว" : "ไม่เกี่ยว") + " · " + fmtDate(rec.at) + (staffNames[rec.by] ? " · " + staffNames[rec.by] : "")}) : null;
+        var dis = !!busy[it.id];
+        ul.appendChild(el("li",{class: s ? "s-" + s : null},[
+          name,
+          el("span",{class:"seg", role:"group", "aria-label":it.name},[
+            el("button",{type:"button", class:"b-wait", "aria-pressed": String(!s), disabled:dis, text:"รอ", on:{click:function(){ if (s) setCheck(it.id, null); }}}),
+            el("button",{type:"button", class:"b-done", "aria-pressed": String(s === "done"), disabled:dis, text:"ได้แล้ว", on:{click:function(){ setCheck(it.id, s === "done" ? null : "done"); }}}),
+            el("button",{type:"button", class:"b-na", "aria-pressed": String(s === "na"), disabled:dis, text:"ไม่เกี่ยว", on:{click:function(){ setCheck(it.id, s === "na" ? null : "na"); }}})
+          ]),
+          it.hint ? el("span",{class:"ihint", text:it.hint}) : null,
+          who
+        ]));
+      });
+      main.appendChild(el("div",{class:"grp"},[
+        el("div",{class:"ghead"},[ el("span",{class:"mark", text:g.k}), el("h2",{text:g.title}), el("span",{class:"gcount", text:gdone + "/" + g.items.length}) ]),
+        g.note ? el("p",{class:"gnote", text:g.note}) : null,
+        ul
+      ]));
+    });
+
+    var ta = el("textarea",{class:"f", id:"note", placeholder:"เช่น ขาด statement เดือน 3 บัญชี SCB, ผู้สอบขอสัญญาเช่าเพิ่ม"});
+    ta.value = keepNote !== null ? keepNote : (j.note || "");
+    var saved = el("p",{class:"saved", id:"saved"});
+    ta.addEventListener("input", function(){
+      saved.textContent = "กำลังพิมพ์…"; clearTimeout(noteTimer);
+      noteTimer = setTimeout(function(){
+        var val = ta.value;
+        sb.from("crm_fs_jobs").update({ note: val }).eq("id", j.id).then(function(r){
+          var sv = $("saved"); if (!sv) return;
+          if (r.error){ sv.textContent = friendly(r.error); return; }
+          j.note = val; sv.textContent = "บันทึกแล้ว";
+        });
+      }, 900);
+    });
+
+    var side = el("aside",{class:"side"},[
+      el("div",{class:"card"},[
+        el("h2",{text:"ความคืบหน้า " + p.pct + "%"}),
+        el("div",{class:"bar", style:"margin-bottom:.6rem"},[ (function(){ var i = el("i"); i.style.width = p.pct + "%"; return i; })() ]),
+        el("div",{class:"sumrow"},[ "ได้แล้ว", el("b",{text:String(p.done)}) ]),
+        el("div",{class:"sumrow"},[ "ไม่เกี่ยว", el("b",{text:String(p.na)}) ]),
+        el("div",{class:"sumrow"},[ "ยังรอ", el("b",{text:String(p.wait)}) ])
+      ]),
+      el("div",{class:"card"},[ el("label",{for:"note"},[ el("h2",{text:"บันทึก / เอกสารที่ยังขาด"}) ]), ta, saved ])
+    ]);
+    if (me.role === "owner" || me.role === "manager"){
+      var del = el("button",{class:"btn danger small", type:"button", text:"ลบงานปิดงบรอบปีนี้"});
+      var armed = false;
+      del.addEventListener("click", function(){
+        if (!armed){ armed = true; del.textContent = "กดอีกครั้งเพื่อยืนยัน"; setTimeout(function(){ armed = false; del.textContent = "ลบงานปิดงบรอบปีนี้"; }, 4000); return; }
+        del.disabled = true;
+        sb.from("crm_fs_jobs").delete().eq("id", j.id).then(function(r){
+          if (r.error){ del.disabled = false; toast(friendly(r.error)); return; }
+          toast("ลบงานแล้ว (ข้อมูลลูกค้าใน CRM ยังอยู่)"); go("/customer/" + j.year_be);
+        });
+      });
+      side.appendChild(el("div",{class:"card"},[ del, el("p",{class:"saved", text:"ลบเฉพาะเช็คลิสต์ของรอบปีนี้ ไม่ลบลูกค้า"}) ]));
+    }
+    v.appendChild(el("div",{class:"dlayout"},[ main, side ]));
+    if (keepNote !== null){ ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+  }
+
+  function setCheck(key, state){
+    var j = cache.job; busy[key] = 1; renderDetail();
+    sb.rpc("crm_fs_set_check", { p_job_id:j.id, p_key:key, p_state:state }).then(function(r){
+      delete busy[key];
+      if (r.error){ toast(friendly(r.error)); renderDetail(); return; }
+      j.checks = r.data || {}; renderDetail();
+    });
+  }
+
+  // ดึงข้อมูลล่าสุดเมื่อกลับมาที่แท็บ (คนอื่นอาจติ๊กไปแล้ว)
+  document.addEventListener("visibilitychange", function(){
+    if (document.visibilityState !== "visible" || !me.role || !$("dlg").hidden) return;
+    if (route.code && cache.job){
+      sb.from("crm_fs_jobs").select(JOB_COLS).eq("id", cache.job.id).maybeSingle().then(function(r){ if (r.data){ cache.job = r.data; renderDetail(); } });
+    }
+  });
+
+  if (!sb){ $("boot").className = "msg bad"; $("boot").textContent = "โหลดระบบไม่สำเร็จ ลองรีเฟรชหน้า"; return; }
+  start();
+})();
+</script>
+</body>
+</html>

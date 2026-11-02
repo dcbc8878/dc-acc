@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<script>
+  // GitHub Pages ไม่มี rewrite — /customer/2569/EPED ไม่มีไฟล์จริง จึงส่งต่อให้ /customer/ จัดการเอง
+  (function () {
+    var m = location.pathname.match(/^\/customer(\/[^?#]*)$/);
+    if (m) location.replace('/customer/?p=' + encodeURIComponent(m[1]));
+  })();
+</script>
+<title>ไม่พบหน้า | เด็กชายบัญชี</title>
+<style>
+  :root { --brand:#0f4c81; --ink:#0f1a24; --body:#45566a; --bg:#f5f8fc; }
+  @media (prefers-color-scheme: dark) { :root { --brand:#7fb2e5; --ink:#e6ecf2; --body:#aab6c3; --bg:#0e141b; } }
+  body { margin:0; min-height:100vh; display:grid; place-items:center; text-align:center; padding:24px; box-sizing:border-box;
+         font-family:"Noto Sans Thai",system-ui,sans-serif; color:var(--body); background:var(--bg); }
+  h1 { color:var(--ink); font-size:1.4rem; margin:0 0 .5rem; }
+  a { color:var(--brand); font-weight:600; }
+</style>
+</head>
+<body>
+  <main>
+    <h1>ไม่พบหน้าที่ต้องการ</h1>
+    <p><a href="/">กลับหน้าหลักระบบภายใน</a></p>
+  </main>
+</body>
+</html>

@@ -1569,7 +1569,8 @@ const GROUP_ITEMS = {
 const TASK_STATUS_LABEL_TH = { todo: 'ยังไม่ทำ', inprogress: 'กำลังทำ', done: 'เสร็จ', na: 'ไม่มี' };
 const RD_FIELD_LABEL = { rd_download: 'RD: Download', rd_keyed: 'RD: Key' };
 const INV_STATUS_LABEL = { draft:'ร่าง', sent:'ส่งแล้ว', paid:'ชำระแล้ว', cancelled:'ยกเลิก' };
-const BILLING_TYPE_LABEL = { monthly:'รายเดือน', annual:'รายปี', filing:'ยื่นแบบ', dissolved:'เลิกกิจการ' };
+// walkin = ลูกค้าขาจร (จ้างปิดงบครั้งคราว เพิ่มจากหน้า dcacc.dcbc.co.th/customer) — กันออกจากหน้ารายเดือน/การเก็บเงินแบบเดียวกับรายปี
+const BILLING_TYPE_LABEL = { monthly:'รายเดือน', annual:'รายปี', filing:'ยื่นแบบ', dissolved:'เลิกกิจการ', walkin:'ขาจร' };
 const ENTITY_TYPES = ['บริษัทจำกัด','ห้างหุ้นส่วน','บุคคลธรรมดา'];
 const CLIENT_TYPE_MAP = { M:'รายเดือน', Y:'รายปี', T:'ยื่นแบบเปล่า' };
 const BUSINESS_CATEGORIES = [
@@ -2586,7 +2587,7 @@ function renderTracking() {
     // "รายปี > เลิกกิจการ" แทน — ใช้ประเภท "ณ เดือนที่กำลังดู" (ประวัติสัญญา) ไม่ใช่ประเภทปัจจุบัน
     // เพราะเดือนก่อนหน้าที่เขายังเป็นลูกค้ารายเดือนอยู่ ต้องเห็นงานเดือนนั้นย้อนหลังได้ตามปกติ
     // (เช่น เลิกกิจการมีผล ก.ย. — เดือน ส.ค. ลงไปยังต้องอยู่ในหน้ารายเดือนเหมือนเดิม)
-    .filter(c => !['dissolved','annual'].includes(resolveEffectiveFee(c, curYear, curMonth, billingContractsByClient[c.id]).billing_type))
+    .filter(c => !['dissolved','annual','walkin'].includes(resolveEffectiveFee(c, curYear, curMonth, billingContractsByClient[c.id]).billing_type))
     .filter(c => trackingTypeFilter === 'all' ||
       resolveEffectiveFee(c, curYear, curMonth, billingContractsByClient[c.id]).billing_type === trackingTypeFilter)
     .filter(c => (!c.start_date || c.start_date <= monthLastStr) && (!c.end_date || c.end_date >= monthFirstStr))
@@ -2934,7 +2935,7 @@ function renderTrackingSummary() {
     // "รายปี > เลิกกิจการ" แทน — ใช้ประเภท "ณ เดือนที่กำลังดู" (ประวัติสัญญา) ไม่ใช่ประเภทปัจจุบัน
     // เพราะเดือนก่อนหน้าที่เขายังเป็นลูกค้ารายเดือนอยู่ ต้องเห็นงานเดือนนั้นย้อนหลังได้ตามปกติ
     // (เช่น เลิกกิจการมีผล ก.ย. — เดือน ส.ค. ลงไปยังต้องอยู่ในหน้ารายเดือนเหมือนเดิม)
-    .filter(c => !['dissolved','annual'].includes(resolveEffectiveFee(c, curYear, curMonth, billingContractsByClient[c.id]).billing_type))
+    .filter(c => !['dissolved','annual','walkin'].includes(resolveEffectiveFee(c, curYear, curMonth, billingContractsByClient[c.id]).billing_type))
     // ตัวกรองประเภทเดียวกับตาราง (renderTracking) — เดิมไม่มี การ์ดสรุปเลยเด้งกลับไปนับทุกประเภทหลังกดติ๊ก
     .filter(c => trackingTypeFilter === 'all' ||
       resolveEffectiveFee(c, curYear, curMonth, billingContractsByClient[c.id]).billing_type === trackingTypeFilter)
@@ -5798,7 +5799,7 @@ function openBatchInvoice(year, month) {
     const inv = monthInvMap[c.id];
     const alreadyExists = !!inv;
     // รายปี/เลิกกิจการ ยังเลือกออกใบได้ (เช่นใบค่าบริการรายปี) แต่ไม่ติ๊กไว้ให้ก่อน (ผู้ใช้สั่ง 2026-10-30)
-    const nonMonthly = ['annual','dissolved'].includes(resolved.billing_type);
+    const nonMonthly = ['annual','dissolved','walkin'].includes(resolved.billing_type);
     return `<tr class="border-b border-[var(--border)] ${alreadyExists ? 'opacity-50' : ''}">
       <td class="py-2 pr-2">
         ${!alreadyExists ? `<input type="checkbox" class="batch-chk w-4 h-4" data-cid="${c.id}"${nonMonthly ? '' : ' checked'}>` : '<span class="text-xs text-[var(--ink-muted)]">มีแล้ว</span>'}
@@ -6024,7 +6025,7 @@ function financeCollectionClients() {
     // ลูกค้ารายปี/เลิกกิจการ (ณ เดือนที่ดู) ไม่มีค่าบริการรายเดือน — ขึ้นเฉพาะเดือนที่มีใบแจ้งหนี้จริง
     // (เช่นใบเก็บค่าบริการรายปี) ไม่งั้นจะค้างเป็น "ยังไม่เก็บ" ทุกเดือน (ผู้ใช้สั่ง 2026-10-30)
     .filter(c => finInvoiceMap[c.id] ||
-      !['annual','dissolved'].includes(resolveEffectiveFee(c, finYear, finMonth, billingContractsByClient[c.id]).billing_type))
+      !['annual','dissolved','walkin'].includes(resolveEffectiveFee(c, finYear, finMonth, billingContractsByClient[c.id]).billing_type))
     .slice()
     .sort((a, b) =>
       (favoriteClientIds.has(b.id) - favoriteClientIds.has(a.id)) ||
@@ -6311,7 +6312,7 @@ function renderFinanceFees() {
   const today = new Date();
   const feeBase = base
     .map(c => resolveEffectiveFee(c, today.getFullYear(), today.getMonth() + 1, billingContractsByClient[c.id]))
-    .filter(r => r.billing_type !== 'annual');
+    .filter(r => !['annual','walkin'].includes(r.billing_type));
   const feeTotal = feeBase.reduce((sum, r) => sum + (r.fee_amount || 0), 0);
   const feeAvg = feeBase.length ? feeTotal / feeBase.length : 0;
   document.getElementById('fee-total').textContent = feeTotal.toLocaleString('th-TH');
